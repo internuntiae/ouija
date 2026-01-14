@@ -1,0 +1,33 @@
+{
+  "name": "ouija",
+  "version": "1.0.0",
+  "private": "true",
+  "directories": {
+    "doc": "docs"
+  },
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace=apps/web run dev",
+    "dev:api": "npm --workspace=apps/api run dev",
+    "build:web": "npm --workspace=apps/web build dev",
+    "build:api": "npm --workspace=apps/api build dev",
+    "format": "prettier --write \"apps/**/*.{ts,tsx,json,scss}\"",
+    "format:check": "prettier --check \"apps/**/*.{ts,tsx,json,scss}\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zjezdzalka/ouija.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/zjezdzalka/ouija/issues"
+  },
+  "homepage": "https://github.com/zjezdzalka/ouija#readme",
+  "devDependencies": {
+    "prettier": "^3.7.4"
+  }
+}
