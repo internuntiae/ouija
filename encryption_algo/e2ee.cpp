@@ -55,7 +55,7 @@ class User{
             ll cur = 1;
             ll sum = 1;
             for(i = binPKey.size()-1;i>=0;--i){
-                if(i == binPKey.size()-1) cur *= base;
+                if(cur == 1) cur *= base;
                 else cur *= cur;
 
                 if(binPKey[i] == '1'){
@@ -76,7 +76,8 @@ class User{
             ll cur = other;
             ll sum = 1;
             for(i = binPKey.size()-1;i>=0;--i){
-                cur *= cur;
+                if(cur == 1) cur *= base;
+                else cur *= cur;
 
                 if(binPKey[i] == '1'){
                     cur %= modulo;
