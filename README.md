@@ -5,6 +5,8 @@ ouija is a communicator application which you can host completely by yourself vi
 
 ## installing
 
+## how to start?
+
 ## bug reports
 
 ## contributing

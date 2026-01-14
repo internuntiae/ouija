@@ -1,0 +1,3 @@
+# ouija
+
+# documentation
