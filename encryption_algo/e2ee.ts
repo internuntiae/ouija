@@ -43,7 +43,7 @@ function main(){
             let sum: number = 1;
 
             for(i = this.#binPKey.length-1;i>=0;--i){
-                if(cur == 1) cur *= base;
+                if(cur == this.#binPKey.length-1) cur *= base;
                 else cur *= cur;
 
                 if(this.#binPKey[i] == '1'){
