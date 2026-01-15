@@ -1,5 +1,10 @@
-import express, { Express } from 'express';
+import express, { Express } from 'express'
 
+import { client } from './db/redis'
+
+async function main(){
+  await client.connect()
+}
 const app: Express = express();
 
 app.get('/', (req, res) => {
