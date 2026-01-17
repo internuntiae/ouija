@@ -1,11 +1,11 @@
 import pg from 'pg'
 const { Client } = pg
 
-const client = new Client()
+const postgresClient = new Client()
 
-export const clientPromise = (async () => {
-  await client.connect()
-  return client
-})()
+postgresClient
+  .connect()
+  .then(() => console.log('pg connected'))
+  .catch((err) => console.error('pg conn err:', err))
 
-export default client
+export default postgresClient

@@ -1,21 +1,21 @@
 import express, { Express } from 'express'
 import { testRouter } from '@routers/router'
-import client from '@services/pg'
+import postgresClient from '@services/pg'
+import redisClient from '@services/redis'
 
 const app: Express = express();
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use("/", testRouter);
 
-app.use("/api", testRouter);
-
-app.get('/', async (req, res) => {
-  const queryResult = await client.query('SELECT NOW()')
-  res.json(queryResult)
-})
-
-app.get("/sigma", (req, res) => {
-  res.status(200).json({ "ok": "sigma"})
+app.get("/", async (req, res) => {
+  const query = await postgresClient.query("SELECT * FROM test_table")
+  const name = await redisClient.get('user:1:name')
+  console.log(query.rows[0])
+  console.log(name)
+  res.json({
+    pg: query.rows[0],
+    user: name
+  })
 })
 
 app.listen(3001, () => {
