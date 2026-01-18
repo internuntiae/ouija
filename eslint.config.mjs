@@ -11,7 +11,7 @@ export default [
   ...tseslint.configs.recommended,
   // Web
   {
-    files: ['apps/web/**/*.{js,ts,tsx}'],
+    files: ['apps/web/**/*.{js,jsx,ts,tsx}'],
     languageOptions: { globals: globals.browser },
     plugins: {
       '@next/next': eslintNextPlugin,
