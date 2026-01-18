@@ -84,8 +84,8 @@ function main(){
 
     };
 
-    let p1:User = new User();
-    let p2:User = new User();
+    const p1:User = new User();
+    const p2:User = new User();
 
     let base:number = generateNumber(1e4, 1e6);
     while(!checkPrime(base)){
@@ -99,13 +99,13 @@ function main(){
 
     console.log(base, modulo);
 
-    let sumS1_1:number = p1.stageOne(base, modulo);
-    let sumS1_2:number = p2.stageOne(base, modulo);
+    const sumS1_1:number = p1.stageOne(base, modulo);
+    const sumS1_2:number = p2.stageOne(base, modulo);
 
     console.log(sumS1_1, sumS1_2);
 
-    let sumS2_1:number = p1.stageTwo(sumS1_2, base, modulo);
-    let sumS2_2:number = p2.stageTwo(sumS1_1, base, modulo);
+    const sumS2_1:number = p1.stageTwo(sumS1_2, base, modulo);
+    const sumS2_2:number = p2.stageTwo(sumS1_1, base, modulo);
 
     console.log(sumS2_1, sumS2_2);
 }

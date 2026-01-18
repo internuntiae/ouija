@@ -3,12 +3,12 @@ import { testRouter } from '@routers/router'
 import postgresClient from '@services/pg'
 import redisClient from '@services/redis'
 
-const app: Express = express();
+const app: Express = express()
 
-app.use("/", testRouter);
+app.use('/', testRouter)
 
-app.get("/", async (req, res) => {
-  const query = await postgresClient.query("SELECT * FROM test_table")
+app.get('/', async (req, res) => {
+  const query = await postgresClient.query('SELECT * FROM test_table')
   const name = await redisClient.get('user:1:name')
   console.log(query.rows[0])
   console.log(name)
@@ -19,5 +19,5 @@ app.get("/", async (req, res) => {
 })
 
 app.listen(3001, () => {
-  console.log('App is running on http://localhost:3001');
-});
+  console.log('App is running on http://localhost:3001')
+})
