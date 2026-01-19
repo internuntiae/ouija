@@ -50,6 +50,10 @@ jobs:
           docker push guc10/ouija-api:latest
           docker push guc10/ouija-api:${{ github.sha }}
 
+      - name: Check logs
+        if: always()
+        run: docker compose logs
+
       - name: Shutdown
         if: always()
         run: docker compose down -v --remove-orphans
