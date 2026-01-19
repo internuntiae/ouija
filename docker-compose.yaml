@@ -17,7 +17,11 @@ services:
       context: ./apps/api
       dockerfile: Dockerfile
     environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD}
+      PGHOST: postgres
+      PGPORT: 5432
       PGUSER: ${PGUSER}
       PGPASSWORD: ${PGPASSWORD}
       PGDATABASE: ${PGDATABASE}
