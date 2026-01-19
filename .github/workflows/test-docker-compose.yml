@@ -40,19 +40,11 @@ jobs:
       - name: Test frontend
         run: curl -f http://localhost:3000
 
-      - name: Tag images
-        if: success() && github.ref == 'refs/heads/main'
-        run: |
-          docker tag guc10/ouija-web:latest guc10/ouija-web:${{ github.sha }}
-          docker tag guc10/ouija-api:latest guc10/ouija-api:${{ github.sha }}
-
       - name: Push images
         if: success() && github.ref == 'refs/heads/main'
         run: |
           docker push guc10/ouija-web:latest
-          docker push guc10/ouija-web:${{ github.sha }}
           docker push guc10/ouija-api:latest
-          docker push guc10/ouija-api:${{ github.sha }}
 
       - name: Check logs
         if: always()
