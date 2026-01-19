@@ -1,5 +1,6 @@
 services:
   web:
+    image: guc10/ouija-web
     build:
       context: ./apps/web
       dockerfile: Dockerfile
@@ -11,16 +12,20 @@ services:
       - app-network
 
   api:
+    image: guc10/ouija-api
     build:
       context: ./apps/api
       dockerfile: Dockerfile
-    env_file:
-      - path: .env
-        required: true
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      PGUSER: ${PGUSER}
+      PGPASSWORD: ${PGPASSWORD}
+      PGDATABASE: ${PGDATABASE}
+
     ports:
       - "3001:3001"
     depends_on:
-      - postgre
+      - postgres
       - redis
     networks:
       - app-network
@@ -36,7 +41,7 @@ services:
     networks:
       - app-network
 
-  postgre:
+  postgres:
     image: postgres:15
     restart: always
     environment:

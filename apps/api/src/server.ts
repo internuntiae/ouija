@@ -1,11 +1,14 @@
 import express, { Express } from 'express'
-import { testRouter } from '@routers/router'
+import testRouter from '@routers/router'
 import postgresClient from '@services/pg'
 import redisClient from '@services/redis'
+import health from '@services/db'
 
 const app: Express = express()
 
 app.use('/', testRouter)
+
+app.use('/api', health)
 
 app.get('/', async (req, res) => {
   const query = await postgresClient.query('SELECT * FROM test_table')

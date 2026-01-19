@@ -7,4 +7,7 @@ COPY . .
 RUN npm run build
 
 EXPOSE 3001
+
+HEALTHCHECK --interval=5s --timeout=3s --retries=5 CMD curl -f http://localhost:3001/api/health || exit 1
+
 CMD ["npm", "start"]
