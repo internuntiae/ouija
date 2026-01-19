@@ -13,7 +13,11 @@ jobs:
       PGUSER: root
       PGPASSWORD: test_pass
       PGDATABASE: testdb
+      PGHOST: postgre
+      PGPORT: 5432
       REDIS_PASSWORD: test_pass
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
 
     steps:
       - uses: actions/checkout@v4
@@ -49,7 +53,6 @@ jobs:
           docker push guc10/ouija-web:${{ github.sha }}
           docker push guc10/ouija-api:latest
           docker push guc10/ouija-api:${{ github.sha }}
-      
 
       - name: Shutdown
         if: always()
