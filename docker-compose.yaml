@@ -1,5 +1,6 @@
 services:
   web:
+    image: guc10/ouija-web
     build:
       context: ./apps/web
       dockerfile: Dockerfile
@@ -7,21 +8,6 @@ services:
       - "3000:3000"
     depends_on:
       - api
-    networks:
-      - app-network
-
-  api:
-    build:
-      context: ./apps/api
-      dockerfile: Dockerfile
-    env_file:
-      - path: .env
-        required: true
-    ports:
-      - "3001:3001"
-    depends_on:
-      - postgre
-      - redis
     networks:
       - app-network
 
@@ -36,7 +22,7 @@ services:
     networks:
       - app-network
 
-  postgre:
+  postgres:
     image: postgres:15
     restart: always
     environment:
@@ -48,6 +34,29 @@ services:
     volumes:
       - pg-data:/var/lib/postgresql/data
       - ./services/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app-network
+
+  api:
+    image: guc10/ouija-api
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      PGHOST: postgres
+      PGPORT: 5432
+      PGUSER: ${PGUSER}
+      PGPASSWORD: ${PGPASSWORD}
+      PGDATABASE: ${PGDATABASE}
+
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+      - redis
     networks:
       - app-network
 
