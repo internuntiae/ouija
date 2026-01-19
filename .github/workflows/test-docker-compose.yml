@@ -10,10 +10,10 @@ jobs:
   test-docker-compose:
     runs-on: ubuntu-latest
     env:
-      PGUSER: ${{ secrets.DB_USER }}
-      PGPASSWORD: ${{ secrets.DB_PASSWORD }}
+      PGUSER: root
+      PGPASSWORD: test_pass
       PGDATABASE: testdb
-      REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+      REDIS_PASSWORD: test_pass
 
     steps:
       - uses: actions/checkout@v4
