@@ -12,22 +12,26 @@ export default function Header() {
   return (
     <header className={styles.Header}>
       <Image
-        src={'../../../../public/next.svg'}
+        src={'/ouija_white.svg'}
         alt={'logo'}
-        width={100}
-        height={100}
+        width={1275}
+        height={690}
         className={styles.HeaderLogo}
+        style={{
+          width: 'auto',
+          height: '8vh'
+        }}
       ></Image>
 
       {!isAuth && (
-        <>
+        <div className={styles.HeaderRight}>
           <Link href={'/login'} className={styles.HeaderLink}>
             Login
           </Link>
           <Link href={'/register'} className={styles.HeaderLink}>
             Register
           </Link>
-        </>
+        </div>
       )}
     </header>
   )
