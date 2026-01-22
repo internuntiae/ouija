@@ -1,11 +1,9 @@
-import pg from 'pg'
-const { Client } = pg
+import { PrismaPg } from '@prisma/adapter-pg'
+import { PrismaClient } from '@generated/prisma/client'
 
-const postgresClient = new Client()
+const connectionString = `${process.env.DATABASE_URL}`
 
-postgresClient
-  .connect()
-  .then(() => console.log('pg connected'))
-  .catch((err) => console.error('pg conn err:', err))
+const adapter = new PrismaPg({ connectionString })
+const prisma = new PrismaClient({ adapter })
 
-export default postgresClient
+export { prisma }

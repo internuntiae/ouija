@@ -5,4 +5,4 @@ testRouter.get('/test', (req, res) => {
   res.send('sth')
 })
 
-export default testRouter
+export { testRouter }

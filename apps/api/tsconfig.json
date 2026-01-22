@@ -15,7 +15,8 @@
       "@/*": ["*"],
       "@middlewares/*": ["middlewares/*"],
       "@routers/*": ["routers/*"],
-      "@services/*": ["services/*"]
+      "@services/*": ["services/*"],
+      "@generated/*": ["generated/*"]
     },
 
     "esModuleInterop": true,

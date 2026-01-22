@@ -40,7 +40,8 @@
   },
   "homepage": "https://github.com/zjezdzalka/ouija#readme",
   "dependencies": {
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "dotenv": "^17.2.3"
   },
   "devDependencies": {
     "@eslint/json": "^0.14.0",
