@@ -4,31 +4,51 @@ export default function Register() {
   return (
     <>
       <form method="POST" action={'/api/healthy'} className={styles.Form}>
+        <label htmlFor={'email'} className={styles.FormLabel}>
+          e-mail
+        </label>
+
+        <input
+          type={'text'}
+          placeholder={'e-mail'}
+          name="email"
+          className={styles.FormInput}
+        />
+
         <label htmlFor={'username'} className={styles.FormLabel}>
-          <input
-            type={'text'}
-            placeholder={'Login'}
-            name="username"
-            className={styles.FormInput}
-          />
+          username
         </label>
+
+        <input
+          type={'text'}
+          placeholder={'username'}
+          name="username"
+          className={styles.FormInput}
+        />
+
         <label htmlFor={'password'} className={styles.FormLabel}>
-          <input
-            type={'text'}
-            placeholder={'Password'}
-            name="password"
-            className={styles.FormInput}
-          />
+          password
         </label>
+
+        <input
+          type={'text'}
+          placeholder={'password'}
+          name="password"
+          className={styles.FormInput}
+        />
+
         <label htmlFor={'password-confirm'} className={styles.FormLabel}>
-          <input
-            type={'text'}
-            placeholder={'Repeat password'}
-            name="password-confirm"
-            className={styles.FormInput}
-          />
+          repeat password
         </label>
-        <input type={'submit'} value="Login" className={styles.FormSubmit} />
+
+        <input
+          type={'text'}
+          placeholder={'password'}
+          name="password-confirm"
+          className={styles.FormInput}
+        />
+
+        <input type={'submit'} value="create" className={styles.FormSubmit} />
       </form>
     </>
   )

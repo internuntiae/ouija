@@ -2,12 +2,17 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+
   padding-block: 1rem;
   padding-inline: 3rem;
   gap: 2rem;
   min-height: 10vh;
+
   background: #14110f;
+
   font-weight: 200;
+  color: #f3f3f4;
+  font-size: 2.5rem;
 
   &Right {
     display: flex;
@@ -20,7 +25,6 @@
     display: inline-block;
     text-decoration: none;
     color: #f3f3f4;
-    font-size: 2.5rem;
 
     background-image: linear-gradient(#f3f3f4, #f3f3f4);
     background-repeat: no-repeat;
@@ -41,5 +45,15 @@
   }
 
   &Logo {
+  }
+
+  .HeaderText {
+  }
+
+  .Invisible {
+    color: transparent;
+    user-select: none;
+    transition: color 0.2s ease-in-out;
+    // transition between switch from frontpage to subpage
   }
 }

@@ -9,6 +9,9 @@ export default function Header() {
   const pathname: string = usePathname()
   const isAuth: boolean =
     pathname.startsWith('/login') || pathname.startsWith('/register')
+  const isLogin: boolean = pathname.startsWith('/login')
+  const isRegister: boolean = pathname.startsWith('/register')
+
   return (
     <header className={styles.Header}>
       <Image
@@ -31,6 +34,24 @@ export default function Header() {
           <Link href={'/register'} className={styles.HeaderLink}>
             register
           </Link>
+        </div>
+      )}
+
+      {isLogin && (
+        <div className={styles.HeaderRight}>
+          <p className={styles.HeaderText}>login</p>
+          <p className={[styles.HeaderText, styles.Invisible].join(' ')}>
+            register
+          </p>
+        </div>
+      )}
+
+      {isRegister && (
+        <div className={styles.HeaderRight}>
+          <p className={[styles.HeaderText, styles.Invisible].join(' ')}>
+            login
+          </p>
+          <p className={styles.HeaderText}>register</p>
         </div>
       )}
     </header>
