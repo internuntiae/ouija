@@ -26,10 +26,10 @@ export default function Header() {
       {!isAuth && (
         <div className={styles.HeaderRight}>
           <Link href={'/login'} className={styles.HeaderLink}>
-            Login
+            login
           </Link>
           <Link href={'/register'} className={styles.HeaderLink}>
-            Register
+            register
           </Link>
         </div>
       )}
