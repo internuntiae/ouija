@@ -1,0 +1,59 @@
+.Header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding-block: 1rem;
+  padding-inline: 3rem;
+  gap: 2rem;
+  min-height: 10vh;
+
+  background: #14110f;
+
+  font-weight: 200;
+  color: #f3f3f4;
+  font-size: 2.5rem;
+
+  &Right {
+    display: flex;
+    justify-content: flex-end;
+    width: 100%;
+    gap: 6rem;
+  }
+
+  &Link {
+    display: inline-block;
+    text-decoration: none;
+    color: #f3f3f4;
+
+    background-image: linear-gradient(#f3f3f4, #f3f3f4);
+    background-repeat: no-repeat;
+    background-size: 0 0.1rem;
+    background-position: center bottom;
+
+    transition: background-size 0.3s ease;
+  }
+
+  /*&Link:after{
+    to change this logic, id prefer after rather than background for this tbh + collides with the letters which ✨isn't cool✨.
+    for some reason after appears after the entire website, so im thinking it might be due to nesting problems, or me missing
+    a semicolon or smth
+  }*/
+
+  &Link:hover {
+    background-size: 100% 0.1rem;
+  }
+
+  &Logo {
+  }
+
+  .HeaderText {
+  }
+
+  .Invisible {
+    color: transparent;
+    user-select: none;
+    transition: color 0.2s ease-in-out;
+    // transition between switch from frontpage to subpage
+  }
+}
