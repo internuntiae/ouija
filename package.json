@@ -55,7 +55,9 @@
     "globals": "^17.0.0",
     "husky": "^9.1.7",
     "nodemon": "^3.1.10",
+    "parent-module": "^3.2.0",
     "prettier": "^3.7.4",
+    "resolve-from": "^5.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.53.0"
