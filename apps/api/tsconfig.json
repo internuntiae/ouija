@@ -16,6 +16,7 @@
       "@generated/*": ["generated/*"],
       "@lib/*": ["lib/*"],
       "@/*": ["*"],
+      "@utils/*": ["utils/*"],
       "@middlewares/*": ["middlewares/*"],
       "@routers/*": ["routers/*"],
       "@services/*": ["services/*"]
