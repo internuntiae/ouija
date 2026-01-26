@@ -1,5 +1,8 @@
 import type { Metadata } from 'next'
-import './globals.css'
+
+import { Geist, Geist_Mono } from 'next/font/google'
+import './main-layout.scss'
+import Header from '@/app/components/Header/Header'
 
 export const metadata: Metadata = {
   title: 'Create Next App',
@@ -13,7 +16,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+        <Header />
+        <div className="container">{children}</div>
+      </body>
     </html>
   )
 }

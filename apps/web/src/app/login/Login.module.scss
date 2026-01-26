@@ -1,0 +1,74 @@
+.Form {
+  height: 70%;
+  width: 50%;
+  padding: 2rem 1.5rem;
+
+  display: flex;
+  flex-direction: column;
+
+  background-color: rgba(52, 49, 45, 0.1);
+  color: #f3f3f4;
+
+  border-radius: 0.5rem;
+
+  &Label {
+    font-size: 3.5rem;
+    font-weight: 200;
+    text-align: left;
+  }
+
+  &Input {
+    border: 0;
+    background-color: transparent;
+    color: #f3f3f4;
+    padding: 1rem 0;
+    margin: 1rem 0;
+    font-size: 2rem;
+    border-bottom: 1px solid;
+    border-color: #f3f3f400;
+    transition: border-color 250ms ease-in-out;
+  }
+
+  &Input:focus {
+    outline: none;
+    border-color: #f3f3f4;
+  }
+
+  &Submit {
+    align-self: flex-start;
+
+    padding: 1rem;
+    margin: 2rem 0;
+
+    font-weight: 300;
+    font-size: 2rem;
+
+    border-radius: 1rem;
+    border: 1px solid rgba(243, 243, 244, 0.24);
+    color: #f3f3f4;
+    background-color: transparent;
+  }
+
+  &Submit:hover {
+    cursor: pointer;
+  }
+
+  .Link {
+    color: #f3f3f4;
+
+    text-align: left;
+    font-weight: 200;
+    font-size: 2rem;
+
+    text-decoration: none;
+
+    width: auto;
+
+    margin: 1rem 0;
+
+    .Underline {
+      align-self: flex-start;
+      border-bottom: 1px solid #f3f3f4;
+    }
+  }
+}
