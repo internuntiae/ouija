@@ -1,0 +1,71 @@
+.Contacts {
+  display: flex;
+  flex-direction: column;
+  width: 12%;
+  align-self: flex-start;
+  height: 100%;
+  border-right: 0.1rem solid lighten(#14110f, 10);
+
+  &ChatPreview {
+    width: 100%;
+    display: flex;
+    justify-content: flex-start;
+    background-color: #35323c;
+    padding: 0.5rem;
+    border: 1px solid black;
+    border-radius: 1rem;
+    margin-block: 0.1rem;
+
+    &ProfilePicture {
+      margin-inline: 0.5rem;
+    }
+
+    &MessageContainer {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+
+      &Name {
+        font-size: 1rem;
+        font-weight: bolder;
+        margin-bottom: 0.5rem;
+      }
+
+      &Message {
+        font-size: 0.9rem;
+        text-align: left;
+      }
+    }
+  }
+}
+
+.Chat {
+  width: 88%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  &ContactInfo {
+    width: 100%;
+    height: 8%;
+    border-bottom: 0.1rem solid lighten(#14110f, 10);
+  }
+
+  &MessageContainer {
+    width: 100%;
+    overflow: auto;
+    height: 82%;
+    &YourMessage {
+    }
+
+    &ContactMessage {
+    }
+  }
+
+  &MessageToolbar {
+    width: 100%;
+    height: 10%;
+    border-top: 0.1rem solid lighten(#14110f, 10);
+  }
+}

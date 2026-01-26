@@ -4,7 +4,7 @@ import Link from 'next/link'
 export default function Login() {
   return (
     <>
-      <form method="POST" action={'/api/healthy'} className={styles.Form}>
+      <form method="POST" action={'/chats'} className={styles.Form}>
         <label htmlFor={'username'} className={styles.FormLabel}>
           username
         </label>

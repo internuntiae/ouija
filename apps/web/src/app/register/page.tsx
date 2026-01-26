@@ -3,7 +3,7 @@ import styles from './Register.module.scss'
 export default function Register() {
   return (
     <>
-      <form method="POST" action={'/api/healthy'} className={styles.Form}>
+      <form method="POST" action={'/chats'} className={styles.Form}>
         <label htmlFor={'email'} className={styles.FormLabel}>
           e-mail
         </label>
