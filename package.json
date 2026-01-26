@@ -17,7 +17,9 @@
     "format:check": "prettier --check \"apps/**/*.{ts,tsx,json,scss}\"",
     "lint": "npx eslint .",
     "lint:fix": "npx eslint . --fix",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test:api": "npm --workspace=apps/api run test",
+    "test:api:watch": "npm --workspace=apps/api run test:watch"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
@@ -40,8 +42,8 @@
   },
   "homepage": "https://github.com/zjezdzalka/ouija#readme",
   "dependencies": {
-    "express": "^5.2.1",
-    "dotenv": "^17.2.3"
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1"
   },
   "devDependencies": {
     "@eslint/json": "^0.14.0",
