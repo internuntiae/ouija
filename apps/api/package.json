@@ -7,7 +7,9 @@
   "scripts": {
     "build": "tsc && tsc-alias",
     "dev": "nodemon",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "deploy": "prisma migrate deploy",
+    "generate": "prisma generate"
   },
   "keywords": [],
   "author": "",
