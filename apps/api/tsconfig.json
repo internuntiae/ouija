@@ -1,10 +1,29 @@
 {
+  "tsc-alias": {
+    "resolveFullPaths": true,
+    "verbose": false
+  },
   "compilerOptions": {
+    "outDir": "dist",
     "module": "ESNext",
     "moduleResolution": "bundler",
     "target": "ES2023",
     "strict": true,
     "esModuleInterop": true,
-    "ignoreDeprecations": "6.0"
-  }
+
+    "baseUrl": "src",
+    "paths": {
+      "@generated/*": ["generated/*"],
+      "@lib/*": ["lib/*"],
+      "@/*": ["*"],
+      "@middlewares/*": ["middlewares/*"],
+      "@routers/*": ["routers/*"],
+      "@services/*": ["services/*"]
+    },
+    "importHelpers": false,
+    "experimentalDecorators": true,
+    "pretty": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }
