@@ -1,35 +1,10 @@
 {
   "compilerOptions": {
-    "target": "es2020",
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "outDir": "dist",
-    "declaration": true,
-    "sourceMap": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "target": "ES2023",
     "strict": true,
-    "lib": ["es2020"],
-    "types": ["node"],
-
-    "baseUrl": "src",
-    "paths": {
-      "@/*": ["*"],
-      "@middlewares/*": ["middlewares/*"],
-      "@routers/*": ["routers/*"],
-      "@services/*": ["services/*"],
-      "@generated/*": ["generated/*"]
-    },
-
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "resolveJsonModule": true,
-    "importHelpers": false,
-    "forceConsistentCasingInFileNames": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "pretty": true,
-    "allowJs": false,
-    "noEmit": false
-  },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+    "ignoreDeprecations": "6.0"
+  }
 }
