@@ -103,12 +103,15 @@
     height: 10%;
     border-top: 0.1rem solid lighten(#14110f, 10);
 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
     &Input {
       background-color: transparent;
       color: #f3f3f4;
       padding: 1rem;
-      margin: 1rem;
-      margin-bottom: 0;
+      margin: 0 1rem;
       font-size: 2rem;
       border-radius: 0.5rem;
       border: 1px solid rgba(243, 243, 244, 0.24);
@@ -124,8 +127,7 @@
       align-self: flex-start;
 
       padding: 1rem;
-      margin: 1rem;
-      margin-bottom: 0;
+      margin: 0 1rem;
 
       font-weight: 300;
       font-size: 2rem;

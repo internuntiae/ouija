@@ -8,6 +8,10 @@ one of our goals is making a basic but reliable e2ee, which allows users to comm
 ## installing
 `git clone`
 
+create .env in /
+
+create .env in /apps/api
+
 `docker compose up`
 
 idk somehow like that
