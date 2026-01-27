@@ -1,33 +1,29 @@
 {
+  "tsc-alias": {
+    "resolveFullPaths": true,
+    "verbose": false
+  },
   "compilerOptions": {
-    "target": "es2020",
-    "module": "commonjs",
-    "moduleResolution": "node",
     "outDir": "dist",
-    "declaration": true,
-    "sourceMap": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "target": "ES2023",
     "strict": true,
-    "lib": ["es2020"],
-    "types": ["node"],
+    "esModuleInterop": true,
 
     "baseUrl": "src",
     "paths": {
+      "@generated/*": ["generated/*"],
+      "@lib/*": ["lib/*"],
       "@/*": ["*"],
+      "@utils/*": ["utils/*"],
       "@middlewares/*": ["middlewares/*"],
       "@routers/*": ["routers/*"],
       "@services/*": ["services/*"]
     },
-
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "resolveJsonModule": true,
     "importHelpers": false,
-    "forceConsistentCasingInFileNames": true,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "pretty": true,
-    "allowJs": false,
-    "noEmit": false
+    "pretty": true
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]

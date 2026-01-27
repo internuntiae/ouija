@@ -9,14 +9,20 @@ on:
 jobs:
   test-docker-compose:
     runs-on: ubuntu-latest
-    env:
-      PGUSER: root
-      PGPASSWORD: test_pass
-      PGDATABASE: testdb
-      REDIS_PASSWORD: test_pass
-
     steps:
       - uses: actions/checkout@v4
+
+      - name: Create .env file for tests
+        run: |
+          cat > .env << EOF
+          POSTGRES_USER=root
+          POSTGRES_PASSWORD=test_pass
+          POSTGRES_DB=testdb
+          REDIS_PASSWORD=test_pass
+          REDIS_HOST=redis
+          REDIS_PORT=6379
+          DATABASE_URL=postgresql://root:test_pass@postgres:5432/testdb?schema=public
+          EOF
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3

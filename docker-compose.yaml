@@ -1,20 +1,22 @@
 services:
-  web:
-    image: guc10/ouija-web
-    build:
-      context: ./apps/web
-      dockerfile: Dockerfile
+  postgres:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "3000:3000"
-    depends_on:
-      - api
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
     networks:
       - app-network
 
   redis:
     image: redis:7
     restart: always
-    command: redis-server --requirepass ${REDIS_PASSWORD}
+    command: redis-server --requirepass "${REDIS_PASSWORD}"
     ports:
       - "6379:6379"
     volumes:
@@ -22,41 +24,33 @@ services:
     networks:
       - app-network
 
-  postgres:
-    image: postgres:15
-    restart: always
-    environment:
-      POSTGRES_USER: ${PGUSER}
-      POSTGRES_PASSWORD: ${PGPASSWORD}
-      POSTGRES_DB: ${PGDATABASE}
-    ports:
-      - "5432:5432"
-    volumes:
-      - pg-data:/var/lib/postgresql/data
-      - ./services/init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - app-network
-
   api:
-    image: guc10/ouija-api
     build:
       context: ./apps/api
       dockerfile: Dockerfile
+    image: ouija-api
     environment:
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+      DATABASE_URL: ${DATABASE_URL}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
-      PGHOST: postgres
-      PGPORT: 5432
-      PGUSER: ${PGUSER}
-      PGPASSWORD: ${PGPASSWORD}
-      PGDATABASE: ${PGDATABASE}
-
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
     ports:
       - "3001:3001"
     depends_on:
       - postgres
       - redis
+    networks:
+      - app-network
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    image: ouija-web
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
     networks:
       - app-network
 

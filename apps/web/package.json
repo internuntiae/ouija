@@ -13,8 +13,9 @@
     "react-dom": "19.2.3",
     "sass": "^1.97.2"
   },
+  "license": "MIT",
   "devDependencies": {
-    "@types/node": "^20",
+    "@types/node": "^25.0.10",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
