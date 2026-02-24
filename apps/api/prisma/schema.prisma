@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -8,17 +7,118 @@ datasource db {
 }
 
 model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
-  posts Post[]
+  id        String     @id @default(cuid())
+  email     String     @unique
+  password  String
+  nickname  String     @unique
+  status    UserStatus @default(OFFLINE)
+  createdAt DateTime   @default(now())
+
+  friendships Friendship[] @relation("UserFriends")
+  friendOf    Friendship[] @relation("FriendOf")
+  messages    Message[]
+  chats       ChatUser[]
+  reactions   Reaction[]
 }
 
-model Post {
-  id        Int     @id @default(autoincrement())
-  title     String
-  content   String?
-  published Boolean @default(false)
-  author    User    @relation(fields: [authorId], references: [id])
-  authorId  Int
+model Friendship {
+  id        String       @id @default(cuid())
+  user      User         @relation("UserFriends", fields: [userId], references: [id])
+  userId    String
+  friend    User         @relation("FriendOf", fields: [friendId], references: [id])
+  friendId  String
+  createdAt DateTime     @default(now())
+  status    FriendStatus @default(PENDING) // pending, accepted, blocked
+}
+
+model Chat {
+  id        String   @id @default(cuid())
+  name      String?
+  type      ChatType @default(PRIVATE) // private or group
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users    ChatUser[]
+  messages Message[]
+}
+
+model ChatUser {
+  id       String   @id @default(cuid())
+  chat     Chat     @relation(fields: [chatId], references: [id])
+  chatId   String
+  user     User     @relation(fields: [userId], references: [id])
+  userId   String
+  joinedAt DateTime @default(now())
+  role     ChatRole @default(MEMBER)
+}
+
+model Message {
+  id          String       @id @default(cuid())
+  chat        Chat         @relation(fields: [chatId], references: [id])
+  chatId      String
+  sender      User         @relation(fields: [senderId], references: [id])
+  senderId    String
+  content     String?
+  attachments Attachment[]
+  reactions   Reaction[]
+  sentAt      DateTime     @default(now())
+  editedAt    DateTime?
+}
+
+model Attachment {
+  id        String         @id @default(cuid())
+  message   Message        @relation(fields: [messageId], references: [id])
+  messageId String
+  url       String
+  type      AttachmentType
+}
+
+model Reaction {
+  id        String       @id @default(cuid())
+  message   Message      @relation(fields: [messageId], references: [id])
+  messageId String
+  user      User         @relation(fields: [userId], references: [id])
+  userId    String
+  type      ReactionType
+  createdAt DateTime     @default(now())
+}
+
+enum UserStatus {
+  ONLINE
+  OFFLINE
+  AWAY
+  BUSY
+}
+
+enum FriendStatus {
+  PENDING
+  ACCEPTED
+  BLOCKED
+}
+
+enum ChatType {
+  PRIVATE
+  GROUP
+}
+
+enum ChatRole {
+  MEMBER
+  ADMIN
+}
+
+enum AttachmentType {
+  IMAGE
+  VIDEO
+  FILE
+  AUDIO
+}
+
+enum ReactionType {
+  LIKE
+  LOVE
+  LAUGH
+  SAD
+  ANGRY
+  THUMBS_UP
+  THUMBS_DOWN
 }

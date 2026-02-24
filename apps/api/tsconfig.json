@@ -19,7 +19,9 @@
       "@utils/*": ["utils/*"],
       "@middlewares/*": ["middlewares/*"],
       "@routers/*": ["routers/*"],
-      "@services/*": ["services/*"]
+      "@services/*": ["services/*"],
+      "@controllers/*": ["controllers/*"],
+      "@repositories/*": ["repositories/*"]
     },
     "importHelpers": false,
     "experimentalDecorators": true,
