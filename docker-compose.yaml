@@ -28,7 +28,8 @@ services:
     build:
       context: ./apps/api
       dockerfile: Dockerfile
-    image: ouija-api
+    image: guc10/ouija-api
+    pull_policy: never
     environment:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
@@ -46,7 +47,8 @@ services:
     build:
       context: ./apps/web
       dockerfile: Dockerfile
-    image: ouija-web
+    image: guc10/ouija-web
+    pull_policy: never
     ports:
       - "3000:3000"
     depends_on:
