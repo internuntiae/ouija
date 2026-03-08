@@ -7,14 +7,15 @@ export const getUsers = async (req: Request, res: Response) => {
 }
 
 export const getUser = async (req: Request, res: Response) => {
-  const user = await userService.getUser(req.params.id)
+  const { email } = req.body
+  const user = await userService.getUser(email)
   res.status(200).json(user)
 }
 
 export const createUser = async (req: Request, res: Response) => {
-  const { id } = req.body
+  const { email, password, nickname } = req.body
 
-  const user = await userService.createUser(id)
+  const user = await userService.createUser(email, password, nickname)
 
   res.status(201).json(user)
 }
