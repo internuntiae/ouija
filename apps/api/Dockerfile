@@ -24,7 +24,4 @@ COPY --from=builder /app/apps/api/prisma ./prisma
 
 EXPOSE 3001
 
-HEALTHCHECK --interval=5s --timeout=10s --retries=5 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3001/api/health/ || exit 1
-
 CMD ["node", "dist/server.js"]

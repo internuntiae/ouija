@@ -28,7 +28,7 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    hostname: localhost
+    container_name: ouija-api-app
     image: guc10/ouija-api
     pull_policy: never
     environment:
@@ -41,6 +41,11 @@ services:
     depends_on:
       - postgres
       - redis
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://ouija-api-app:3001/api/health" ]
+      interval: 5s
+      timeout: 10s
+      retries: 5
     networks:
       - app-network
 
@@ -48,13 +53,18 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
-    hostname: localhost
+    container_name: ouija-web-app
     image: guc10/ouija-web
     pull_policy: never
     ports:
       - "3000:3000"
     depends_on:
       - api
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://ouija-web-app:3000" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     networks:
       - app-network
 
