@@ -53,7 +53,7 @@ model ChatUser {
 }
 
 model Message {
-  id          String       @id @default(cuid())
+  id          Int          @id @default(autoincrement())
   chat        Chat         @relation(fields: [chatId], references: [id])
   chatId      String
   sender      User         @relation(fields: [senderId], references: [id])
@@ -68,7 +68,7 @@ model Message {
 model Attachment {
   id        String         @id @default(cuid())
   message   Message        @relation(fields: [messageId], references: [id])
-  messageId String
+  messageId Int
   url       String
   type      AttachmentType
 }
@@ -76,7 +76,7 @@ model Attachment {
 model Reaction {
   id        String       @id @default(cuid())
   message   Message      @relation(fields: [messageId], references: [id])
-  messageId String
+  messageId Int
   user      User         @relation(fields: [userId], references: [id])
   userId    String
   type      ReactionType

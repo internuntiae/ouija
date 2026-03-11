@@ -1,14 +1,15 @@
 import { Request, Response } from 'express'
-import * as msgService from '../services/message.service'
+import * as msgService from '@services/message.service'
 
-export const getAllMessages = async (req: Request, res: Response) => {
-  const messages = await msgService.getAllMessages()
+export const getAllMessages = (req: Request, res: Response) => {
+  const { chatId, limit, lastId } = req.body
+  const messages = msgService.getAllMessages(chatId, limit, lastId)
   res.status(200).json(messages)
 }
 
-export const createMessage = async (req: Request, res: Response) => {
+export const createMessage = (req: Request, res: Response) => {
   const { chatId, userId, content, attachments, reactions } = req.body
-  const message = await msgService.createMessage(
+  const message = msgService.createMessage(
     chatId,
     userId,
     content,
@@ -20,7 +21,7 @@ export const createMessage = async (req: Request, res: Response) => {
 
 export const updateMessage = async (req: Request, res: Response) => {
   const { messageId, chatId, content, attachments, reactions } = req.body
-  const message = await msgService.updateMessage(
+  const message = msgService.updateMessage(
     messageId,
     chatId,
     content,
@@ -32,6 +33,6 @@ export const updateMessage = async (req: Request, res: Response) => {
 
 export const deleteMessage = async (req: Request, res: Response) => {
   const { messageId, chatId } = req.body
-  const message = await msgService.deleteMessage(messageId, chatId)
+  const message = msgService.deleteMessage(messageId, chatId)
   res.status(200).json(message)
 }

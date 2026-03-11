@@ -1,11 +1,11 @@
 import { Router } from 'express'
-import * as msgController from '../controllers/message.controller'
+import * as msgController from '@controllers/message.controller'
 
 const msgRouter = Router()
 
 msgRouter.get('/messages', msgController.getAllMessages)
-msgRouter.post('/message', msgController.createMessage)
-msgRouter.put('/message', msgController.updateMessage)
-msgRouter.delete('/message', msgController.deleteMessage)
+msgRouter.post('/messages', msgController.createMessage)
+msgRouter.put('/messages', msgController.updateMessage)
+msgRouter.delete('/messages', msgController.deleteMessage)
 
 export { msgRouter }
