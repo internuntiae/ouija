@@ -1,17 +1,13 @@
 import type { Metadata } from 'next'
 
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Kumbh_Sans } from 'next/font/google'
 import './main-layout.scss'
 import Header from '@/app/components/Header/Header'
 
-const geistSans = Geist({
-  subsets: ['latin'],
-  variable: '--font-geist-sans'
-})
-
-const geistMono = Geist_Mono({
-  subsets: ['latin'],
-  variable: '--font-geist-mono'
+const kumbhSans = Kumbh_Sans({
+  variable: '--font-kumbh-sans',
+  subsets: ['latin-ext'],
+  weight: 'variable'
 })
 
 export const metadata: Metadata = {
@@ -26,7 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body className={`${kumbhSans.variable}`}>
         <Header />
         <div className="container">{children}</div>
       </body>
