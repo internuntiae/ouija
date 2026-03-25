@@ -15,7 +15,7 @@ export default function Header() {
   return (
     <header className={styles.Header}>
       <Image
-        src={'/ouija_white.svg'}
+        src={'/ouija_white.png'}
         alt={'logo'}
         width={1275}
         height={690}
