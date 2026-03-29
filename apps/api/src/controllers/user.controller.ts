@@ -2,20 +2,49 @@ import { Request, Response } from 'express'
 import * as userService from '@services/user.service'
 
 export const getUsers = async (req: Request, res: Response) => {
-  const users = await userService.getAllUsers()
-  res.status(200).json(users)
-}
+  try {
+    const { id, email, nickname } = req.query
 
-export const getUser = async (req: Request, res: Response) => {
-  const { email } = req.body
-  const user = await userService.getUser(email)
-  res.status(200).json(user)
+    if (id) return res.json(await userService.getUserById(id as string))
+    if (email)
+      return res.json(await userService.getUserByEmail(email as string))
+    if (nickname)
+      return res.json(await userService.getUserByNickname(nickname as string))
+
+    const users = await userService.getUsers()
+    res.json(users)
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message })
+  }
 }
 
 export const createUser = async (req: Request, res: Response) => {
-  const { email, password, nickname } = req.body
+  try {
+    const data: { email: string; password: string; nickname: string } = req.body
+    const user = await userService.createUser(data)
+    res.status(201).json(user)
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message })
+  }
+}
 
-  const user = await userService.createUser(email, password, nickname)
+export const updateUser = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params
+    const data: Partial<{ nickname: string; password: string }> = req.body
+    const user = await userService.updateUser(id, data)
+    res.status(200).json(user)
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message })
+  }
+}
 
-  res.status(201).json(user)
+export const deleteUser = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params
+    await userService.deleteUser(id)
+    res.status(204).send()
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message })
+  }
 }

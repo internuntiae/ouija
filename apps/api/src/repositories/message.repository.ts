@@ -13,6 +13,7 @@ export const findMessage = async (chatId: string, messageId: number) => {
   if (!target) {
     return null
   }
+
   return target
 }
 

@@ -13,6 +13,7 @@ model User {
   nickname  String     @unique
   status    UserStatus @default(OFFLINE)
   createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
   friendships Friendship[] @relation("UserFriends")
   friendOf    Friendship[] @relation("FriendOf")
@@ -22,19 +23,22 @@ model User {
 }
 
 model Friendship {
-  id        String       @id @default(cuid())
-  user      User         @relation("UserFriends", fields: [userId], references: [id])
+  user      User         @relation("UserFriends", fields: [userId], references: [id], onDelete: Cascade)
   userId    String
-  friend    User         @relation("FriendOf", fields: [friendId], references: [id])
+  friend    User         @relation("FriendOf", fields: [friendId], references: [id], onDelete: Cascade)
   friendId  String
+  status    FriendStatus @default(PENDING)
   createdAt DateTime     @default(now())
-  status    FriendStatus @default(PENDING) // pending, accepted, blocked
+  updatedAt DateTime     @updatedAt
+
+  @@id([userId, friendId])
+  @@unique([userId, friendId])
 }
 
 model Chat {
   id        String   @id @default(cuid())
   name      String?
-  type      ChatType @default(PRIVATE) // private or group
+  type      ChatType @default(PRIVATE)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -43,44 +47,47 @@ model Chat {
 }
 
 model ChatUser {
-  id       String   @id @default(cuid())
-  chat     Chat     @relation(fields: [chatId], references: [id])
+  chat     Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
   chatId   String
-  user     User     @relation(fields: [userId], references: [id])
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId   String
   joinedAt DateTime @default(now())
   role     ChatRole @default(MEMBER)
+
+  @@id([chatId, userId])
 }
 
 model Message {
-  id          Int          @id @default(autoincrement())
-  chat        Chat         @relation(fields: [chatId], references: [id])
-  chatId      String
-  sender      User         @relation(fields: [senderId], references: [id])
-  senderId    String
-  content     String?
+  id       Int       @id @default(autoincrement())
+  chat     Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  chatId   String
+  sender   User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  senderId String
+  content  String?
+  sentAt   DateTime  @default(now())
+  editedAt DateTime?
+
   attachments Attachment[]
   reactions   Reaction[]
-  sentAt      DateTime     @default(now())
-  editedAt    DateTime?
 }
 
 model Attachment {
   id        String         @id @default(cuid())
-  message   Message        @relation(fields: [messageId], references: [id])
+  message   Message        @relation(fields: [messageId], references: [id], onDelete: Cascade)
   messageId Int
   url       String
   type      AttachmentType
 }
 
 model Reaction {
-  id        String       @id @default(cuid())
-  message   Message      @relation(fields: [messageId], references: [id])
+  message   Message      @relation(fields: [messageId], references: [id], onDelete: Cascade)
   messageId Int
-  user      User         @relation(fields: [userId], references: [id])
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
   type      ReactionType
   createdAt DateTime     @default(now())
+
+  @@id([messageId, userId])
 }
 
 enum UserStatus {
