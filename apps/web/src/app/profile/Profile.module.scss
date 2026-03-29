@@ -1,0 +1,88 @@
+.Section {
+  width: 60%;
+  margin: 2rem auto;
+  padding: 2rem;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  background-color: #2a2730;
+  border: 1px solid lighten(#14110f, 15);
+  border-radius: 1.5rem;
+
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+
+  &ProfilePicture {
+    border-radius: 50%;
+    margin-bottom: 1rem;
+    border: 2px solid lighten(#14110f, 20);
+  }
+
+  &Heading {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+  }
+
+  &Text {
+    font-size: 1.2rem;
+    margin: 0.3rem 0;
+
+    a {
+      margin-left: 0.5rem;
+      color: #aaa;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    a:hover {
+      color: #fff;
+    }
+  }
+
+  &Friend {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+
+    padding: 1rem;
+    margin: 0.5rem 0;
+
+    background-color: #35323c;
+    border-radius: 1rem;
+    border: 1px solid black;
+
+    &Avatar {
+      border-radius: 50%;
+    }
+
+    &Name {
+      flex: 1;
+      font-size: 1.3rem;
+    }
+
+    &MessageButton,
+    &DeleteButton {
+      padding: 0.5rem 1rem;
+      border-radius: 0.7rem;
+      border: 1px solid rgba(243, 243, 244, 0.2);
+      background-color: transparent;
+      color: #f3f3f4;
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+    }
+
+    &MessageButton:hover {
+      background-color: lighten(#14110f, 30);
+    }
+
+    &DeleteButton:hover {
+      background-color: #5a1f1f;
+    }
+  }
+}
+
+.First {
+  margin-top: 75vh;
+}
