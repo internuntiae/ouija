@@ -1,8 +1,17 @@
-import * as msgRepo from '@repositories/message.repository'
+import * as msgPostgreRepo from '@repositories/message.repository'
+import * as msgRedisRepo from '@repositories/message.repository.redis'
 import { Attachment, Reaction } from '@prisma/client'
 
-export const getAllMessages = async () => {
-  return msgRepo.getAllMessages()
+export const getAllMessages = async (
+  chatId: string,
+  limit: number,
+  lastId: number
+) => {
+  const isInRedis = await msgRedisRepo.findMessage(chatId, lastId)
+  if (lastId == 0 || !isInRedis) {
+    return msgPostgreRepo.getAllMessages(chatId, limit, lastId)
+  }
+  return msgRedisRepo.getAllMessages(chatId)
 }
 
 export const createMessage = async (
@@ -15,18 +24,29 @@ export const createMessage = async (
   if (content == null) {
     throw new Error('Content is null')
   }
-  return msgRepo.createMessage(chatId, userId, content, attachments, reactions)
+
+  await msgPostgreRepo.createMessage(
+    chatId,
+    userId,
+    content,
+    attachments,
+    reactions
+  )
 }
 
 export const updateMessage = async (
-  messageId: string,
+  messageId: number,
   chatId: string,
   content: string,
   attachments: Attachment[],
   reactions: Reaction[]
 ) => {
-  // Some checks
-  return msgRepo.updateMessage(
+  const target = await msgPostgreRepo.findMessage(chatId, messageId)
+  if (target == null) {
+    throw new Error('Record does not exist')
+  }
+
+  await msgPostgreRepo.updateMessage(
     messageId,
     chatId,
     content,
@@ -35,7 +55,11 @@ export const updateMessage = async (
   )
 }
 
-export const deleteMessage = async (messageId: string, chatId: string) => {
-  // Some checks
-  return msgRepo.deleteMessage(messageId, chatId)
+export const deleteMessage = async (messageId: number, chatId: string) => {
+  const target = await msgPostgreRepo.findMessage(chatId, messageId)
+  if (target == null) {
+    throw new Error('Record does not exist')
+  }
+
+  return msgPostgreRepo.deleteMessage(messageId, chatId)
 }
