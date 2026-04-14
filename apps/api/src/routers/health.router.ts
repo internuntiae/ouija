@@ -4,28 +4,34 @@ import { redis, prisma } from '@/lib'
 const healthRouter = Router()
 
 healthRouter.get('/health', async (req: Request, res: Response) => {
-  try {
-    // Check Prisma connection
-    await prisma.$queryRaw`SELECT 1`
+  // Check each service independently so one failure doesn't hide the other
+  const [postgresStatus, redisStatus] = await Promise.all([
+    prisma.$queryRaw`SELECT 1`
+      .then(() => ({ status: 'connected' as const, error: null }))
+      .catch((err: Error) => ({
+        status: 'disconnected' as const,
+        error: err.message
+      })),
 
-    // Check Redis connection
-    await redis.ping()
+    redis
+      .ping()
+      .then(() => ({ status: 'connected' as const, error: null }))
+      .catch((err: Error) => ({
+        status: 'disconnected' as const,
+        error: err.message
+      }))
+  ])
 
-    // Both connections successful
-    res.status(200).json({
-      status: 'healthy',
-      databases: {
-        postgres: 'connected',
-        redis: 'connected'
-      }
-    })
-  } catch (error) {
-    // One or both connections failed
-    res.status(503).json({
-      status: 'unhealthy',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    })
-  }
+  const healthy =
+    postgresStatus.status === 'connected' && redisStatus.status === 'connected'
+
+  res.status(healthy ? 200 : 503).json({
+    status: healthy ? 'healthy' : 'degraded',
+    databases: {
+      postgres: postgresStatus,
+      redis: redisStatus
+    }
+  })
 })
 
 export { healthRouter }
