@@ -19,10 +19,14 @@ app.use('/api', friendshipRouter)
 app.use('/api', chatRouter)
 app.use('/api', reactionRouter)
 
-app.get('/',(req,res)=>{
-  res.status(201).json({"STATUS": "OK"})
-});
+// not found
+
+app.get('/', (req, res) => {
+  res.status(201).json({ STATUS: 'OK' })
+})
 
 app.listen(3001, () => {
   console.log('ouija-api is now running on http://localhost:3001')
+  console.log('server started at', new Date().toISOString())
+  console.log('--------- SERVER LOGS ---------')
 })

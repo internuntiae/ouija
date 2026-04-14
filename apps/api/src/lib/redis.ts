@@ -10,7 +10,7 @@ const redis = createClient({
 })
 
 redis.on('error', (err: Error) =>
-  console.error(new Date().toDateString(), new Date().toTimeString(), 'Redis Client Error:', err.message)
+  console.error(new Date().toISOString(), 'Redis Client Error:', err.message)
 )
 
 // Connect in the background — do not block server startup or crash if Redis is unavailable
