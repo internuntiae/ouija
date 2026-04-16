@@ -10,6 +10,7 @@
     "target": "ES2023",
     "strict": true,
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
 
     "baseUrl": "src",
     "paths": {
