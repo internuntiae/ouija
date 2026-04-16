@@ -6,11 +6,11 @@ ouija is a communicator web-app which you can host completely by yourself using 
 one of our goals is making a basic but reliable e2ee, which allows users to communicate privately.
 
 ## installing
-`git clone`
+`git clone https://github.com/internuntiae/ouija.git`
 
 `docker compose up`
 
-idk somehow like that
+theoretically should be available under `localhost:3000/` until turned off
 
 ## how to start?
 run the docker container using the command:

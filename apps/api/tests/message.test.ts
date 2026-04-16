@@ -12,7 +12,7 @@ import { PrismaClient } from '@prisma/client'
 import { Mocked } from 'jest-mock'
 
 const db = prisma as Mocked<PrismaClient>
-const redisMock = redis as jest.Mocked<typeof redis>
+const redisMock = redis as Mocked<typeof redis>
 
 beforeEach(() => jest.clearAllMocks())
 
@@ -41,7 +41,6 @@ describe('GET /api/chats/:chatId/messages', () => {
 describe('POST /api/chats/:chatId/messages', () => {
   it('creates a plain text message', async () => {
     db.message.create.mockResolvedValueOnce(mockMessage1)
-    redisMock.set = jest.fn().mockResolvedValueOnce('OK')
 
     const res = await request(app)
       .post('/api/chats/chat_private_001/messages')
@@ -52,7 +51,6 @@ describe('POST /api/chats/:chatId/messages', () => {
 
   it('creates a message with an attachment', async () => {
     db.message.create.mockResolvedValueOnce(mockMessageWithAttachment)
-    redisMock.set = jest.fn().mockResolvedValueOnce('OK')
 
     const res = await request(app)
       .post('/api/chats/chat_group_002/messages')
