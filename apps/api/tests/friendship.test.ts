@@ -1,4 +1,3 @@
-// @ts-expect-error ESNext modules are broken
 import request from 'supertest'
 import { app } from '../src/app'
 import { prisma } from '../src/lib'
