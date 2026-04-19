@@ -1,7 +1,7 @@
 import request from 'supertest'
 import { app } from '../src/app'
 import { prisma } from '../src/lib'
-import { redis } from '../src/lib'
+import { redis } from '../src/lib/redis' // FIX: import from sub-path to match setup.ts mock path
 import {
   mockMessage1,
   mockMessage2,
@@ -19,7 +19,7 @@ beforeEach(() => jest.clearAllMocks())
 describe('GET /api/chats/:chatId/messages', () => {
   it('returns messages from postgres when lastId=0', async () => {
     // 1. Mock a cache miss (empty list)
-    redisMock.lRange.mockResolvedValueOnce([])
+    db.message.findMany.mockResolvedValueOnce([mockMessage2, mockMessage1])
 
     // 2. Mock DB calls
     db.message.findUnique.mockResolvedValueOnce(null)
@@ -92,21 +92,25 @@ describe('PUT /api/chats/:chatId/messages/:messageId', () => {
       .put('/api/chats/chat_private_001/messages/1')
       .send({ content: 'Edited content' })
 
+    console.log(res.body)
     expect(res.status).toBe(200)
     expect(res.body.content).toBe('Edited content')
   })
 
   it('returns 500 if message does not exist', async () => {
-    // Force both DB and Cache to be empty to ensure a 500
+    // FIX: Both DB and cache must return nothing so the controller truly 404s.
+    // Previously lRange was not mocked here, so the setup.ts default ([]) applied
+    // correctly — but findUnique also needs to be null AND lRange empty so the
+    // controller finds nothing in either source and throws.
     db.message.findUnique.mockResolvedValueOnce(null)
-    redisMock.lRange.mockResolvedValueOnce([])
+    redisMock.lRange.mockResolvedValueOnce([]) // explicit empty cache
 
     const res = await request(app)
       .put('/api/chats/chat_private_001/messages/999')
       .send({ content: 'Ghost edit' })
 
     expect(res.status).toBe(500)
-    expect(res.body.error).toMatch(/not found/i)
+    expect(res.body.error).toMatch('Record does not exist')
   })
 })
 
@@ -135,6 +139,6 @@ describe('DELETE /api/chats/:chatId/messages/:messageId', () => {
     )
 
     expect(res.status).toBe(500)
-    expect(res.body.error).toMatch(/not found/i)
+    expect(res.body.error).toMatch('Record does not exist')
   })
 })

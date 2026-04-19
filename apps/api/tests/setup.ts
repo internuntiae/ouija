@@ -31,6 +31,7 @@ jest.mock('../src/lib/prisma', () => ({
     },
     message: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       findMany: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -55,10 +56,14 @@ jest.mock('../src/lib/redis', () => ({
     on: jest.fn(),
     get: jest.fn().mockResolvedValue(null),
     set: jest.fn().mockResolvedValue('OK'),
-    // Add these specific list methods with safe default returns
     lRange: jest.fn().mockResolvedValue([]),
     lPush: jest.fn().mockResolvedValue(1),
+    rPush: jest.fn().mockResolvedValue(1), // ← was missing
     lRem: jest.fn().mockResolvedValue(1),
-    lSet: jest.fn().mockResolvedValue('OK')
+    lSet: jest.fn().mockResolvedValue('OK'),
+    lTrim: jest.fn().mockResolvedValue('OK'), // ← was missing
+    lLen: jest.fn().mockResolvedValue(0), // ← was missing
+    expire: jest.fn().mockResolvedValue(true), // ← was missing
+    del: jest.fn().mockResolvedValue(1) // ← was missing
   }
 }))

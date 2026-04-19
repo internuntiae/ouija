@@ -9,8 +9,12 @@ export default {
     '^.+\\.ts$': [
       'ts-jest',
       {
-        tsconfig: './tsconfig.json',
-        useESM: true
+        tsconfig: './tsconfig.test.json',
+        useESM: true,
+        isolatedModules: true,
+        diagnostics: {
+          ignoreCodes: [151002]
+        }
       }
     ]
   },

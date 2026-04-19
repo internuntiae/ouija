@@ -1,4 +1,5 @@
-import request from 'supertest'
+import * as supertest from 'supertest'
+const request = supertest.default ?? supertest
 import { app } from '../src/app'
 import { prisma } from '../src/lib'
 import {

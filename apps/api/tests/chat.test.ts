@@ -154,7 +154,9 @@ describe('POST /api/chats/:chatId/members', () => {
     db.user.findUnique.mockResolvedValueOnce(mockUser2)
     db.chatUser.findUnique.mockResolvedValueOnce({
       chatId: mockGroupChat.id,
-      userId: mockUser2.id
+      userId: mockUser2.id,
+      role: ChatRole.MEMBER, // FIX: added missing required field
+      joinedAt: new Date() // FIX: added missing required field
     }) // already member
 
     const res = await request(app)
@@ -171,12 +173,14 @@ describe('PUT /api/chats/:chatId/members/:userId', () => {
     db.chatUser.findUnique.mockResolvedValueOnce({
       chatId: mockGroupChat.id,
       userId: mockUser2.id,
-      role: ChatRole.MEMBER
+      role: ChatRole.MEMBER,
+      joinedAt: new Date() // FIX: added missing required field
     })
     db.chatUser.update.mockResolvedValueOnce({
       chatId: mockGroupChat.id,
       userId: mockUser2.id,
-      role: ChatRole.ADMIN
+      role: ChatRole.ADMIN,
+      joinedAt: new Date() // FIX: added missing required field
     })
 
     const res = await request(app)
@@ -192,9 +196,16 @@ describe('DELETE /api/chats/:chatId/members/:userId', () => {
   it('removes a member from a chat and returns 204', async () => {
     db.chatUser.findUnique.mockResolvedValueOnce({
       chatId: mockGroupChat.id,
-      userId: mockUser2.id
+      userId: mockUser2.id,
+      role: ChatRole.MEMBER, // FIX: added missing required field
+      joinedAt: new Date() // FIX: added missing required field
     })
-    db.chatUser.delete.mockResolvedValueOnce({})
+    db.chatUser.delete.mockResolvedValueOnce({
+      chatId: mockGroupChat.id,
+      userId: mockUser2.id,
+      role: ChatRole.MEMBER, // FIX: replaced empty {} with valid shape
+      joinedAt: new Date()
+    })
 
     const res = await request(app).delete(
       '/api/chats/chat_group_002/members/user_bob_002'
