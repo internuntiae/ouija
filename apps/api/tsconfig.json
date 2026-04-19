@@ -22,7 +22,8 @@
       "@routers/*": ["routers/*"],
       "@services/*": ["services/*"],
       "@controllers/*": ["controllers/*"],
-      "@repositories/*": ["repositories/*"]
+      "@repositories/*": ["repositories/*"],
+      "@middleware/*": ["middleware/*"]
     },
     "importHelpers": false,
     "experimentalDecorators": true,

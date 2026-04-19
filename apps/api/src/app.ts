@@ -5,7 +5,8 @@ import {
   msgRouter,
   friendshipRouter,
   chatRouter,
-  reactionRouter
+  reactionRouter,
+  mediaRouter
 } from '@/routers'
 
 const app: Express = express()
@@ -18,5 +19,6 @@ app.use('/api', msgRouter)
 app.use('/api', friendshipRouter)
 app.use('/api', chatRouter)
 app.use('/api', reactionRouter)
+app.use('/api/media', mediaRouter)
 
 export { app }
