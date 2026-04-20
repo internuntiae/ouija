@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { Kumbh_Sans } from 'next/font/google'
 import './main-layout.scss'
 import Header from '@/app/components/Header/Header'
+import React from 'react'
 
 const kumbhSans = Kumbh_Sans({
   variable: '--font-kumbh-sans',

@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -14,6 +15,8 @@ model User {
   status    UserStatus @default(OFFLINE)
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
+  avatarUrl  String?
+  mediaFiles MediaFile[]
 
   friendships Friendship[] @relation("UserFriends")
   friendOf    Friendship[] @relation("FriendOf")
@@ -34,6 +37,7 @@ model Friendship {
   @@id([userId, friendId])
   @@unique([userId, friendId])
 }
+
 
 model Chat {
   id        String   @id @default(cuid())
@@ -90,6 +94,19 @@ model Reaction {
   @@id([messageId, userId])
 }
 
+model MediaFile {
+  id         String       @id @default(cuid())
+  owner      User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId    String
+  filename   String
+  storedName String
+  mimeType   String
+  size       Int
+  purpose    MediaPurpose @default(ATTACHMENT)
+  url        String
+  createdAt  DateTime     @default(now())
+}
+
 enum UserStatus {
   ONLINE
   OFFLINE
@@ -128,4 +145,9 @@ enum ReactionType {
   ANGRY
   THUMBS_UP
   THUMBS_DOWN
+}
+
+enum MediaPurpose {
+  AVATAR
+  ATTACHMENT
 }

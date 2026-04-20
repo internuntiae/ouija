@@ -3,10 +3,10 @@
 ## about
 ouija is a communicator web-app which you can host completely by yourself using docker. the app runs on PostgreSQL (it is not suitable for very high traffic loads), Redis and Next.js. 
 
-one of our goals is making a basic but reliable e2ee, which allows users to communicate privately.
+one of our goals is making a basic but reliable e2ee, (probably will not work when the project is submitted so :/) which allows users to communicate privately.
 
 ## installing
-`git clone`
+`git clone https://github.com/internuntiae/ouija.git`
 
 create .env in /
 
@@ -14,7 +14,7 @@ create .env in /apps/api
 
 `docker compose up`
 
-idk somehow like that
+theoretically should be available under `localhost:3000/` until turned off
 
 ## how to start?
 run the docker container using the command:

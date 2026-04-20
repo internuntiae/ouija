@@ -3,7 +3,8 @@ import * as redis from '@repositories/message.repository.redis'
 import { Attachment, Reaction } from '@prisma/client'
 
 export const findMessage = async (chatId: string, messageId: number) => {
-  const target = await prisma.message.findUnique({
+  // Change findUnique to findFirst
+  const target = await prisma.message.findFirst({
     where: {
       id: messageId,
       chatId: chatId
@@ -24,19 +25,22 @@ export const getAllMessages = async (
 ) => {
   const messages = await prisma.message.findMany({
     where: {
-      id: {
-        lt: last
-      }
+      chatId, // Assuming you need to filter by the chatId provided
+      id: last > 0 ? { lt: last } : undefined
     },
     take: limit,
     orderBy: {
       id: 'desc'
     }
   })
-  await redis.uploadMessages(chatId, messages)
+
+  // Only sync to redis if there are actually messages to upload
+  if (messages.length > 0) {
+    await redis.uploadMessages(chatId, messages)
+  }
+
   return messages
 }
-
 export const createMessage = async (
   chatId: string,
   userId: string,
