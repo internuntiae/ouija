@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './main-layout.scss'
 import Header from '@/app/components/Header/Header'
+import React from 'react'
 
 const geistSans = Geist({
   subsets: ['latin'],

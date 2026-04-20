@@ -1,37 +1,58 @@
 import { Request, Response } from 'express'
-import * as msgService from '../services/message.service'
+import * as msgService from '@services/message.service'
 
 export const getAllMessages = async (req: Request, res: Response) => {
-  const messages = await msgService.getAllMessages()
-  res.status(200).json(messages)
+  try {
+    const { chatId } = req.params
+    const limit = parseInt((req.query.limit as string) ?? '50')
+    const lastId = parseInt((req.query.lastId as string) ?? '0')
+    const messages = await msgService.getAllMessages(chatId, limit, lastId)
+    res.status(200).json(messages)
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message })
+  }
 }
 
 export const createMessage = async (req: Request, res: Response) => {
-  const { chatId, userId, content, attachments, reactions } = req.body
-  const message = await msgService.createMessage(
-    chatId,
-    userId,
-    content,
-    attachments,
-    reactions
-  )
-  res.status(201).json(message)
+  try {
+    const { chatId } = req.params
+    const { userId, content, attachments = [], reactions = [] } = req.body
+    const message = await msgService.createMessage(
+      chatId,
+      userId,
+      content,
+      attachments,
+      reactions
+    )
+    res.status(201).json(message)
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message })
+  }
 }
 
 export const updateMessage = async (req: Request, res: Response) => {
-  const { messageId, chatId, content, attachments, reactions } = req.body
-  const message = await msgService.updateMessage(
-    messageId,
-    chatId,
-    content,
-    attachments,
-    reactions
-  )
-  res.status(200).json(message)
+  try {
+    const { chatId, messageId } = req.params
+    const { content, attachments = [], reactions = [] } = req.body
+    const message = await msgService.updateMessage(
+      parseInt(messageId),
+      chatId,
+      content,
+      attachments,
+      reactions
+    )
+    res.status(200).json(message)
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message })
+  }
 }
 
 export const deleteMessage = async (req: Request, res: Response) => {
-  const { messageId, chatId } = req.body
-  const message = await msgService.deleteMessage(messageId, chatId)
-  res.status(200).json(message)
+  try {
+    const { chatId, messageId } = req.params
+    await msgService.deleteMessage(parseInt(messageId), chatId)
+    res.status(204).send()
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message })
+  }
 }

@@ -3,8 +3,9 @@ import * as userController from '@controllers/user.controller'
 
 const userRouter = Router()
 
-userRouter.get('/users', userController.getUsers)
-userRouter.get('/user', userController.getUser)
+userRouter.get('/', userController.getUsers)
 userRouter.post('/', userController.createUser)
+userRouter.put('/:id', userController.updateUser)
+userRouter.delete('/:id', userController.deleteUser)
 
 export { userRouter }

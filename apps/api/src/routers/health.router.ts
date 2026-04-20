@@ -3,29 +3,62 @@ import { redis, prisma } from '@/lib'
 
 const healthRouter = Router()
 
+const withTimeout = <T>(
+  promise: Promise<T>,
+  ms: number,
+  label: string
+): Promise<T> =>
+  Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`${label} timed out after ${ms}ms`)),
+        ms
+      )
+    )
+  ])
+
 healthRouter.get('/health', async (req: Request, res: Response) => {
-  try {
-    // Check Prisma connection
-    await prisma.$queryRaw`SELECT 1`
+  const [postgresStatus, redisStatus] = await Promise.all([
+    withTimeout(prisma.$queryRaw`SELECT 1`, 3000, 'Postgres')
+      .then(() => ({ status: 'connected' as const, error: null }))
+      .catch((err: Error) => {
+        console.error(
+          new Date().toISOString(),
+          'Postgres Client Error:',
+          err.message
+        )
+        return { status: 'disconnected' as const, error: err.message }
+      }),
 
-    // Check Redis connection
-    await redis.ping()
+    // Short-circuit immediately if the client isn't even connected
+    !redis.isReady
+      ? Promise.resolve({
+          status: 'disconnected' as const,
+          error: 'Redis client is not connected'
+        })
+      : withTimeout(redis.ping(), 3000, 'Redis')
+          .then(() => ({ status: 'connected' as const, error: null }))
+          .catch((err: Error) => {
+            console.error(
+              new Date().toISOString(),
+              'Redis Client Error:',
+              err.message
+            )
+            return { status: 'disconnected' as const, error: err.message }
+          })
+  ])
 
-    // Both connections successful
-    res.status(200).json({
-      status: 'healthy',
-      databases: {
-        postgres: 'connected',
-        redis: 'connected'
-      }
-    })
-  } catch (error) {
-    // One or both connections failed
-    res.status(503).json({
-      status: 'unhealthy',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    })
-  }
+  const healthy =
+    postgresStatus.status === 'connected' && redisStatus.status === 'connected'
+
+  res.status(healthy ? 200 : 503).json({
+    status: healthy ? 'healthy' : 'degraded',
+    databases: {
+      postgres: postgresStatus,
+      redis: redisStatus
+    }
+  })
 })
 
 export { healthRouter }
