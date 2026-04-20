@@ -2,7 +2,7 @@ import { FileFilterCallback } from 'multer'
 import * as multer from 'multer'
 import * as path from 'path'
 import * as fs from 'fs'
-import { v4 as uuidv4 } from 'uuid'
+import { randomUUID } from 'crypto'
 import { Request } from 'express'
 
 // ─── Upload directory ──────────────────────────────────────────────────────────
@@ -33,7 +33,7 @@ const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
   filename: (_req, file, cb) => {
     const ext = ALLOWED_MIME[file.mimetype] ?? path.extname(file.originalname)
-    cb(null, `${uuidv4()}${ext}`)
+    cb(null, `${randomUUID()}${ext}`)
   }
 })
 
