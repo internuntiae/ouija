@@ -2,8 +2,11 @@
 
 import styles from './Login.module.scss'
 import Link from 'next/link'
-import { useState, FormEvent } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { sha256 } from '@utils/hash'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
 interface FormErrors {
   username?: string
@@ -24,9 +27,17 @@ function validatePassword(password: string): string | undefined {
 
 export default function Login() {
   const router = useRouter()
+  const [passwordResetEnabled, setPasswordResetEnabled] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/auth/config`)
+      .then((r) => r.json())
+      .then((cfg) => setPasswordResetEnabled(cfg.enablePasswordReset ?? false))
+      .catch(() => {})
+  }, [])
 
   function handleBlur(field: string, value: string) {
     setTouched((prev) => ({ ...prev, [field]: true }))
@@ -71,7 +82,6 @@ export default function Login() {
         }))
         return
       }
-
       const user = await res.json()
 
       if (!user) {
@@ -82,10 +92,18 @@ export default function Login() {
         return
       }
 
-      localStorage.setItem('userId', user.id)
-      localStorage.setItem('userNickname', user.nickname)
+      if (user.password == sha256(password)) {
+        localStorage.setItem('userId', user.id)
+        localStorage.setItem('userNickname', user.nickname)
 
-      router.push('/chats')
+        router.push('/chats')
+      } else {
+        setErrors((prev) => ({
+          ...prev,
+          submit: 'Nieprawidłowa nazwa użytkownika lub hasło'
+        }))
+        return
+      }
     } catch {
       setErrors((prev) => ({ ...prev, submit: 'Brak połączenia z serwerem' }))
     } finally {
@@ -137,17 +155,19 @@ export default function Login() {
           className={styles.FormSubmit}
         />
 
-        <Link href="/register" className={styles.Link}>
+        <Link href={'/register'} className={styles.Link}>
           <p>
             no account? <span className={styles.Underline}>click here</span>
           </p>
         </Link>
 
-        <Link href="/" className={styles.Link}>
-          <p>
-            forgot password? <span className={styles.Underline}>reset</span>
-          </p>
-        </Link>
+        {passwordResetEnabled && (
+          <Link href={'/forgot-password'} className={styles.Link}>
+            <p>
+              forgot password? <span className={styles.Underline}>reset</span>
+            </p>
+          </Link>
+        )}
       </form>
     </>
   )

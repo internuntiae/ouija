@@ -1,8 +1,10 @@
 'use client'
 
 import styles from './Register.module.scss'
-import { useState, FormEvent } from 'react'
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { useState, useEffect } from 'react'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
 interface FormErrors {
   email?: string
@@ -46,10 +48,22 @@ function validatePasswordConfirm(
 }
 
 export default function Register() {
-  const router = useRouter()
   const [errors, setErrors] = useState<FormErrors>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
-  const [loading, setLoading] = useState(false)
+  const [requiresVerification, setRequiresVerification] = useState(false)
+  const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>(
+    'idle'
+  )
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/auth/config`)
+      .then((r) => r.json())
+      .then((cfg) =>
+        setRequiresVerification(cfg.requireEmailVerification ?? false)
+      )
+      .catch(() => {})
+  }, [])
 
   function handleBlur(field: string, value: string, extraValue?: string) {
     setTouched((prev) => ({ ...prev, [field]: true }))
@@ -64,28 +78,31 @@ export default function Register() {
     setErrors((prev) => ({ ...prev, [field]: error }))
   }
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    const form = e.currentTarget
+    setStatus('loading')
+    setError('')
 
+    const form = e.currentTarget
     const email = (
       form.elements.namedItem('email') as HTMLInputElement
     ).value.trim()
-    const username = (
+    const nickname = (
       form.elements.namedItem('username') as HTMLInputElement
     ).value.trim()
-    const password = (form.elements.namedItem('password') as HTMLInputElement)
-      .value
-    const passwordConfirm = (
+    const password = (
+      form.elements.namedItem('password') as HTMLInputElement
+    ).value.trim()
+    const confirm = (
       form.elements.namedItem('password-confirm') as HTMLInputElement
-    ).value
+    ).value.trim()
 
-    // Walidacja wszystkich pól przed submittem
+    // 1. Validation Logic
     const newErrors: FormErrors = {
       email: validateEmail(email),
-      username: validateUsername(username),
+      username: validateUsername(nickname),
       password: validatePassword(password),
-      passwordConfirm: validatePasswordConfirm(password, passwordConfirm)
+      passwordConfirm: validatePasswordConfirm(password, confirm)
     }
 
     setTouched({
@@ -96,37 +113,79 @@ export default function Register() {
     })
     setErrors(newErrors)
 
-    if (Object.values(newErrors).some(Boolean)) return
+    if (Object.values(newErrors).some(Boolean)) {
+      setStatus('idle') // Reset status if validation fails
+      return
+    }
 
-    setLoading(true)
     try {
-      const res = await fetch('http://localhost:3001/api/', {
+      const res = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, nickname: username })
+        body: JSON.stringify({ email, password, nickname })
       })
 
+      const data = await res.json()
+
       if (!res.ok) {
-        const data = await res.json()
-        // Obsługa błędów z backendu (np. "user already exists")
+        // Handle server-side validation errors
         const msg: string = data?.error ?? 'Błąd rejestracji'
-        if (msg.includes('already exists') || msg.includes('już istnieje')) {
+        if (
+          msg.includes('email already exists') ||
+          msg.includes('email już istnieje')
+        ) {
           setErrors((prev) => ({
             ...prev,
             email: 'Konto z tym e-mailem już istnieje'
           }))
+        } else if (
+          msg.includes('already exists') ||
+          msg.includes('już istnieje')
+        ) {
+          setErrors((prev) => ({
+            ...prev,
+            username: "Konto z tym username'm już istnieje"
+          }))
         } else {
-          setErrors((prev) => ({ ...prev, submit: msg }))
+          setError(msg)
         }
+        setStatus('error')
         return
       }
 
-      router.push('/chats')
+      setRequiresVerification(data.requiresVerification ?? false)
+      setStatus('done')
     } catch {
       setErrors((prev) => ({ ...prev, submit: 'Brak połączenia z serwerem' }))
-    } finally {
-      setLoading(false)
+      setStatus('error')
     }
+  }
+
+  if (status === 'done') {
+    return (
+      <div className={styles.Form}>
+        <label className={styles.FormLabel}>
+          {requiresVerification ? 'check your inbox' : 'welcome!'}
+        </label>
+        <p
+          style={{
+            color: '#f3f3f4',
+            fontSize: '1.5rem',
+            fontWeight: 200,
+            margin: '1rem 0'
+          }}
+        >
+          {requiresVerification
+            ? 'We sent a verification link to your email address. Click it to activate your account.'
+            : 'Your account is ready. You can now log in.'}
+        </p>
+        <Link href={'/login'} className={styles.Link}>
+          <p>
+            go to <span className={styles.Underline}>login</span>
+          </p>
+        </Link>
+      </div>
+    )
   }
 
   return (
@@ -148,7 +207,7 @@ export default function Register() {
           <p className={styles.FormError}>{errors.email}</p>
         )}
 
-        <label htmlFor="username" className={styles.FormLabel}>
+        <label htmlFor={'username'} className={styles.FormLabel}>
           username
         </label>
         <input
@@ -201,14 +260,28 @@ export default function Register() {
           <p className={styles.FormError}>{errors.passwordConfirm}</p>
         )}
 
+        {status === 'error' && (
+          <p
+            style={{ color: '#ff6b6b', fontSize: '1.4rem', margin: '0.5rem 0' }}
+          >
+            {error}
+          </p>
+        )}
         {errors.submit && <p className={styles.FormError}>{errors.submit}</p>}
 
         <input
-          type="submit"
-          value={loading ? 'tworzenie...' : 'create'}
-          disabled={loading}
+          type={'submit'}
+          value={status === 'loading' ? 'creating…' : 'create'}
+          disabled={status === 'loading'}
           className={styles.FormSubmit}
         />
+
+        <Link href={'/login'} className={styles.Link}>
+          <p>
+            already have an account?{' '}
+            <span className={styles.Underline}>login</span>
+          </p>
+        </Link>
       </form>
     </>
   )
