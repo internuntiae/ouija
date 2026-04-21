@@ -1,7 +1,7 @@
 import request from 'supertest'
 import { app } from '../src/app'
 import { prisma } from '../src/lib'
-import { redis } from '../src/lib/redis' // FIX: import from sub-path to match setup.ts mock path
+import { redis } from '../src/lib/redis'
 import {
   mockMessage1,
   mockMessage2,
@@ -18,15 +18,9 @@ beforeEach(() => jest.clearAllMocks())
 
 describe('GET /api/chats/:chatId/messages', () => {
   it('returns messages from postgres when lastId=0', async () => {
-    // 1. Mock a cache miss (empty list)
+    // lastId=0 → service skips redis findMessage and goes straight to postgres getAllMessages
+    // No findFirst mock needed here
     db.message.findMany.mockResolvedValueOnce([mockMessage2, mockMessage1])
-
-    // 2. Mock DB calls
-    db.message.findUnique.mockResolvedValueOnce(null)
-    db.message.findMany.mockResolvedValueOnce([mockMessage2, mockMessage1])
-
-    // 3. Mock the cache update (caching the results from DB)
-    redisMock.lPush.mockResolvedValueOnce(2)
 
     const res = await request(app).get(
       '/api/chats/chat_private_001/messages?limit=20&lastId=0'
@@ -77,14 +71,12 @@ describe('POST /api/chats/:chatId/messages', () => {
 
 describe('PUT /api/chats/:chatId/messages/:messageId', () => {
   it('edits message content', async () => {
-    // 1. Mock DB
-    db.message.findUnique.mockResolvedValueOnce(mockMessage1)
+    // service.updateMessage: findMessage (findFirst) → update → redis.updateMessage (lRange, lSet)
+    db.message.findFirst.mockResolvedValueOnce(mockMessage1)
     db.message.update.mockResolvedValueOnce({
       ...mockMessage1,
       content: 'Edited content'
     })
-
-    // 2. Mock Redis: find the message in the cached list so it can be updated
     redisMock.lRange.mockResolvedValueOnce([JSON.stringify(mockMessage1)])
     redisMock.lSet.mockResolvedValueOnce('OK')
 
@@ -92,18 +84,12 @@ describe('PUT /api/chats/:chatId/messages/:messageId', () => {
       .put('/api/chats/chat_private_001/messages/1')
       .send({ content: 'Edited content' })
 
-    console.log(res.body)
     expect(res.status).toBe(200)
     expect(res.body.content).toBe('Edited content')
   })
 
   it('returns 500 if message does not exist', async () => {
-    // FIX: Both DB and cache must return nothing so the controller truly 404s.
-    // Previously lRange was not mocked here, so the setup.ts default ([]) applied
-    // correctly — but findUnique also needs to be null AND lRange empty so the
-    // controller finds nothing in either source and throws.
-    db.message.findUnique.mockResolvedValueOnce(null)
-    redisMock.lRange.mockResolvedValueOnce([]) // explicit empty cache
+    db.message.findFirst.mockResolvedValueOnce(null)
 
     const res = await request(app)
       .put('/api/chats/chat_private_001/messages/999')
@@ -116,10 +102,9 @@ describe('PUT /api/chats/:chatId/messages/:messageId', () => {
 
 describe('DELETE /api/chats/:chatId/messages/:messageId', () => {
   it('deletes a message and returns 204', async () => {
-    db.message.findUnique.mockResolvedValueOnce(mockMessage1)
+    // service.deleteMessage: findMessage (findFirst) → deleteMessage → redis.deleteMessage (lRange, lRem)
+    db.message.findFirst.mockResolvedValueOnce(mockMessage1)
     db.message.delete.mockResolvedValueOnce(mockMessage1)
-
-    // Ensure lRange returns the message so the controller can find it to remove it
     redisMock.lRange.mockResolvedValueOnce([JSON.stringify(mockMessage1)])
     redisMock.lRem.mockResolvedValueOnce(1)
 
@@ -131,8 +116,7 @@ describe('DELETE /api/chats/:chatId/messages/:messageId', () => {
   })
 
   it('returns 500 if message does not exist', async () => {
-    db.message.findUnique.mockResolvedValueOnce(null)
-    redisMock.lRange.mockResolvedValueOnce([]) // Empty cache
+    db.message.findFirst.mockResolvedValueOnce(null)
 
     const res = await request(app).delete(
       '/api/chats/chat_private_001/messages/999'

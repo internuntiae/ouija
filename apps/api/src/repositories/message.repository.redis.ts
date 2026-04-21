@@ -41,8 +41,7 @@ export const updateMessage = async (
 
 export const deleteMessage = async (chatId: string, messageId: number) => {
   const target = await findMessage(chatId, messageId)
-  if (!target)
-    throw new Error(`Message ${messageId} not found in chat ${chatId}`)
+  if (!target) throw new Error('Record does not exist')
   await redis.lRem(chatId, 1, target)
 }
 
