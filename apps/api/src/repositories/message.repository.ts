@@ -100,6 +100,7 @@ export const updateMessage = async (
   })
 
   await redis.updateMessage(chatId, messageId, message)
+  return message
 }
 
 export const deleteMessage = async (messageId: number, chatId: string) => {

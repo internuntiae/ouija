@@ -30,7 +30,8 @@ export default {
     '^@services/(.*)$': '<rootDir>/src/services/$1',
     '^@repositories/(.*)$': '<rootDir>/src/repositories/$1',
     '^@routers/(.*)$': '<rootDir>/src/routers/$1',
-    '^@utils/(.*)$': '<rootDir>/src/utils/$1'
+    '^@utils/(.*)$': '<rootDir>/src/utils/$1',
+    '^@middleware/(.*)$': '<rootDir>/src/middleware/$1'
   },
 
   setupFiles: ['./tests/setup.ts']

@@ -16,7 +16,8 @@ export const mockUser1 = {
   nickname: 'alice',
   status: UserStatus.ONLINE,
   createdAt: new Date('2025-01-01T10:00:00Z'),
-  updatedAt: new Date('2025-01-01T10:00:00Z')
+  updatedAt: new Date('2025-01-01T10:00:00Z'),
+  avatarUrl: null
 }
 
 export const mockUser2 = {
@@ -26,7 +27,8 @@ export const mockUser2 = {
   nickname: 'bob',
   status: UserStatus.OFFLINE,
   createdAt: new Date('2025-01-02T10:00:00Z'),
-  updatedAt: new Date('2025-01-02T10:00:00Z')
+  updatedAt: new Date('2025-01-02T10:00:00Z'),
+  avatarUrl: null
 }
 
 export const mockUser3 = {
@@ -36,7 +38,8 @@ export const mockUser3 = {
   nickname: 'carol',
   status: UserStatus.AWAY,
   createdAt: new Date('2025-01-03T10:00:00Z'),
-  updatedAt: new Date('2025-01-03T10:00:00Z')
+  updatedAt: new Date('2025-01-03T10:00:00Z'),
+  avatarUrl: null
 }
 
 // ─── Friendships ──────────────────────────────────────────────────────────────

@@ -46,7 +46,7 @@ export const updateMessage = async (
     throw new Error('Record does not exist')
   }
 
-  await msgPostgreRepo.updateMessage(
+  return msgPostgreRepo.updateMessage(
     messageId,
     chatId,
     content,
