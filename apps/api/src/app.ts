@@ -28,7 +28,10 @@ app.use('/api/media', mediaRouter)
 app.use(function (req, res) {
   res.status(404)
   if (req.accepts('json')) {
-    res.json({ error: 'not found' })
+    res.json({
+      error: 'not found',
+      version: '1.0.0'
+    })
     return
   }
 
