@@ -21,13 +21,19 @@ export const createUser = async (data: {
   email: string
   password: string
   nickname: string
+  emailVerified?: boolean
 }) => {
   return prisma.user.create({ data })
 }
 
 export const updateUser = async (
   id: string,
-  data: Partial<{ nickname: string; password: string; status: UserStatus }>
+  data: Partial<{
+    nickname: string
+    password: string
+    status: UserStatus
+    emailVerified: boolean
+  }>
 ) => {
   return prisma.user.update({ where: { id }, data })
 }

@@ -1,29 +1,44 @@
 'use client'
 
-import styles from './Register.module.scss'
+import { useState, Suspense } from 'react' // 1. Added Suspense
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import styles from '../login/Login.module.scss'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
-export default function Register() {
-  const [requiresVerification, setRequiresVerification] = useState(false)
+// Move your existing logic here
+function ResetPasswordContent() {
+  const params = useSearchParams()
+  const token = params.get('token')
+
   const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>(
     'idle'
   )
   const [error, setError] = useState('')
 
-  // Fetch feature flags so the success message adapts
-  useEffect(() => {
-    fetch(`${API_URL}/api/auth/config`)
-      .then((r) => r.json())
-      .then((cfg) =>
-        setRequiresVerification(cfg.requireEmailVerification ?? false)
-      )
-      .catch(() => {
-        /* if unreachable, default false is fine */
-      })
-  }, [])
+  if (!token) {
+    return (
+      <div className={styles.Form}>
+        <label className={styles.FormLabel}>invalid link</label>
+        <p
+          style={{
+            color: '#ff6b6b',
+            fontSize: '1.5rem',
+            fontWeight: 200,
+            margin: '1rem 0'
+          }}
+        >
+          This reset link is missing a token. Please request a new one.
+        </p>
+        <Link href={'/forgot-password'} className={styles.Link}>
+          <p>
+            <span className={styles.Underline}>request new link</span>
+          </p>
+        </Link>
+      </div>
+    )
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -31,37 +46,34 @@ export default function Register() {
     setError('')
 
     const form = e.currentTarget
-    const email = (form.elements.namedItem('email') as HTMLInputElement).value
-    const nickname = (form.elements.namedItem('username') as HTMLInputElement)
-      .value
-    const password = (form.elements.namedItem('password') as HTMLInputElement)
-      .value
+    const newPassword = (
+      form.elements.namedItem('password') as HTMLInputElement
+    ).value
     const confirm = (
       form.elements.namedItem('password-confirm') as HTMLInputElement
     ).value
 
-    if (password !== confirm) {
+    if (newPassword !== confirm) {
       setError('Passwords do not match.')
       setStatus('error')
       return
     }
 
     try {
-      const res = await fetch(`${API_URL}/api/auth/register`, {
+      const res = await fetch(`${API_URL}/api/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, nickname })
+        body: JSON.stringify({ token, newPassword })
       })
 
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.error || 'Registration failed.')
+        setError(data.error || 'Reset failed.')
         setStatus('error')
         return
       }
 
-      setRequiresVerification(data.requiresVerification)
       setStatus('done')
     } catch {
       setError('A network error occurred. Please try again.')
@@ -72,9 +84,7 @@ export default function Register() {
   if (status === 'done') {
     return (
       <div className={styles.Form}>
-        <label className={styles.FormLabel}>
-          {requiresVerification ? 'check your inbox' : 'welcome!'}
-        </label>
+        <label className={styles.FormLabel}>password updated</label>
         <p
           style={{
             color: '#f3f3f4',
@@ -83,9 +93,7 @@ export default function Register() {
             margin: '1rem 0'
           }}
         >
-          {requiresVerification
-            ? 'We sent a verification link to your email address. Click it to activate your account.'
-            : 'Your account is ready. You can now log in.'}
+          Your password has been changed. You can now log in.
         </p>
         <Link href={'/login'} className={styles.Link}>
           <p>
@@ -98,36 +106,15 @@ export default function Register() {
 
   return (
     <form onSubmit={handleSubmit} className={styles.Form}>
-      <label htmlFor={'email'} className={styles.FormLabel}>
-        e-mail
-      </label>
-      <input
-        type={'email'}
-        placeholder={'e-mail'}
-        name="email"
-        required
-        className={styles.FormInput}
-      />
-
-      <label htmlFor={'username'} className={styles.FormLabel}>
-        username
-      </label>
-      <input
-        type={'text'}
-        placeholder={'username'}
-        name="username"
-        required
-        className={styles.FormInput}
-      />
-
       <label htmlFor={'password'} className={styles.FormLabel}>
-        password
+        new password
       </label>
       <input
         type={'password'}
-        placeholder={'password'}
+        placeholder={'new password'}
         name="password"
         required
+        minLength={6}
         className={styles.FormInput}
       />
 
@@ -136,7 +123,7 @@ export default function Register() {
       </label>
       <input
         type={'password'}
-        placeholder={'password'}
+        placeholder={'repeat password'}
         name="password-confirm"
         required
         className={styles.FormInput}
@@ -150,17 +137,19 @@ export default function Register() {
 
       <input
         type={'submit'}
-        value={status === 'loading' ? 'creating…' : 'create'}
+        value={status === 'loading' ? 'saving…' : 'set new password'}
         disabled={status === 'loading'}
         className={styles.FormSubmit}
       />
-
-      <Link href={'/login'} className={styles.Link}>
-        <p>
-          already have an account?{' '}
-          <span className={styles.Underline}>login</span>
-        </p>
-      </Link>
     </form>
+  )
+}
+
+// 2. Wrap the component in Suspense for the actual export
+export default function ResetPassword() {
+  return (
+    <Suspense fallback={<div>Loading reset form...</div>}>
+      <ResetPasswordContent />
+    </Suspense>
   )
 }

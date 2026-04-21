@@ -3,6 +3,7 @@ import swaggerUi from 'swagger-ui-express'
 import { swaggerSpec } from './swagger'
 import {
   healthRouter,
+  authRouter,
   userRouter,
   msgRouter,
   friendshipRouter,
@@ -10,14 +11,24 @@ import {
   reactionRouter,
   mediaRouter
 } from '@/routers'
+import cors from 'cors'
 
 const app: Express = express()
+
+app.use(
+  cors({
+    origin: 'http://localhost:3000',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true
+  })
+)
 
 app.use(express.json())
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 
 app.use('/api', healthRouter)
+app.use('/api', authRouter)
 app.use('/api', userRouter)
 app.use('/api', msgRouter)
 app.use('/api', friendshipRouter)

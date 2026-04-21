@@ -15,7 +15,8 @@ model User {
   status    UserStatus @default(OFFLINE)
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
-  avatarUrl  String?
+  avatarUrl     String?
+  emailVerified Boolean  @default(false)
   mediaFiles MediaFile[]
 
   friendships Friendship[] @relation("UserFriends")
