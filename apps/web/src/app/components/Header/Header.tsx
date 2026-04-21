@@ -14,17 +14,19 @@ export default function Header() {
 
   return (
     <header className={styles.Header}>
-      <Image
-        src={'/ouija_white.png'}
-        alt={'logo'}
-        width={1275}
-        height={690}
-        className={styles.HeaderLogo}
-        style={{
-          width: 'auto',
-          height: '8vh'
-        }}
-      ></Image>
+      <Link href={'/'}>
+        <Image
+          src={'/ouija_white.png'}
+          alt={'logo'}
+          width={1275}
+          height={690}
+          className={styles.HeaderLogo}
+          style={{
+            width: 'auto',
+            height: '8vh'
+          }}
+        ></Image>
+      </Link>
 
       {!isAuth && (
         <div className={styles.HeaderRight}>
