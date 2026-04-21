@@ -53,7 +53,7 @@
   }
 
   .Invisible {
-    color: transparent;
+    color: rgba(243, 243, 244, 0.2);
     user-select: none;
     transition: color 0.2s ease-in-out;
     // transition between switch from frontpage to subpage
