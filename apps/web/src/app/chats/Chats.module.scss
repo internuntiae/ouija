@@ -2,144 +2,541 @@
   width: 100%;
   height: 100%;
   display: flex;
+  overflow: hidden;
 }
+
+// ── Sidebar ──────────────────────────────────────────────────────────────────
 
 .Contacts {
   display: flex;
   flex-direction: column;
-  width: 12%;
-  align-self: flex-start;
+  width: 22rem;
+  flex-shrink: 0;
   height: 100%;
-  border-right: 0.1rem solid lighten(#14110f, 10);
+  border-right: 0.1rem solid #2e2b29;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
 
-  &ChatPreview {
-    width: 100%;
+.MyStatus {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1rem 1.2rem;
+  cursor: pointer;
+  border-bottom: 0.1rem solid #2e2b29;
+  font-size: 1.2rem;
+  color: #ccc;
+  user-select: none;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: #1e1c1a;
+  }
+}
+
+.StatusChevron {
+  margin-left: auto;
+  font-size: 1rem;
+  opacity: 0.6;
+}
+
+.StatusMenu {
+  display: flex;
+  flex-direction: column;
+  background: #1e1c1a;
+  border-bottom: 0.1rem solid #2e2b29;
+}
+
+.StatusMenuBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.8rem 1.2rem;
+  background: transparent;
+  border: none;
+  color: #f3f3f4;
+  font-size: 1.2rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+  &:hover {
+    background: #2a2826;
+  }
+}
+
+.StatusMenuBtnActive {
+  background: #2a2826;
+  font-weight: 600;
+}
+
+.StatusDot {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.StatusDotSmall {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  border: 2px solid #14110f;
+}
+
+.StatusLabel {
+  font-size: 1.1rem;
+}
+
+.AvatarWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.ContactsChatPreview {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  background-color: transparent;
+  padding: 0.8rem 1rem;
+  border-bottom: 0.1rem solid #1e1c1a;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  &:hover {
+    background-color: #1e1c1a;
+  }
+
+  &ProfilePicture {
+    border-radius: 50%;
+  }
+
+  &MessageContainer {
     display: flex;
-    justify-content: flex-start;
-    background-color: #35323c;
-    padding: 0.5rem;
-    border: 1px solid black;
-    border-radius: 1rem;
-    margin-block: 0.1rem;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    min-width: 0;
 
-    &ProfilePicture {
-      margin-inline: 0.5rem;
+    &Name {
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin-bottom: 0.2rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 14rem;
     }
 
-    &MessageContainer {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: flex-start;
-
-      &Name {
-        font-size: 1rem;
-        font-weight: bolder;
-        margin-bottom: 0.5rem;
-      }
-
-      &Message {
-        font-size: 0.9rem;
-        text-align: left;
-      }
+    &Message {
+      font-size: 1.1rem;
+      color: #aaa;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 14rem;
     }
   }
 }
 
+.ContactsChatPreviewActive {
+  background-color: #2a2826 !important;
+  border-left: 3px solid #f3f3f4;
+}
+
+.LoadingText {
+  padding: 1rem;
+  font-size: 1.2rem;
+  color: #aaa;
+  text-align: center;
+}
+
+// ── Obszar czatu ──────────────────────────────────────────────────────────────
+
 .Chat {
-  width: 88%;
+  flex: 1;
   height: 100%;
   display: flex;
   flex-direction: column;
+  min-width: 0;
+}
 
-  &ContactInfo {
-    width: 100%;
-    height: 10%;
-    border-bottom: 0.1rem solid lighten(#14110f, 10);
+.ChatContactInfo {
+  flex-shrink: 0;
+  width: 100%;
+  height: 6rem;
+  border-bottom: 0.1rem solid #2e2b29;
+  display: flex;
+  align-items: center;
+  padding-inline: 1.5rem;
+}
+
+.ChatContactInfoLeft {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.ChatContactName {
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.ChatContactStatus {
+  font-size: 1.1rem;
+  font-weight: 400;
+  margin: 0;
+}
+
+.ChatMessageContainer {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 1.5rem;
+  gap: 0.2rem;
+}
+
+.ChatMessageToolbar {
+  flex-shrink: 0;
+  width: 100%;
+  border-top: 0.1rem solid #2e2b29;
+  padding: 0.8rem 1rem;
+
+  form {
     display: flex;
-    align-items: flex-start;
-    flex-direction: column;
-    padding-inline: 0.5rem;
-
-    h2 {
-      font-size: 2rem;
-    }
-
-    h5 {
-      font-size: 0.8rem;
-    }
-  }
-
-  &MessageContainer {
-    width: 100%;
-    overflow: auto;
-    height: 80%;
-    display: flex;
-    flex-direction: column;
-
-    &YourMessage {
-      align-self: flex-end;
-      background-color: lighten(#14110f, 40);
-      font-size: 1.6rem;
-      border-radius: 1rem;
-      padding: 0.5rem;
-      margin-block: 0.5rem;
-      margin-inline: 0.9rem;
-    }
-
-    &ContactMessage {
-      align-self: flex-start;
-      background-color: lighten(#14110f, 25);
-      font-size: 1.6rem;
-      border-radius: 1rem;
-      padding: 0.5rem;
-      margin-block: 0.5rem;
-      margin-inline: 0.9rem;
-    }
-  }
-
-  &MessageToolbar {
-    width: 100%;
-    height: 10%;
-    border-top: 0.1rem solid lighten(#14110f, 10);
-
-    display: flex;
-    justify-content: center;
     align-items: center;
+    gap: 0.8rem;
+  }
+}
 
-    &Input {
-      background-color: transparent;
-      color: #f3f3f4;
-      padding: 1rem;
-      margin: 0 1rem;
-      font-size: 2rem;
-      border-radius: 0.5rem;
-      border: 1px solid rgba(243, 243, 244, 0.24);
-      transition: border-color 250ms ease-in-out;
-    }
+.TopSentinel {
+  height: 1px;
+  width: 100%;
+  flex-shrink: 0;
+}
 
-    &Input:focus {
-      outline: none;
-      border-color: #f3f3f4;
-    }
+.LoadingMore {
+  text-align: center;
+  font-size: 1.1rem;
+  color: #aaa;
+  padding: 0.5rem;
+}
 
-    &Submit {
-      align-self: flex-start;
+.NoChatSelected {
+  margin: auto;
+  color: #aaa;
+  font-size: 1.6rem;
+}
 
-      padding: 1rem;
-      margin: 0 1rem;
+// ── Bańki wiadomości ──────────────────────────────────────────────────────────
 
-      font-weight: 300;
-      font-size: 2rem;
+.MessageWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-block: 0.2rem;
+  position: relative;
+  &:hover .MessageReactBtn {
+    opacity: 1;
+  }
+}
 
-      border-radius: 1rem;
-      border: 1px solid rgba(243, 243, 244, 0.24);
-      color: #f3f3f4;
-      background-color: transparent;
-    }
+.MessageWrapperOwn {
+  align-items: flex-end;
+}
 
-    &Submit:hover {
-      cursor: pointer;
-    }
+.MessageBubble {
+  position: relative;
+  max-width: 65%;
+  padding: 0.8rem 1.2rem;
+  border-radius: 1.4rem;
+  font-size: 1.5rem;
+  line-height: 1.4;
+
+  &Own {
+    background-color: #6b6865;
+    border-bottom-right-radius: 0.3rem;
+  }
+
+  &Other {
+    background-color: #35323c;
+    border-bottom-left-radius: 0.3rem;
+  }
+}
+
+.MessageText {
+  margin: 0 0 0.3rem;
+  word-break: break-word;
+}
+
+.MessageTime {
+  display: block;
+  font-size: 1rem;
+  color: rgba(243, 243, 244, 0.5);
+  text-align: right;
+  margin-top: 0.2rem;
+}
+
+.MessageReactBtn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  right: -3.2rem;
+  background: #2a2826;
+  border: 1px solid #3a3836;
+  border-radius: 50%;
+  width: 2.6rem;
+  height: 2.6rem;
+  font-size: 1.3rem;
+  cursor: pointer;
+  color: #f3f3f4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease;
+  z-index: 2;
+  &:hover {
+    background: #3a3836;
+  }
+}
+
+.MessageWrapperOwn .MessageReactBtn {
+  right: auto;
+  left: -3.2rem;
+}
+
+// ── Reaction picker ───────────────────────────────────────────────────────────
+
+.ReactionPicker {
+  position: absolute;
+  bottom: calc(100% + 0.6rem);
+  display: flex;
+  gap: 0.4rem;
+  background: #1e1c1a;
+  border: 1px solid #3a3836;
+  border-radius: 2rem;
+  padding: 0.5rem 0.8rem;
+  z-index: 10;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+
+  &Left {
+    right: 0;
+  }
+  &Right {
+    left: 0;
+  }
+}
+
+.ReactionPickerBtn {
+  background: transparent;
+  border: none;
+  font-size: 1.8rem;
+  cursor: pointer;
+  border-radius: 50%;
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    transform 0.1s ease,
+    background 0.15s ease;
+  &:hover {
+    transform: scale(1.3);
+    background: #2a2826;
+  }
+}
+
+.ReactionPickerBtnActive {
+  background: #3a3836;
+}
+
+.ReactionBar {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-top: 0.3rem;
+  padding-inline: 0.4rem;
+}
+
+.ReactionBarOwn {
+  justify-content: flex-end;
+}
+
+.ReactionChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: #2a2826;
+  border: 1px solid #3a3836;
+  border-radius: 1rem;
+  padding: 0.2rem 0.6rem;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  &:hover {
+    background: #3a3836;
+  }
+}
+
+.ReactionChipActive {
+  border-color: #f3f3f4;
+  background: #3a3836;
+}
+
+// ── Załączniki ────────────────────────────────────────────────────────────────
+
+.MessageAttachment {
+  margin-top: 0.5rem;
+}
+
+.MessageAttachmentImage {
+  max-width: 24rem;
+  max-height: 20rem;
+  border-radius: 0.8rem;
+  display: block;
+  object-fit: cover;
+}
+
+.MessageAttachmentVideo {
+  max-width: 24rem;
+  border-radius: 0.8rem;
+  display: block;
+}
+
+.MessageAttachmentFile {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #f3f3f4;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.5rem 1rem;
+  border-radius: 0.6rem;
+  font-size: 1.3rem;
+  transition: background 0.15s ease;
+  &:hover {
+    background: rgba(255, 255, 255, 0.14);
+  }
+}
+
+// ── Pending files ─────────────────────────────────────────────────────────────
+
+.PendingFiles {
+  display: flex;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 1rem;
+  border-top: 0.1rem solid #2e2b29;
+  background: #1a1816;
+}
+
+.PendingFile {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #2a2826;
+  border: 1px solid #3a3836;
+  border-radius: 0.6rem;
+  padding: 0.4rem 0.8rem;
+  font-size: 1.2rem;
+  max-width: 16rem;
+}
+
+.PendingFileThumb {
+  width: 3rem;
+  height: 3rem;
+  object-fit: cover;
+  border-radius: 0.4rem;
+}
+
+.PendingFileIcon {
+  font-size: 1.8rem;
+}
+
+.PendingFileName {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 1.1rem;
+  color: #ccc;
+}
+
+.PendingFileRemove {
+  background: transparent;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0 0.2rem;
+  flex-shrink: 0;
+  transition: color 0.15s;
+  &:hover {
+    color: #f3f3f4;
+  }
+}
+
+// ── Toolbar ───────────────────────────────────────────────────────────────────
+
+.AttachBtn {
+  background: transparent;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  padding: 0.4rem;
+  border-radius: 0.5rem;
+  transition: background 0.15s ease;
+  flex-shrink: 0;
+  line-height: 1;
+  &:hover {
+    background: #2a2826;
+  }
+}
+
+.ChatMessageToolbarInput {
+  flex: 1;
+  background-color: transparent;
+  color: #f3f3f4;
+  padding: 0.8rem 1rem;
+  font-size: 1.6rem;
+  font-family: inherit;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(243, 243, 244, 0.2);
+  transition: border-color 250ms ease-in-out;
+  &:focus {
+    outline: none;
+    border-color: #f3f3f4;
+  }
+}
+
+.ChatMessageToolbarSubmit {
+  padding: 0.8rem 2rem;
+  font-weight: 300;
+  font-size: 1.6rem;
+  font-family: inherit;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(243, 243, 244, 0.24);
+  color: #f3f3f4;
+  background-color: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.2s ease;
+  white-space: nowrap;
+  &:hover {
+    border-color: #f3f3f4;
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 }

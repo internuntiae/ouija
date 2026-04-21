@@ -1,88 +1,311 @@
-.Section {
-  width: 60%;
-  margin: 2rem auto;
-  padding: 2rem;
-
+.PageWrapper {
+  width: 100%;
+  padding: 2rem 0 4rem;
   display: flex;
   flex-direction: column;
   align-items: center;
+}
 
-  background-color: #2a2730;
-  border: 1px solid lighten(#14110f, 15);
+.Section {
+  width: 60%;
+  margin: 1.5rem auto;
+  padding: 2rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #1e1c1a;
+  border: 1px solid #2e2b29;
   border-radius: 1.5rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
 
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+.First {
+  margin-top: 2rem;
+}
 
-  &ProfilePicture {
-    border-radius: 50%;
-    margin-bottom: 1rem;
-    border: 2px solid lighten(#14110f, 20);
-  }
+.SectionProfilePicture {
+  border-radius: 50%;
+  margin-bottom: 1.2rem;
+  border: 2px solid #3a3836;
+  object-fit: cover;
+}
 
-  &Heading {
-    font-size: 2rem;
-    margin-bottom: 1rem;
-  }
+.SectionHeading {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  width: 100%;
+  text-align: center;
+}
 
-  &Text {
-    font-size: 1.2rem;
-    margin: 0.3rem 0;
-
-    a {
-      margin-left: 0.5rem;
-      color: #aaa;
-      cursor: pointer;
-      transition: color 0.2s;
-    }
-
-    a:hover {
+.SectionText {
+  font-size: 1.3rem;
+  margin: 0.3rem 0;
+  color: #ccc;
+  a {
+    margin-left: 0.6rem;
+    color: #aaa;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: color 0.2s;
+    &:hover {
       color: #fff;
-    }
-  }
-
-  &Friend {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-
-    padding: 1rem;
-    margin: 0.5rem 0;
-
-    background-color: #35323c;
-    border-radius: 1rem;
-    border: 1px solid black;
-
-    &Avatar {
-      border-radius: 50%;
-    }
-
-    &Name {
-      flex: 1;
-      font-size: 1.3rem;
-    }
-
-    &MessageButton,
-    &DeleteButton {
-      padding: 0.5rem 1rem;
-      border-radius: 0.7rem;
-      border: 1px solid rgba(243, 243, 244, 0.2);
-      background-color: transparent;
-      color: #f3f3f4;
-      cursor: pointer;
-      transition: all 0.2s ease-in-out;
-    }
-
-    &MessageButton:hover {
-      background-color: lighten(#14110f, 30);
-    }
-
-    &DeleteButton:hover {
-      background-color: #5a1f1f;
     }
   }
 }
 
-.First {
-  margin-top: 75vh;
+.PasswordForm {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  width: 100%;
+  max-width: 36rem;
+}
+
+.PasswordInput {
+  flex: 1;
+  background: transparent;
+  border: 1px solid #3a3836;
+  border-radius: 0.6rem;
+  color: #f3f3f4;
+  padding: 0.6rem 1rem;
+  font-size: 1.3rem;
+  font-family: inherit;
+  transition: border-color 0.2s;
+  &:focus {
+    outline: none;
+    border-color: #f3f3f4;
+  }
+}
+
+.SaveBtn {
+  background: transparent;
+  border: 1px solid rgba(243, 243, 244, 0.3);
+  border-radius: 0.6rem;
+  color: #f3f3f4;
+  padding: 0.6rem 1.4rem;
+  font-size: 1.3rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+  &:hover {
+    border-color: #f3f3f4;
+    background: #2a2826;
+  }
+}
+
+.SuccessMsg {
+  font-size: 1.2rem;
+  color: #2ecc71;
+  margin-top: 0.6rem;
+}
+.ErrorMsg {
+  font-size: 1.2rem;
+  color: #e74c3c;
+  margin-top: 0.6rem;
+}
+.LoadingText {
+  padding: 2rem;
+  color: #aaa;
+  font-size: 1.4rem;
+}
+.ErrorText {
+  padding: 2rem;
+  color: #e74c3c;
+  font-size: 1.4rem;
+}
+
+.SectionFriend {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  padding: 1rem;
+  margin: 0.4rem 0;
+  background-color: #2a2826;
+  border-radius: 1rem;
+  border: 1px solid #3a3836;
+}
+
+.AvatarWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.SectionFriendAvatar {
+  border-radius: 50%;
+  display: block;
+}
+
+.StatusDot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  border: 2px solid #1e1c1a;
+}
+
+.FriendInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.SectionFriendName {
+  font-size: 1.4rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.FriendStatus {
+  font-size: 1.1rem;
+}
+
+.SectionFriendMessageButton,
+.SectionFriendDeleteButton {
+  padding: 0.5rem 1.2rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(243, 243, 244, 0.2);
+  background-color: transparent;
+  color: #f3f3f4;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 1.2rem;
+  transition: all 0.2s ease-in-out;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.SectionFriendMessageButton:hover {
+  background-color: #3a3836;
+}
+.SectionFriendDeleteButton:hover {
+  background-color: #5a1f1f;
+  border-color: #c0392b;
+}
+
+.SettingsGroup {
+  width: 100%;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid #2e2b29;
+  padding-bottom: 1.5rem;
+  &:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+}
+
+.SettingsGroupTitle {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 1.2rem;
+}
+
+.SettingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 0.6rem 0;
+}
+
+.SettingLabel {
+  font-size: 1.4rem;
+  color: #f3f3f4;
+  flex-shrink: 0;
+}
+.SettingControl {
+  display: flex;
+  align-items: center;
+}
+
+.SegmentedControl {
+  display: flex;
+  background: #14110f;
+  border: 1px solid #3a3836;
+  border-radius: 0.8rem;
+  overflow: hidden;
+}
+
+.SegmentBtn {
+  background: transparent;
+  border: none;
+  color: #aaa;
+  font-size: 1.2rem;
+  font-family: inherit;
+  padding: 0.5rem 1.2rem;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+  &:hover {
+    color: #f3f3f4;
+  }
+}
+
+.SegmentBtnActive {
+  background: #3a3836;
+  color: #f3f3f4;
+  font-weight: 600;
+}
+
+.Toggle {
+  position: relative;
+  width: 4.4rem;
+  height: 2.4rem;
+  background: #3a3836;
+  border: none;
+  border-radius: 1.2rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.ToggleOn {
+  background: #2ecc71;
+}
+
+.ToggleThumb {
+  position: absolute;
+  top: 0.3rem;
+  left: 0.3rem;
+  width: 1.8rem;
+  height: 1.8rem;
+  background: #f3f3f4;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+  .ToggleOn & {
+    transform: translateX(2rem);
+  }
+}
+
+.DangerBtn {
+  background: transparent;
+  border: 1px solid #c0392b;
+  border-radius: 0.8rem;
+  color: #e74c3c;
+  font-size: 1.3rem;
+  font-family: inherit;
+  padding: 0.7rem 2rem;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+  margin-top: 0.5rem;
+  &:hover {
+    background: #5a1f1f;
+    color: #f3f3f4;
+  }
 }

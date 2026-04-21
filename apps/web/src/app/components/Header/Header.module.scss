@@ -14,11 +14,13 @@
   color: #f3f3f4;
   font-size: 2.5rem;
 
-  border-bottom: 0.1rem solid lighten(#14110f, 10);
+  // lighten(#14110f, 10) ≈ #2e2b29
+  border-bottom: 0.1rem solid #2e2b29;
 
   &Right {
     display: flex;
     justify-content: flex-end;
+    align-items: center;
     width: 100%;
     gap: 6rem;
   }
@@ -34,28 +36,49 @@
     background-position: center bottom;
 
     transition: background-size 0.3s ease;
-  }
 
-  /*&Link:after{
-    to change this logic, id prefer after rather than background for this tbh + collides with the letters which ✨isn't cool✨.
-    for some reason after appears after the entire website, so im thinking it might be due to nesting problems, or me missing
-    a semicolon or smth
-  }*/
-
-  &Link:hover {
-    background-size: 100% 0.1rem;
+    &:hover {
+      background-size: 100% 0.1rem;
+    }
   }
 
   &Logo {
+    display: block;
+    transition: opacity 0.2s ease;
+
+    &:hover {
+      opacity: 0.8;
+    }
   }
 
-  .HeaderText {
+  &Text {
+    color: #f3f3f4;
+    font-weight: 200;
+  }
+
+  &Logout {
+    background: transparent;
+    border: 1px solid rgba(243, 243, 244, 0.24);
+    color: #f3f3f4;
+    font-size: 2rem;
+    font-weight: 200;
+    font-family: inherit;
+    padding: 0.4rem 1.2rem;
+    border-radius: 0.8rem;
+    cursor: pointer;
+    transition:
+      border-color 0.2s ease,
+      color 0.2s ease;
+
+    &:hover {
+      border-color: #f3f3f4;
+      color: #f3f3f4;
+    }
   }
 
   .Invisible {
-    color: rgba(243, 243, 244, 0.2);
+    color: transparent;
     user-select: none;
     transition: color 0.2s ease-in-out;
-    // transition between switch from frontpage to subpage
   }
 }

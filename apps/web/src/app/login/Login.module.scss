@@ -22,48 +22,61 @@
     background-color: transparent;
     color: #f3f3f4;
     padding: 1rem 0;
-    margin: 1rem 0;
+    margin: 0.5rem 0 0;
     font-size: 2rem;
+    font-family: inherit;
     border-bottom: 1px solid;
     border-color: #f3f3f400;
     transition: border-color 250ms ease-in-out;
+
+    &:focus {
+      outline: none;
+      border-color: #f3f3f4;
+    }
+
+    &[aria-invalid='true'] {
+      border-color: #c0392b;
+    }
   }
 
-  &Input:focus {
-    outline: none;
-    border-color: #f3f3f4;
+  &Error {
+    font-size: 1.2rem;
+    color: #e74c3c;
+    margin: 0.3rem 0 0.8rem;
+    text-align: left;
   }
 
   &Submit {
     align-self: flex-start;
-
     padding: 1rem;
     margin: 2rem 0;
-
     font-weight: 300;
     font-size: 2rem;
-
+    font-family: inherit;
     border-radius: 1rem;
     border: 1px solid rgba(243, 243, 244, 0.24);
     color: #f3f3f4;
     background-color: transparent;
-  }
+    transition: border-color 0.2s ease;
 
-  &Submit:hover {
-    cursor: pointer;
+    &:hover {
+      cursor: pointer;
+      border-color: #f3f3f4;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   }
 
   .Link {
     color: #f3f3f4;
-
     text-align: left;
     font-weight: 200;
     font-size: 2rem;
-
     text-decoration: none;
-
     width: auto;
-
     margin: 1rem 0;
 
     .Underline {
