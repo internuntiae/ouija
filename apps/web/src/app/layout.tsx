@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 
-import { Kumbh_Sans } from 'next/font/google'
+import { Kumbh_Sans, Plus_Jakarta_Sans } from 'next/font/google'
 import './main-layout.scss'
 import Header from '@/app/components/Header/Header'
 import React from 'react'
@@ -11,22 +11,28 @@ const kumbhSans = Kumbh_Sans({
   weight: 'variable'
 })
 
+const plusJakartaSans = Plus_Jakarta_Sans({
+  variable: '--font-plus-jakarta-sans',
+  subsets: ['latin-ext'],
+  weight: ['400', '500', '600', '700']
+})
+
 export const metadata: Metadata = {
   title: 'ouija',
   description: 'i love cats :3'
 }
 
 export default function RootLayout({
-  children
-}: Readonly<{
+                                     children
+                                   }: Readonly<{
   children: React.ReactNode
 }>) {
   return (
     <html lang="en">
-      <body className={`${kumbhSans.variable}`}>
-        <Header />
-        <div className="container">{children}</div>
-      </body>
+    <body className={`${kumbhSans.variable} ${plusJakartaSans.variable}`}>
+    <Header />
+    <div className="container">{children}</div>
+    </body>
     </html>
   )
 }

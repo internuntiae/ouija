@@ -2,83 +2,80 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-
   padding-block: 1rem;
   padding-inline: 3rem;
   gap: 2rem;
-  min-height: 10vh;
-
-  background: #14110f;
-
-  font-weight: 200;
-  color: #f3f3f4;
-  font-size: 2.5rem;
-
-  // lighten(#14110f, 10) ≈ #2e2b29
-  border-bottom: 0.1rem solid #2e2b29;
+  height: 7.2rem;
+  background-color: rgba(10, 10, 10, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 0.1rem solid var(--border);
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  font-size: 1.6rem;
+  position: sticky;
+  top: 0;
+  z-index: 50;
 
   &Right {
     display: flex;
     justify-content: flex-end;
     align-items: center;
     width: 100%;
-    gap: 6rem;
+    gap: 4rem;
   }
 
   &Link {
     display: inline-block;
     text-decoration: none;
-    color: #f3f3f4;
-
-    background-image: linear-gradient(#f3f3f4, #f3f3f4);
-    background-repeat: no-repeat;
-    background-size: 0 0.1rem;
-    background-position: center bottom;
-
-    transition: background-size 0.3s ease;
+    color: var(--text-muted);
+    font-size: 1.4rem;
+    font-weight: 500;
+    transition: color var(--transition);
 
     &:hover {
-      background-size: 100% 0.1rem;
+      color: var(--text-primary);
     }
   }
 
   &Logo {
     display: block;
-    transition: opacity 0.2s ease;
+    transition: opacity var(--transition);
 
     &:hover {
-      opacity: 0.8;
+      opacity: 0.7;
     }
   }
 
   &Text {
-    color: #f3f3f4;
-    font-weight: 200;
+    color: var(--text-primary);
+    font-size: 2rem;
+    font-weight: 500;
+    letter-spacing: -0.02em;
   }
 
   &Logout {
     background: transparent;
-    border: 1px solid rgba(243, 243, 244, 0.24);
-    color: #f3f3f4;
-    font-size: 2rem;
-    font-weight: 200;
-    font-family: inherit;
-    padding: 0.4rem 1.2rem;
-    border-radius: 0.8rem;
+    border: 1px solid var(--border-mid);
+    color: var(--text-secondary);
+    font-size: 1.3rem;
+    font-weight: 500;
+    font-family: var(--font-sans);
+    padding: 0.6rem 1.6rem;
+    border-radius: var(--radius-md);
     cursor: pointer;
-    transition:
-      border-color 0.2s ease,
-      color 0.2s ease;
+    transition: border-color var(--transition), color var(--transition), background var(--transition);
 
     &:hover {
-      border-color: #f3f3f4;
-      color: #f3f3f4;
+      border-color: var(--text-primary);
+      color: var(--text-primary);
+      background: var(--bg-hover);
     }
   }
 
   .Invisible {
     color: transparent;
     user-select: none;
-    transition: color 0.2s ease-in-out;
+    transition: color var(--transition);
   }
 }

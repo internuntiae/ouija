@@ -1,32 +1,63 @@
+// ── Global tokens ──────────────────────────────────────────────────────────────
+:root {
+  --bg:          #0a0a0a;
+  --bg-surface:  #121212;
+  --bg-elevated: #1c1c1c;
+  --bg-hover:    rgba(255, 255, 255, 0.05);
+  --bg-active:   rgba(255, 255, 255, 0.10);
+  --border:      rgba(255, 255, 255, 0.05);
+  --border-mid:  rgba(255, 255, 255, 0.10);
+
+  --text-primary:   #ffffff;
+  --text-secondary: #d4d4d8;
+  --text-muted:     #71717a;
+  --text-faint:     #3f3f46;
+
+  --accent:      #ffffff;
+  --accent-text: #000000;
+
+  --radius-sm:   0.75rem;
+  --radius-md:   1rem;
+  --radius-lg:   1.5rem;
+  --radius-full: 9999px;
+
+  --font-sans: 'Plus Jakarta Sans', 'Kumbh Sans', 'Roboto', sans-serif;
+
+  --transition: 0.2s ease;
+}
+
+// ── Reset & base ───────────────────────────────────────────────────────────────
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Kumbh Sans', 'Roboto', sans-serif;
 }
 
 html {
   font-size: 10px;
+}
 
-  body {
+body {
+  width: 100%;
+  min-height: 100vh;
+  background-color: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 1.4rem;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+
+  .container {
     width: 100%;
-    min-height: 100vh;
-
-    .container {
-      width: 100%;
-      height: 90vh;
-      overflow: auto;
-
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-
-      background-color: #14110f;
-      color: #f3f3f4;
-
-      text-align: center;
-      font-weight: 500;
-    }
+    height: 90vh;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--bg);
+    color: var(--text-primary);
+    text-align: center;
+    font-weight: 500;
   }
 }

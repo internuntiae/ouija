@@ -1,3 +1,5 @@
+// ── Chats (full messenger layout) ─────────────────────────────────────────────
+
 .container {
   width: 100%;
   height: 100%;
@@ -5,69 +7,85 @@
   overflow: hidden;
 }
 
-// ── Sidebar ──────────────────────────────────────────────────────────────────
+// ── Sidebar ───────────────────────────────────────────────────────────────────
 
 .Contacts {
   display: flex;
   flex-direction: column;
-  width: 22rem;
+  width: 32rem;
   flex-shrink: 0;
   height: 100%;
-  border-right: 0.1rem solid #2e2b29;
+  background-color: var(--bg-surface);
+  border-right: 1px solid var(--border);
   overflow-y: auto;
   overflow-x: hidden;
+
+  @media (max-width: 768px) {
+    display: none;
+  }
 }
+
+// Status bar + status menu
 
 .MyStatus {
   display: flex;
   align-items: center;
-  gap: 0.8rem;
-  padding: 1rem 1.2rem;
+  gap: 1rem;
+  padding: 0 1.6rem;
+  height: 7.2rem;
+  min-height: 7.2rem;
+  flex-shrink: 0;
   cursor: pointer;
-  border-bottom: 0.1rem solid #2e2b29;
-  font-size: 1.2rem;
-  color: #ccc;
+  border-bottom: 1px solid var(--border);
+  font-size: 1.3rem;
+  color: var(--text-muted);
   user-select: none;
-  transition: background 0.15s ease;
+  transition: background var(--transition), color var(--transition);
 
   &:hover {
-    background: #1e1c1a;
+    background: var(--bg-hover);
+    color: var(--text-secondary);
   }
 }
 
 .StatusChevron {
   margin-left: auto;
-  font-size: 1rem;
-  opacity: 0.6;
+  opacity: 0.5;
+}
+
+.StatusLabel {
+  font-size: 1.2rem;
 }
 
 .StatusMenu {
   display: flex;
   flex-direction: column;
-  background: #1e1c1a;
-  border-bottom: 0.1rem solid #2e2b29;
+  border-bottom: 1px solid var(--border);
 }
 
 .StatusMenuBtn {
   display: flex;
   align-items: center;
   gap: 0.8rem;
-  padding: 0.8rem 1.2rem;
+  padding: 0.9rem 1.6rem;
   background: transparent;
   border: none;
-  color: #f3f3f4;
-  font-size: 1.2rem;
-  font-family: inherit;
+  color: var(--text-secondary);
+  font-size: 1.3rem;
+  font-family: var(--font-sans);
   cursor: pointer;
   text-align: left;
-  transition: background 0.15s ease;
+  transition: background var(--transition), color var(--transition);
+
   &:hover {
-    background: #2a2826;
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
 }
 
 .StatusMenuBtnActive {
-  background: #2a2826;
+  background: var(--bg-hover);
+  color: var(--text-primary);
   font-weight: 600;
 }
 
@@ -82,15 +100,13 @@
   position: absolute;
   bottom: 0;
   right: 0;
-  width: 0.9rem;
-  height: 0.9rem;
+  width: 1.1rem;
+  height: 1.1rem;
   border-radius: 50%;
-  border: 2px solid #14110f;
+  border: 2px solid var(--bg-surface);
 }
 
-.StatusLabel {
-  font-size: 1.1rem;
-}
+// ── Contact list ──────────────────────────────────────────────────────────────
 
 .AvatarWrap {
   position: relative;
@@ -101,18 +117,24 @@
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 0.8rem;
+  gap: 1rem;
   background-color: transparent;
-  padding: 0.8rem 1rem;
-  border-bottom: 0.1rem solid #1e1c1a;
+  padding: 1rem 1.6rem;
+  border-bottom: 1px solid var(--border);
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background-color var(--transition);
+
   &:hover {
-    background-color: #1e1c1a;
+    background-color: var(--bg-hover);
   }
 
   &ProfilePicture {
+    width: 4.2rem;
+    height: 4.2rem;
     border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--border-mid);
+    flex-shrink: 0;
   }
 
   &MessageContainer {
@@ -121,41 +143,47 @@
     justify-content: center;
     align-items: flex-start;
     min-width: 0;
+    flex: 1;
 
     &Name {
-      font-size: 1.3rem;
-      font-weight: 600;
+      font-size: 1.4rem;
+      font-weight: 500;
+      color: var(--text-primary);
       margin-bottom: 0.2rem;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 14rem;
+      max-width: 100%;
     }
 
     &Message {
-      font-size: 1.1rem;
-      color: #aaa;
+      font-size: 1.2rem;
+      color: var(--text-muted);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 14rem;
+      max-width: 100%;
     }
   }
 }
 
 .ContactsChatPreviewActive {
-  background-color: #2a2826 !important;
-  border-left: 3px solid #f3f3f4;
+  background-color: var(--bg-active) !important;
+
+  .ContactsChatPreviewMessageContainerName {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
 }
 
 .LoadingText {
-  padding: 1rem;
-  font-size: 1.2rem;
-  color: #aaa;
+  padding: 2rem;
+  font-size: 1.3rem;
+  color: var(--text-muted);
   text-align: center;
 }
 
-// ── Obszar czatu ──────────────────────────────────────────────────────────────
+// ── Main chat area ─────────────────────────────────────────────────────────────
 
 .Chat {
   flex: 1;
@@ -163,56 +191,79 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  background-color: var(--bg);
+  position: relative;
+  overflow: hidden; // kluczowe — zapobiega wylewaniu się stopki poza obszar
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 25%;
+    left: 25%;
+    width: 50rem;
+    height: 50rem;
+    background: rgba(255, 255, 255, 0.025);
+    border-radius: 50%;
+    filter: blur(15rem);
+    pointer-events: none;
+    z-index: 0;
+  }
 }
+
+// ── Chat header ───────────────────────────────────────────────────────────────
 
 .ChatContactInfo {
   flex-shrink: 0;
   width: 100%;
-  height: 6rem;
-  border-bottom: 0.1rem solid #2e2b29;
+  height: 7.2rem;
+  min-height: 7.2rem;
+  border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
-  padding-inline: 1.5rem;
+  padding-inline: 2rem;
+  background: rgba(10, 10, 10, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 10;
+  position: relative;
 }
 
 .ChatContactInfoLeft {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.2rem;
 }
 
 .ChatContactName {
-  font-size: 1.8rem;
-  font-weight: 600;
+  font-size: 1.6rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
   margin: 0;
+  line-height: 1.2;
 }
 
 .ChatContactStatus {
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   font-weight: 400;
+  color: var(--text-muted);
   margin: 0;
+  line-height: 1;
 }
+
+// ── Messages ──────────────────────────────────────────────────────────────────
 
 .ChatMessageContainer {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
-  padding: 1rem 1.5rem;
-  gap: 0.2rem;
-}
-
-.ChatMessageToolbar {
-  flex-shrink: 0;
-  width: 100%;
-  border-top: 0.1rem solid #2e2b29;
-  padding: 0.8rem 1rem;
-
-  form {
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-  }
+  padding: 2rem 2.4rem;
+  gap: 0.4rem;
+  position: relative;
+  z-index: 1;
+  // flex: 1 + overflow-y: auto = przewijanie tylko w tej warstwie
 }
 
 .TopSentinel {
@@ -223,18 +274,20 @@
 
 .LoadingMore {
   text-align: center;
-  font-size: 1.1rem;
-  color: #aaa;
-  padding: 0.5rem;
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  padding: 0.6rem;
 }
 
 .NoChatSelected {
   margin: auto;
-  color: #aaa;
+  color: var(--text-muted);
   font-size: 1.6rem;
+  position: relative;
+  z-index: 1;
 }
 
-// ── Bańki wiadomości ──────────────────────────────────────────────────────────
+// ── Message bubbles ────────────────────────────────────────────────────────────
 
 .MessageWrapper {
   display: flex;
@@ -242,6 +295,7 @@
   align-items: flex-start;
   margin-block: 0.2rem;
   position: relative;
+
   &:hover .MessageReactBtn {
     opacity: 1;
   }
@@ -254,19 +308,23 @@
 .MessageBubble {
   position: relative;
   max-width: 65%;
-  padding: 0.8rem 1.2rem;
-  border-radius: 1.4rem;
+  padding: 1rem 1.4rem;
+  border-radius: 1.6rem;
   font-size: 1.5rem;
-  line-height: 1.4;
+  line-height: 1.5;
+  border: 1px solid transparent;
 
   &Own {
-    background-color: #6b6865;
-    border-bottom-right-radius: 0.3rem;
+    background-color: var(--accent);
+    color: var(--accent-text);
+    border-bottom-right-radius: 0.4rem;
   }
 
   &Other {
-    background-color: #35323c;
-    border-bottom-left-radius: 0.3rem;
+    background-color: #27272a;
+    color: var(--text-secondary);
+    border-bottom-left-radius: 0.4rem;
+    border-color: var(--border);
   }
 }
 
@@ -278,62 +336,61 @@
 .MessageTime {
   display: block;
   font-size: 1rem;
-  color: rgba(243, 243, 244, 0.5);
+  color: rgba(255, 255, 255, 0.35);
   text-align: right;
   margin-top: 0.2rem;
+
+  .MessageBubbleOwn & {
+    color: rgba(0, 0, 0, 0.35);
+  }
 }
 
 .MessageReactBtn {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  right: -3.2rem;
-  background: #2a2826;
-  border: 1px solid #3a3836;
+  right: -3.6rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-mid);
   border-radius: 50%;
-  width: 2.6rem;
-  height: 2.6rem;
+  width: 2.8rem;
+  height: 2.8rem;
   font-size: 1.3rem;
   cursor: pointer;
-  color: #f3f3f4;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition:
-    opacity 0.15s ease,
-    background 0.15s ease;
+  transition: opacity var(--transition), background var(--transition);
   z-index: 2;
+
   &:hover {
-    background: #3a3836;
+    background: var(--bg-elevated, #1c1c1c);
   }
 }
 
 .MessageWrapperOwn .MessageReactBtn {
   right: auto;
-  left: -3.2rem;
+  left: -3.6rem;
 }
 
-// ── Reaction picker ───────────────────────────────────────────────────────────
+// ── Reaction picker ────────────────────────────────────────────────────────────
 
 .ReactionPicker {
   position: absolute;
   bottom: calc(100% + 0.6rem);
   display: flex;
   gap: 0.4rem;
-  background: #1e1c1a;
-  border: 1px solid #3a3836;
-  border-radius: 2rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-mid);
+  border-radius: 9999px;
   padding: 0.5rem 0.8rem;
   z-index: 10;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0.8rem 2rem rgba(0, 0, 0, 0.5);
 
-  &Left {
-    right: 0;
-  }
-  &Right {
-    left: 0;
-  }
+  &Left  { right: 0; }
+  &Right { left: 0; }
 }
 
 .ReactionPickerBtn {
@@ -347,25 +404,24 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition:
-    transform 0.1s ease,
-    background 0.15s ease;
+  transition: transform 0.1s ease, background var(--transition);
+
   &:hover {
     transform: scale(1.3);
-    background: #2a2826;
+    background: var(--bg-hover);
   }
 }
 
 .ReactionPickerBtnActive {
-  background: #3a3836;
+  background: var(--bg-active);
 }
 
 .ReactionBar {
   display: flex;
   gap: 0.4rem;
   flex-wrap: wrap;
-  margin-top: 0.3rem;
-  padding-inline: 0.4rem;
+  margin-top: 0.4rem;
+  padding-inline: 0.2rem;
 }
 
 .ReactionBarOwn {
@@ -376,80 +432,86 @@
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  background: #2a2826;
-  border: 1px solid #3a3836;
-  border-radius: 1rem;
-  padding: 0.2rem 0.6rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-mid);
+  border-radius: 9999px;
+  padding: 0.2rem 0.8rem;
   font-size: 1.2rem;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background var(--transition);
+
   &:hover {
-    background: #3a3836;
+    background: var(--bg-hover);
   }
 }
 
 .ReactionChipActive {
-  border-color: #f3f3f4;
-  background: #3a3836;
+  border-color: rgba(255, 255, 255, 0.35);
+  background: var(--bg-active);
 }
 
-// ── Załączniki ────────────────────────────────────────────────────────────────
+// ── Attachments ────────────────────────────────────────────────────────────────
 
 .MessageAttachment {
   margin-top: 0.5rem;
 }
 
 .MessageAttachmentImage {
-  max-width: 24rem;
-  max-height: 20rem;
-  border-radius: 0.8rem;
+  max-width: 26rem;
+  max-height: 22rem;
+  border-radius: var(--radius-md);
   display: block;
   object-fit: cover;
 }
 
 .MessageAttachmentVideo {
-  max-width: 24rem;
-  border-radius: 0.8rem;
+  max-width: 26rem;
+  border-radius: var(--radius-md);
   display: block;
 }
 
 .MessageAttachmentFile {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  color: #f3f3f4;
+  gap: 0.6rem;
+  color: var(--text-primary);
   text-decoration: none;
-  background: rgba(255, 255, 255, 0.08);
-  padding: 0.5rem 1rem;
-  border-radius: 0.6rem;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.6rem 1.2rem;
+  border-radius: var(--radius-sm);
   font-size: 1.3rem;
-  transition: background 0.15s ease;
+  border: 1px solid var(--border-mid);
+  transition: background var(--transition);
+
   &:hover {
-    background: rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.1);
   }
 }
 
-// ── Pending files ─────────────────────────────────────────────────────────────
+// ── Pending files ──────────────────────────────────────────────────────────────
 
 .PendingFiles {
   display: flex;
   gap: 0.8rem;
   flex-wrap: wrap;
-  padding: 0.6rem 1rem;
-  border-top: 0.1rem solid #2e2b29;
-  background: #1a1816;
+  padding: 0.8rem 1.6rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg-surface);
+  flex-shrink: 0;
+  z-index: 10;
+  position: relative;
 }
 
 .PendingFile {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: #2a2826;
-  border: 1px solid #3a3836;
-  border-radius: 0.6rem;
-  padding: 0.4rem 0.8rem;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 1rem;
   font-size: 1.2rem;
-  max-width: 16rem;
+  max-width: 18rem;
 }
 
 .PendingFileThumb {
@@ -469,74 +531,122 @@
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 1.1rem;
-  color: #ccc;
+  color: var(--text-secondary);
 }
 
 .PendingFileRemove {
   background: transparent;
   border: none;
-  color: #aaa;
+  color: var(--text-muted);
   cursor: pointer;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   padding: 0 0.2rem;
   flex-shrink: 0;
-  transition: color 0.15s;
+  transition: color var(--transition);
+
   &:hover {
-    color: #f3f3f4;
+    color: var(--text-primary);
   }
 }
 
-// ── Toolbar ───────────────────────────────────────────────────────────────────
+// ── Toolbar (stopka) ─────────────────────────────────────────────────────────
+// Kluczowa poprawka: flex-shrink: 0 + brak position: absolute na przycisku
+// żeby nie "uciekał" poza obszar. Przycisk jest inline w flex row.
+
+.ChatMessageToolbar {
+  flex-shrink: 0;            // nie kurczy się — zawsze widoczna
+  width: 100%;
+  border-top: 1px solid var(--border);
+  padding: 1.2rem 1.6rem;
+  background: rgba(10, 10, 10, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  position: relative;
+  z-index: 10;
+
+  form {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    // brak position: relative — submit jest in-flow
+  }
+}
 
 .AttachBtn {
   background: transparent;
   border: none;
-  font-size: 2rem;
+  font-size: 1.8rem;
   cursor: pointer;
-  padding: 0.4rem;
-  border-radius: 0.5rem;
-  transition: background 0.15s ease;
+  padding: 0.6rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  transition: background var(--transition), color var(--transition);
   flex-shrink: 0;
   line-height: 1;
+  display: flex;
+  align-items: center;
+  height: 4.4rem;
+  width: 4rem;
+  justify-content: center;
+
   &:hover {
-    background: #2a2826;
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
 }
 
 .ChatMessageToolbarInput {
   flex: 1;
-  background-color: transparent;
-  color: #f3f3f4;
-  padding: 0.8rem 1rem;
-  font-size: 1.6rem;
-  font-family: inherit;
-  border-radius: 0.8rem;
-  border: 1px solid rgba(243, 243, 244, 0.2);
-  transition: border-color 250ms ease-in-out;
+  min-width: 0;             // ważne — nie wychodzi poza flex
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  padding: 1.1rem 1.4rem;
+  font-size: 1.5rem;
+  font-family: var(--font-sans);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  outline: none;
+  transition: background var(--transition), border-color var(--transition);
+
+  &::placeholder {
+    color: var(--text-muted);
+  }
+
   &:focus {
-    outline: none;
-    border-color: #f3f3f4;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--border-mid);
   }
 }
 
 .ChatMessageToolbarSubmit {
-  padding: 0.8rem 2rem;
-  font-weight: 300;
-  font-size: 1.6rem;
-  font-family: inherit;
-  border-radius: 0.8rem;
-  border: 1px solid rgba(243, 243, 244, 0.24);
-  color: #f3f3f4;
-  background-color: transparent;
-  cursor: pointer;
   flex-shrink: 0;
-  transition: border-color 0.2s ease;
+  padding: 1rem 2rem;
+  background: var(--accent);
+  color: var(--accent-text);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 1.4rem;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  cursor: pointer;
   white-space: nowrap;
+  transition: background var(--transition), transform 0.1s ease;
+  height: 4.4rem;
+  display: flex;
+  align-items: center;
+
   &:hover {
-    border-color: #f3f3f4;
+    background: #e4e4e7;
   }
+
+  &:active {
+    transform: scale(0.97);
+  }
+
   &:disabled {
-    opacity: 0.5;
+    background: var(--bg-hover);
+    color: rgba(255, 255, 255, 0.25);
     cursor: not-allowed;
+    transform: none;
   }
 }
