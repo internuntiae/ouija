@@ -72,7 +72,7 @@ export default function Login() {
     setLoading(true)
     try {
       const res = await fetch(
-        `http://localhost:3001/api/?nickname=${encodeURIComponent(username)}`
+        `${API_URL}/api/?nickname=${encodeURIComponent(username)}`
       )
 
       if (!res.ok) {

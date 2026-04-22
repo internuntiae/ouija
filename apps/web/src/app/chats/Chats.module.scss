@@ -40,7 +40,9 @@
   font-size: 1.3rem;
   color: var(--text-muted);
   user-select: none;
-  transition: background var(--transition), color var(--transition);
+  transition:
+    background var(--transition),
+    color var(--transition);
 
   &:hover {
     background: var(--bg-hover);
@@ -75,7 +77,9 @@
   font-family: var(--font-sans);
   cursor: pointer;
   text-align: left;
-  transition: background var(--transition), color var(--transition);
+  transition:
+    background var(--transition),
+    color var(--transition);
 
   &:hover {
     background: var(--bg-hover);
@@ -362,7 +366,9 @@
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity var(--transition), background var(--transition);
+  transition:
+    opacity var(--transition),
+    background var(--transition);
   z-index: 2;
 
   &:hover {
@@ -389,8 +395,12 @@
   z-index: 10;
   box-shadow: 0 0.8rem 2rem rgba(0, 0, 0, 0.5);
 
-  &Left  { right: 0; }
-  &Right { left: 0; }
+  &Left {
+    right: 0;
+  }
+  &Right {
+    left: 0;
+  }
 }
 
 .ReactionPickerBtn {
@@ -404,7 +414,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.1s ease, background var(--transition);
+  transition:
+    transform 0.1s ease,
+    background var(--transition);
 
   &:hover {
     transform: scale(1.3);
@@ -554,7 +566,7 @@
 // żeby nie "uciekał" poza obszar. Przycisk jest inline w flex row.
 
 .ChatMessageToolbar {
-  flex-shrink: 0;            // nie kurczy się — zawsze widoczna
+  flex-shrink: 0; // nie kurczy się — zawsze widoczna
   width: 100%;
   border-top: 1px solid var(--border);
   padding: 1.2rem 1.6rem;
@@ -580,7 +592,9 @@
   padding: 0.6rem;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
-  transition: background var(--transition), color var(--transition);
+  transition:
+    background var(--transition),
+    color var(--transition);
   flex-shrink: 0;
   line-height: 1;
   display: flex;
@@ -597,7 +611,7 @@
 
 .ChatMessageToolbarInput {
   flex: 1;
-  min-width: 0;             // ważne — nie wychodzi poza flex
+  min-width: 0; // ważne — nie wychodzi poza flex
   background: rgba(255, 255, 255, 0.05);
   color: var(--text-primary);
   padding: 1.1rem 1.4rem;
@@ -606,7 +620,9 @@
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   outline: none;
-  transition: background var(--transition), border-color var(--transition);
+  transition:
+    background var(--transition),
+    border-color var(--transition);
 
   &::placeholder {
     color: var(--text-muted);
@@ -630,7 +646,9 @@
   font-family: var(--font-sans);
   cursor: pointer;
   white-space: nowrap;
-  transition: background var(--transition), transform 0.1s ease;
+  transition:
+    background var(--transition),
+    transform 0.1s ease;
   height: 4.4rem;
   display: flex;
   align-items: center;
@@ -649,4 +667,160 @@
     cursor: not-allowed;
     transform: none;
   }
+}
+
+.SearchSection {
+  padding: 1rem 1.2rem 0.4rem;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.SearchWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.SearchInput {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 0.8rem);
+  color: var(--text-primary);
+  font-size: 1.3rem;
+  font-family: var(--font-sans);
+  padding: 0.85rem 3.2rem 0.85rem 1.2rem;
+  outline: none;
+  transition:
+    background var(--transition),
+    border-color var(--transition);
+
+  &::placeholder {
+    color: var(--text-muted);
+  }
+
+  &:focus {
+    background: rgba(255, 255, 255, 0.09);
+    border-color: var(--border-mid);
+  }
+}
+
+.SearchClear {
+  position: absolute;
+  right: 0.8rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0.3rem 0.5rem;
+  line-height: 1;
+  transition: color var(--transition);
+
+  &:hover {
+    color: var(--text-primary);
+  }
+}
+
+.SearchDropdown {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 1.2rem;
+  right: 1.2rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-md, 0.8rem);
+  box-shadow: 0 0.8rem 2.4rem rgba(0, 0, 0, 0.6);
+  z-index: 100;
+  overflow: hidden;
+  max-height: 36rem;
+  overflow-y: auto;
+}
+
+.SearchDropdownLoading {
+  padding: 1.2rem 1.4rem;
+  font-size: 1.2rem;
+  color: var(--text-muted);
+}
+
+.SearchDropdownSection {
+  padding: 0.6rem 1.4rem 0.3rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-top: 1px solid var(--border);
+
+  &:first-child {
+    border-top: none;
+  }
+}
+
+.SearchDropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.75rem 1.4rem;
+  cursor: pointer;
+  transition: background var(--transition);
+
+  &:hover {
+    background: var(--bg-hover);
+  }
+}
+
+.SearchDropdownItemName {
+  flex: 1;
+  font-size: 1.3rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.SearchDropdownActions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.SearchActionBtn {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm, 0.5rem);
+  color: var(--text-secondary);
+  font-size: 1.3rem;
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background var(--transition),
+    color var(--transition);
+
+  &:hover:not(:disabled) {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.5;
+  }
+}
+
+.SearchActionBtnSent {
+  background: rgba(46, 204, 113, 0.15);
+  border-color: #2ecc71;
+  color: #2ecc71;
+}
+
+.SearchDropdownEmpty {
+  padding: 1.4rem;
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  text-align: center;
 }

@@ -5,6 +5,8 @@ import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
 // ─── Typy ─────────────────────────────────────────────────────────────────────
 
 type Theme = 'dark' | 'light'
@@ -27,6 +29,19 @@ const DEFAULT_SETTINGS: AppSettings = {
   notificationsEnabled: true,
   notificationSound: true,
   notificationDesktop: false
+}
+
+// Zaproszenie do znajomych (oczekujące)
+interface FriendRequest {
+  userId: string // ten kto wysłał
+  friendId: string // odbiorca (czyli my)
+  status: 'PENDING'
+  user: {
+    id: string
+    nickname: string
+    status: string
+    avatarUrl?: string | null
+  }
 }
 
 // ─── Mock ─────────────────────────────────────────────────────────────────────
@@ -71,7 +86,27 @@ const MOCK_FRIENDS = [
   }
 ]
 
-const USE_MOCK = true
+// Mockowe oczekujące zaproszenia
+const MOCK_PENDING_REQUESTS: FriendRequest[] = [
+  {
+    userId: 'mock-stranger-1',
+    friendId: 'mock-user-1',
+    status: 'PENDING',
+    user: { id: 'mock-stranger-1', nickname: 'Marek Zielony', status: 'ONLINE' }
+  },
+  {
+    userId: 'mock-stranger-2',
+    friendId: 'mock-user-1',
+    status: 'PENDING',
+    user: {
+      id: 'mock-stranger-2',
+      nickname: 'Zofia Kamińska',
+      status: 'OFFLINE'
+    }
+  }
+]
+
+const USE_MOCK = false
 
 const STATUS_COLOR: Record<string, string> = {
   ONLINE: '#2ecc71',
@@ -127,6 +162,7 @@ export default function Profile() {
 
   const [user, setUser] = useState<typeof MOCK_USER | null>(null)
   const [friends, setFriends] = useState<typeof MOCK_FRIENDS>([])
+  const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -141,7 +177,6 @@ export default function Profile() {
 
   // ── Wczytaj dane ──
   useEffect(() => {
-    // Wczytaj ustawienia z localStorage
     try {
       const stored = localStorage.getItem('appSettings')
       if (stored) setSettings(JSON.parse(stored))
@@ -152,26 +187,31 @@ export default function Profile() {
     if (USE_MOCK) {
       setUser(MOCK_USER)
       setFriends(MOCK_FRIENDS)
+      setPendingRequests(MOCK_PENDING_REQUESTS)
       setLoading(false)
       return
     }
 
     async function fetchData() {
       try {
-        const [userRes, friendsRes] = await Promise.all([
-          fetch(`http://localhost:3001/api/?id=${userId}`),
+        const [userRes, friendsRes, pendingRes] = await Promise.all([
+          fetch(`${API_URL}/api/?id=${userId}`),
+          fetch(`${API_URL}/api/users/${userId}/friends?status=ACCEPTED`),
+          // Pobierz zaproszenia gdzie MY jesteśmy odbiorcą (friendId = userId) i status = PENDING
           fetch(
-            `http://localhost:3001/api/users/${userId}/friends?status=ACCEPTED`
+            `${API_URL}/api/users/${userId}/friends?status=PENDING&role=receiver`
           )
         ])
         if (!userRes.ok) throw new Error('Błąd pobierania profilu')
         if (!friendsRes.ok) throw new Error('Błąd pobierania znajomych')
-        const [userData, friendsData] = await Promise.all([
+        const [userData, friendsData, pendingData] = await Promise.all([
           userRes.json(),
-          friendsRes.json()
+          friendsRes.json(),
+          pendingRes.ok ? pendingRes.json() : Promise.resolve([])
         ])
         setUser(userData)
         setFriends(friendsData)
+        setPendingRequests(pendingData)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Błąd wczytywania')
       } finally {
@@ -184,16 +224,13 @@ export default function Profile() {
   // ── Aplikuj ustawienia do DOM ──
   useEffect(() => {
     const root = document.documentElement
-    // Motyw
     root.setAttribute('data-theme', settings.theme)
-    // Rozmiar czcionki
     const sizes: Record<FontSize, string> = {
       small: '8px',
       medium: '10px',
       large: '12px'
     }
     root.style.fontSize = sizes[settings.fontSize]
-    // Język (tylko zapis — zmiana UI wymagałaby i18n)
     root.setAttribute('lang', settings.language)
   }, [settings])
 
@@ -222,7 +259,7 @@ export default function Profile() {
       return
     }
     try {
-      const res = await fetch(`http://localhost:3001/api/${userId}`, {
+      const res = await fetch(`${API_URL}/api/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: newPassword })
@@ -239,6 +276,64 @@ export default function Profile() {
     }
   }
 
+  // ── Akceptuj zaproszenie ──
+  async function handleAcceptRequest(senderId: string) {
+    if (USE_MOCK) {
+      const req = pendingRequests.find((r) => r.userId === senderId)
+      if (req) {
+        // Przenieś do znajomych
+        setFriends((prev) => [
+          ...prev,
+          {
+            userId: req.userId,
+            friendId: userId,
+            status: 'ACCEPTED',
+            user: req.user,
+            friend: { id: userId, nickname: 'Ty', status: 'ONLINE' }
+          }
+        ])
+      }
+      setPendingRequests((prev) => prev.filter((r) => r.userId !== senderId))
+      return
+    }
+    try {
+      // PUT /api/users/:userId/friends/:senderId — zmień status na ACCEPTED
+      const res = await fetch(
+        `${API_URL}/api/users/${userId}/friends/${senderId}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'ACCEPTED' })
+        }
+      )
+      if (!res.ok) throw new Error('Błąd akceptowania')
+      const updatedFriend = await res.json()
+      setFriends((prev) => [...prev, updatedFriend])
+      setPendingRequests((prev) => prev.filter((r) => r.userId !== senderId))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Błąd')
+    }
+  }
+
+  // ── Odrzuć zaproszenie ──
+  async function handleRejectRequest(senderId: string) {
+    if (USE_MOCK) {
+      setPendingRequests((prev) => prev.filter((r) => r.userId !== senderId))
+      return
+    }
+    try {
+      // DELETE /api/users/:userId/friends/:senderId — usuń zaproszenie
+      const res = await fetch(
+        `${API_URL}/api/users/${userId}/friends/${senderId}`,
+        { method: 'DELETE' }
+      )
+      if (!res.ok) throw new Error('Błąd odrzucania')
+      setPendingRequests((prev) => prev.filter((r) => r.userId !== senderId))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Błąd')
+    }
+  }
+
   // ── Usuń znajomego ──
   async function handleRemoveFriend(friendId: string) {
     if (USE_MOCK) {
@@ -249,7 +344,7 @@ export default function Profile() {
     }
     try {
       const res = await fetch(
-        `http://localhost:3001/api/users/${userId}/friends/${friendId}`,
+        `${API_URL}/api/users/${userId}/friends/${friendId}`,
         { method: 'DELETE' }
       )
       if (!res.ok) throw new Error('Błąd usuwania')
@@ -268,7 +363,7 @@ export default function Profile() {
       return
     }
     try {
-      const res = await fetch('http://localhost:3001/api/chats', {
+      const res = await fetch(`${API_URL}/api/chats`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'PRIVATE', userIds: [userId, friendId] })
@@ -335,6 +430,58 @@ export default function Profile() {
           </p>
         )}
       </div>
+
+      {/* ── Oczekujące zaproszenia ── */}
+      {pendingRequests.length > 0 && (
+        <div className={styles.Section}>
+          <h2 className={styles.SectionHeading}>
+            Zaproszenia do znajomych
+            <span className={styles.PendingBadge}>
+              {pendingRequests.length}
+            </span>
+          </h2>
+          {pendingRequests.map((req) => (
+            <div key={req.userId} className={styles.SectionFriend}>
+              <div className={styles.AvatarWrap}>
+                <Image
+                  className={styles.SectionFriendAvatar}
+                  src={req.user.avatarUrl ?? '/ouija_white.png'}
+                  alt="avatar"
+                  width={48}
+                  height={48}
+                />
+                <span
+                  className={styles.StatusDot}
+                  style={{
+                    background:
+                      STATUS_COLOR[req.user.status] ?? STATUS_COLOR.OFFLINE
+                  }}
+                />
+              </div>
+              <div className={styles.FriendInfo}>
+                <h3 className={styles.SectionFriendName}>
+                  {req.user.nickname}
+                </h3>
+                <span className={styles.FriendStatus} style={{ color: '#888' }}>
+                  chce być twoim znajomym
+                </span>
+              </div>
+              <button
+                className={styles.AcceptBtn}
+                onClick={() => handleAcceptRequest(req.userId)}
+              >
+                Akceptuj
+              </button>
+              <button
+                className={styles.RejectBtn}
+                onClick={() => handleRejectRequest(req.userId)}
+              >
+                Odrzuć
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ── Znajomi ── */}
       <div className={styles.Section}>

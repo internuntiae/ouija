@@ -23,7 +23,7 @@
 
   display: flex;
   flex-direction: column;
-  align-items: flex-start;    // wyrównanie do lewej — nie centrum
+  align-items: flex-start; // wyrównanie do lewej — nie centrum
   gap: 1.2rem;
 }
 
@@ -110,7 +110,9 @@
   padding: 0.8rem 1.4rem;
   font-size: 1.4rem;
   font-family: var(--font-sans);
-  transition: border-color var(--transition), background var(--transition);
+  transition:
+    border-color var(--transition),
+    background var(--transition);
 
   &::placeholder {
     color: var(--text-muted);
@@ -133,7 +135,10 @@
   font-family: var(--font-sans);
   font-weight: 500;
   cursor: pointer;
-  transition: border-color var(--transition), color var(--transition), background var(--transition);
+  transition:
+    border-color var(--transition),
+    color var(--transition),
+    background var(--transition);
   white-space: nowrap;
 
   &:hover {
@@ -296,7 +301,9 @@
   font-family: var(--font-sans);
   padding: 0.55rem 1.4rem;
   cursor: pointer;
-  transition: background var(--transition), color var(--transition);
+  transition:
+    background var(--transition),
+    color var(--transition);
 
   &:hover {
     color: var(--text-primary);
@@ -319,7 +326,9 @@
   border: 1px solid var(--border-mid);
   border-radius: var(--radius-full);
   cursor: pointer;
-  transition: background var(--transition), border-color var(--transition);
+  transition:
+    background var(--transition),
+    border-color var(--transition);
   flex-shrink: 0;
 }
 
@@ -336,7 +345,9 @@
   height: 1.8rem;
   background: var(--text-muted);
   border-radius: 50%;
-  transition: transform var(--transition), background var(--transition);
+  transition:
+    transform var(--transition),
+    background var(--transition);
 
   .ToggleOn & {
     transform: translateX(2rem);
@@ -355,7 +366,10 @@
   font-family: var(--font-sans);
   padding: 0.8rem 2rem;
   cursor: pointer;
-  transition: background var(--transition), border-color var(--transition), color var(--transition);
+  transition:
+    background var(--transition),
+    border-color var(--transition),
+    color var(--transition);
 
   &:hover {
     background: rgba(248, 113, 113, 0.1);
@@ -390,4 +404,56 @@
   font-size: 1.4rem;
   text-align: center;
   width: 100%;
+}
+
+.PendingBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: #e74c3c;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+// Przycisk akceptacji zaproszenia
+.AcceptBtn {
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid #2ecc71;
+  background: transparent;
+  color: #2ecc71;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover {
+    background: rgba(46, 204, 113, 0.12);
+  }
+}
+
+// Przycisk odrzucenia zaproszenia
+.RejectBtn {
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+
+  &:hover {
+    background: rgba(231, 76, 60, 0.1);
+    border-color: #e74c3c;
+    color: #e74c3c;
+  }
 }

@@ -20,6 +20,11 @@ export const getUsers = async () => {
   return userRepo.getUsers()
 }
 
+export const searchUsers = async (query: string) => {
+  if (!query || query.trim().length < 1) throw new Error('query is required')
+  return userRepo.searchUsers(query.trim())
+}
+
 export const createUser = async (data: {
   email: string
   password: string
