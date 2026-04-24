@@ -4,7 +4,7 @@ import { ReactionType } from '@prisma/client'
 
 export const getReactions = async (req: Request, res: Response) => {
   try {
-    const messageId = parseInt(req.params.messageId)
+    const { messageId } = req.params
     const reactions = await reactionService.getReactionsByMessage(messageId)
     res.status(200).json(reactions)
   } catch (error) {
@@ -14,7 +14,7 @@ export const getReactions = async (req: Request, res: Response) => {
 
 export const addReaction = async (req: Request, res: Response) => {
   try {
-    const messageId = parseInt(req.params.messageId)
+    const { messageId } = req.params
     const { userId, type } = req.body
     const reaction = await reactionService.addReaction(
       messageId,
@@ -29,8 +29,7 @@ export const addReaction = async (req: Request, res: Response) => {
 
 export const updateReaction = async (req: Request, res: Response) => {
   try {
-    const messageId = parseInt(req.params.messageId)
-    const { userId } = req.params
+    const { messageId, userId } = req.params
     const { type } = req.body
     const reaction = await reactionService.updateReaction(
       messageId,
@@ -45,8 +44,7 @@ export const updateReaction = async (req: Request, res: Response) => {
 
 export const deleteReaction = async (req: Request, res: Response) => {
   try {
-    const messageId = parseInt(req.params.messageId)
-    const { userId } = req.params
+    const { messageId, userId } = req.params
     await reactionService.deleteReaction(messageId, userId)
     res.status(204).send()
   } catch (error) {

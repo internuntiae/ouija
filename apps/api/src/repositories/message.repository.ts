@@ -2,114 +2,89 @@ import { prisma } from '@lib/prisma'
 import * as redis from '@repositories/message.repository.redis'
 import { Attachment, Reaction } from '@prisma/client'
 
-export const findMessage = async (chatId: string, messageId: number) => {
-  // Change findUnique to findFirst
+export const findMessage = async (chatId: string, messageId: string) => {
   const target = await prisma.message.findFirst({
-    where: {
-      id: messageId,
-      chatId: chatId
-    }
+    where: { id: messageId, chatId }
   })
-
-  if (!target) {
-    return null
-  }
-
+  if (!target) return null
   return target
 }
 
 export const getAllMessages = async (
   chatId: string,
   limit: number,
-  last: number
+  lastId: string // pusty string oznacza "od końca"
 ) => {
   const messages = await prisma.message.findMany({
     where: {
-      chatId, // Assuming you need to filter by the chatId provided
-      id: last > 0 ? { lt: last } : undefined
+      chatId,
+      // Paginacja kursorem — jeśli lastId podane, weź starsze od niego
+      id: lastId ? { lt: lastId } : undefined
     },
     take: limit,
-    orderBy: {
-      id: 'desc'
-    }
+    orderBy: { id: 'desc' },
+    include: { attachments: true, reactions: true }
   })
 
-  // Only sync to redis if there are actually messages to upload
   if (messages.length > 0) {
     await redis.uploadMessages(chatId, messages)
   }
 
   return messages
 }
+
 export const createMessage = async (
   chatId: string,
   userId: string,
   content: string,
-  attachments: Attachment[],
-  reactions: Reaction[]
+  attachments: Omit<Attachment, 'id' | 'messageId'>[],
+  reactions: Omit<Reaction, 'messageId' | 'createdAt'>[]
 ) => {
   const message = await prisma.message.create({
     data: {
-      chatId: chatId,
+      chatId,
       senderId: userId,
-      content: content,
+      content,
       attachments: attachments.length
-        ? {
-            createMany: {
-              data: attachments
-            }
-          }
+        ? { createMany: { data: attachments } }
         : undefined,
       reactions: reactions.length
-        ? {
-            createMany: {
-              data: reactions
-            }
-          }
+        ? { createMany: { data: reactions } }
         : undefined
-    }
+    },
+    include: { attachments: true, reactions: true }
   })
   await redis.uploadMessages(chatId, message)
+  // Zwracaj wiadomość żeby controller mógł ją odesłać klientowi
+  return message
 }
 
 export const updateMessage = async (
-  messageId: number,
+  messageId: string,
   chatId: string,
   content: string,
-  attachments: Attachment[],
-  reactions: Reaction[]
+  attachments: Omit<Attachment, 'id' | 'messageId'>[],
+  reactions: Omit<Reaction, 'messageId' | 'createdAt'>[]
 ) => {
   const message = await prisma.message.update({
-    where: {
-      id: messageId,
-      chatId: chatId
-    },
+    where: { id: messageId, chatId },
     data: {
-      content: content,
-      attachments: {
-        createMany: {
-          data: attachments
-        }
-      },
-      reactions: {
-        createMany: {
-          data: reactions
-        }
-      }
+      content,
+      attachments: attachments.length
+        ? { createMany: { data: attachments } }
+        : undefined,
+      reactions: reactions.length
+        ? { createMany: { data: reactions } }
+        : undefined
     }
   })
-
   await redis.updateMessage(chatId, messageId, message)
   return message
 }
 
-export const deleteMessage = async (messageId: number, chatId: string) => {
+export const deleteMessage = async (messageId: string, chatId: string) => {
   await prisma.message.delete({
-    where: {
-      id: messageId,
-      chatId: chatId
-    }
+    where: { id: messageId, chatId }
   })
-
   await redis.deleteMessage(chatId, messageId)
 }

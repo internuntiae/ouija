@@ -1,172 +1,153 @@
-// ── Profile page ───────────────────────────────────────────────────────────────
-// Layout: pełna strona, treść wyśrodkowana max-width 80rem, sekcje jako karty
-
 .PageWrapper {
   width: 100%;
-  padding: 3rem 2rem 6rem;
+  padding: 2rem 0 4rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2.4rem;
-  // font-size z root (skaluje się z ustawieniem użytkownika)
 }
-
-// ── Karta (wspólna baza) ───────────────────────────────────────────────────────
 
 .Section {
-  width: 100%;
-  max-width: 80rem;
-  padding: 3rem 3.5rem;
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-
+  width: 60%;
+  margin: 1rem auto;
+  padding: 2rem 2.5rem;
   display: flex;
   flex-direction: column;
-  align-items: flex-start; // wyrównanie do lewej — nie centrum
-  gap: 1.2rem;
+  align-items: center;
+  background-color: #1e1c1a;
+  border: 1px solid #2e2b29;
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
 }
 
+// !! Kluczowy fix — oryginał miał margin-top: 75vh co ukrywało sekcję profilu
 .First {
-  // Sekcja profilu — avatar + dane w układzie row na szerokich ekranach
-  flex-direction: row;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: 3rem;
-
-  @media (max-width: 600px) {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-  }
+  margin-top: 2rem;
 }
-
-// ── Avatar ─────────────────────────────────────────────────────────────────────
 
 .SectionProfilePicture {
   border-radius: 50%;
-  border: 2px solid var(--border-mid);
+  margin-bottom: 1.2rem;
+  border: 2px solid #3a3836;
   object-fit: cover;
-  flex-shrink: 0;
-  // width/height przychodzą z atrybutów Next Image
-}
-
-// ── Dane profilu (prawa kolumna w .First) ─────────────────────────────────────
-
-.ProfileDetails {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  padding-top: 0.4rem;
 }
 
 .SectionHeading {
-  font-size: 2.2rem;
+  font-size: 2rem;
   font-weight: 600;
-  color: var(--text-primary);
-  letter-spacing: -0.02em;
-  margin: 0;
-  line-height: 1.2;
+  margin-bottom: 1rem;
+  width: 100%;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+}
+
+.Badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e74c3c;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  border-radius: 1rem;
+  padding: 0.1rem 0.7rem;
+  min-width: 2.2rem;
 }
 
 .SectionText {
-  font-size: 1.4rem;
-  color: var(--text-secondary);
-  margin: 0;
-  line-height: 1.5;
+  font-size: 1.3rem;
+  margin: 0.3rem 0;
+  color: #ccc;
 
   a {
-    color: var(--text-muted);
+    margin-left: 0.6rem;
+    color: #aaa;
     cursor: pointer;
     text-decoration: underline;
-    text-underline-offset: 0.2em;
-    transition: color var(--transition);
-
+    transition: color 0.2s;
     &:hover {
-      color: var(--text-primary);
+      color: #fff;
     }
   }
 }
 
-// ── Formularz zmiany hasła ────────────────────────────────────────────────────
-
 .PasswordForm {
   display: flex;
   gap: 0.8rem;
+  margin-top: 1rem;
   width: 100%;
-  max-width: 44rem;
-  flex-wrap: wrap;
+  max-width: 36rem;
 }
 
 .PasswordInput {
   flex: 1;
-  min-width: 16rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border-mid);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  padding: 0.8rem 1.4rem;
-  font-size: 1.4rem;
-  font-family: var(--font-sans);
-  transition:
-    border-color var(--transition),
-    background var(--transition);
-
-  &::placeholder {
-    color: var(--text-muted);
-  }
-
+  background: transparent;
+  border: 1px solid #3a3836;
+  border-radius: 0.6rem;
+  color: #f3f3f4;
+  padding: 0.6rem 1rem;
+  font-size: 1.3rem;
+  font-family: inherit;
+  transition: border-color 0.2s;
   &:focus {
     outline: none;
-    border-color: rgba(255, 255, 255, 0.3);
-    background: rgba(255, 255, 255, 0.08);
+    border-color: #f3f3f4;
   }
 }
 
 .SaveBtn {
   background: transparent;
-  border: 1px solid var(--border-mid);
-  border-radius: var(--radius-sm);
-  color: var(--text-secondary);
-  padding: 0.8rem 1.8rem;
-  font-size: 1.4rem;
-  font-family: var(--font-sans);
-  font-weight: 500;
+  border: 1px solid rgba(243, 243, 244, 0.3);
+  border-radius: 0.6rem;
+  color: #f3f3f4;
+  padding: 0.6rem 1.4rem;
+  font-size: 1.3rem;
+  font-family: inherit;
   cursor: pointer;
   transition:
-    border-color var(--transition),
-    color var(--transition),
-    background var(--transition);
-  white-space: nowrap;
-
+    border-color 0.2s,
+    background 0.2s;
   &:hover {
-    border-color: var(--text-primary);
-    color: var(--text-primary);
-    background: var(--bg-hover);
+    border-color: #f3f3f4;
+    background: #2a2826;
   }
 }
 
-// ── Znajomi ────────────────────────────────────────────────────────────────────
-
-// Nagłówek sekcji znajomych (h2 bez zbędnego marginu)
-.SectionFriendsTitle {
-  font-size: 1.8rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0 0 0.4rem;
+.SuccessMsg {
+  font-size: 1.2rem;
+  color: #2ecc71;
+  margin-top: 0.6rem;
 }
+.ErrorMsg {
+  font-size: 1.2rem;
+  color: #e74c3c;
+  margin-top: 0.6rem;
+}
+.LoadingText {
+  padding: 2rem;
+  color: #aaa;
+  font-size: 1.4rem;
+}
+.ErrorText {
+  padding: 2rem;
+  color: #e74c3c;
+  font-size: 1.4rem;
+}
+
+// ── Znajomi i zaproszenia ─────────────────────────────────────────────────────
 
 .SectionFriend {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 1.4rem;
-  padding: 1.2rem 1.6rem;
-  background-color: var(--bg-elevated, #1c1c1c);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border);
+  gap: 1.2rem;
+  padding: 1rem;
+  margin: 0.4rem 0;
+  background-color: #2a2826;
+  border-radius: 1rem;
+  border: 1px solid #3a3836;
 }
 
 .AvatarWrap {
@@ -177,17 +158,16 @@
 .SectionFriendAvatar {
   border-radius: 50%;
   display: block;
-  border: 1px solid var(--border-mid);
 }
 
 .StatusDot {
   position: absolute;
   bottom: 0;
   right: 0;
-  width: 1.2rem;
-  height: 1.2rem;
+  width: 1rem;
+  height: 1rem;
   border-radius: 50%;
-  border: 2px solid var(--bg-surface);
+  border: 2px solid #1e1c1a;
 }
 
 .FriendInfo {
@@ -199,69 +179,74 @@
 }
 
 .SectionFriendName {
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--text-primary);
 }
 
-.FriendStatus {
-  font-size: 1.2rem;
-  color: var(--text-muted);
+.FriendStatusText {
+  font-size: 1.1rem;
+  color: #aaa;
 }
 
 .SectionFriendMessageButton,
-.SectionFriendDeleteButton {
-  padding: 0.6rem 1.4rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-mid);
+.SectionFriendDeleteButton,
+.AcceptBtn,
+.RejectBtn {
+  padding: 0.5rem 1.2rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(243, 243, 244, 0.2);
   background-color: transparent;
-  color: var(--text-secondary);
+  color: #f3f3f4;
   cursor: pointer;
-  font-family: var(--font-sans);
-  font-size: 1.3rem;
-  font-weight: 500;
-  transition: all var(--transition);
+  font-family: inherit;
+  font-size: 1.2rem;
+  transition: all 0.2s ease-in-out;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .SectionFriendMessageButton:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-  border-color: var(--text-primary);
+  background-color: #3a3836;
 }
-
 .SectionFriendDeleteButton:hover {
-  background: rgba(248, 113, 113, 0.1);
-  border-color: #f87171;
-  color: #f87171;
+  background-color: #5a1f1f;
+  border-color: #c0392b;
+}
+.AcceptBtn:hover {
+  background-color: #1a4a2e;
+  border-color: #2ecc71;
+  color: #2ecc71;
+}
+.RejectBtn:hover {
+  background-color: #5a1f1f;
+  border-color: #c0392b;
+  color: #e74c3c;
 }
 
-// ── Ustawienia ─────────────────────────────────────────────────────────────────
+// ── Ustawienia ────────────────────────────────────────────────────────────────
 
 .SettingsGroup {
   width: 100%;
-  padding-bottom: 2rem;
-  margin-bottom: 0.4rem;
-  border-bottom: 1px solid var(--border);
-
+  margin-bottom: 2rem;
+  border-bottom: 1px solid #2e2b29;
+  padding-bottom: 1.5rem;
   &:last-child {
     border-bottom: none;
-    padding-bottom: 0;
     margin-bottom: 0;
+    padding-bottom: 0;
   }
 }
 
 .SettingsGroupTitle {
-  font-size: 1.1rem;
+  font-size: 1.3rem;
   font-weight: 600;
-  color: var(--text-muted);
+  color: #aaa;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  margin-bottom: 1.4rem;
+  margin-bottom: 1.2rem;
 }
 
 .SettingRow {
@@ -269,191 +254,94 @@
   align-items: center;
   justify-content: space-between;
   gap: 2rem;
-  padding: 0.8rem 0;
+  padding: 0.6rem 0;
 }
 
 .SettingLabel {
   font-size: 1.4rem;
-  color: var(--text-primary);
+  color: #f3f3f4;
   flex-shrink: 0;
 }
-
 .SettingControl {
   display: flex;
   align-items: center;
 }
 
-// ── Segmented control ─────────────────────────────────────────────────────────
-
 .SegmentedControl {
   display: flex;
-  background: var(--bg);
-  border: 1px solid var(--border-mid);
-  border-radius: var(--radius-sm);
+  background: #14110f;
+  border: 1px solid #3a3836;
+  border-radius: 0.8rem;
   overflow: hidden;
 }
 
 .SegmentBtn {
   background: transparent;
   border: none;
-  color: var(--text-muted);
-  font-size: 1.3rem;
-  font-family: var(--font-sans);
-  padding: 0.55rem 1.4rem;
+  color: #aaa;
+  font-size: 1.2rem;
+  font-family: inherit;
+  padding: 0.5rem 1.2rem;
   cursor: pointer;
   transition:
-    background var(--transition),
-    color var(--transition);
-
+    background 0.15s ease,
+    color 0.15s ease;
   &:hover {
-    color: var(--text-primary);
+    color: #f3f3f4;
   }
 }
 
 .SegmentBtnActive {
-  background: var(--bg-elevated, #1c1c1c);
-  color: var(--text-primary);
+  background: #3a3836;
+  color: #f3f3f4;
   font-weight: 600;
 }
-
-// ── Toggle ────────────────────────────────────────────────────────────────────
 
 .Toggle {
   position: relative;
   width: 4.4rem;
   height: 2.4rem;
-  background: var(--bg-elevated, #1c1c1c);
-  border: 1px solid var(--border-mid);
-  border-radius: var(--radius-full);
+  background: #3a3836;
+  border: none;
+  border-radius: 1.2rem;
   cursor: pointer;
-  transition:
-    background var(--transition),
-    border-color var(--transition);
+  transition: background 0.2s ease;
   flex-shrink: 0;
 }
 
 .ToggleOn {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: #2ecc71;
 }
 
 .ToggleThumb {
   position: absolute;
-  top: 0.25rem;
-  left: 0.25rem;
+  top: 0.3rem;
+  left: 0.3rem;
   width: 1.8rem;
   height: 1.8rem;
-  background: var(--text-muted);
+  background: #f3f3f4;
   border-radius: 50%;
-  transition:
-    transform var(--transition),
-    background var(--transition);
-
+  transition: transform 0.2s ease;
   .ToggleOn & {
     transform: translateX(2rem);
-    background: var(--accent-text);
   }
 }
-
-// ── Danger button ─────────────────────────────────────────────────────────────
 
 .DangerBtn {
   background: transparent;
-  border: 1px solid rgba(248, 113, 113, 0.3);
-  border-radius: var(--radius-sm);
-  color: #f87171;
-  font-size: 1.4rem;
-  font-family: var(--font-sans);
-  padding: 0.8rem 2rem;
+  border: 1px solid #c0392b;
+  border-radius: 0.8rem;
+  color: #e74c3c;
+  font-size: 1.3rem;
+  font-family: inherit;
+  padding: 0.7rem 2rem;
   cursor: pointer;
   transition:
-    background var(--transition),
-    border-color var(--transition),
-    color var(--transition);
-
+    background 0.2s ease,
+    color 0.2s ease;
+  margin-top: 0.5rem;
   &:hover {
-    background: rgba(248, 113, 113, 0.1);
-    border-color: #f87171;
-    color: #fca5a5;
-  }
-}
-
-// ── Feedback ──────────────────────────────────────────────────────────────────
-
-.SuccessMsg {
-  font-size: 1.3rem;
-  color: #4ade80;
-}
-
-.ErrorMsg {
-  font-size: 1.3rem;
-  color: #f87171;
-}
-
-.LoadingText {
-  padding: 3rem;
-  color: var(--text-muted);
-  font-size: 1.4rem;
-  text-align: center;
-  width: 100%;
-}
-
-.ErrorText {
-  padding: 3rem;
-  color: #f87171;
-  font-size: 1.4rem;
-  text-align: center;
-  width: 100%;
-}
-
-.PendingBadge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 5px;
-  border-radius: 10px;
-  background: #e74c3c;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 600;
-  margin-left: 8px;
-  vertical-align: middle;
-}
-
-// Przycisk akceptacji zaproszenia
-.AcceptBtn {
-  padding: 5px 12px;
-  border-radius: 6px;
-  border: 1px solid #2ecc71;
-  background: transparent;
-  color: #2ecc71;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.15s;
-
-  &:hover {
-    background: rgba(46, 204, 113, 0.12);
-  }
-}
-
-// Przycisk odrzucenia zaproszenia
-.RejectBtn {
-  padding: 5px 12px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: transparent;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 13px;
-  cursor: pointer;
-  transition:
-    background 0.15s,
-    color 0.15s;
-
-  &:hover {
-    background: rgba(231, 76, 60, 0.1);
-    border-color: #e74c3c;
-    color: #e74c3c;
+    background: #5a1f1f;
+    color: #f3f3f4;
   }
 }

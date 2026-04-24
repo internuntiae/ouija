@@ -1,21 +1,21 @@
 import { prisma } from '@/lib'
 import { ReactionType } from '@prisma/client'
 
-export const getReactionsByMessage = async (messageId: number) => {
+export const getReactionsByMessage = async (messageId: string) => {
   return prisma.reaction.findMany({
     where: { messageId },
     include: { user: true }
   })
 }
 
-export const getReaction = async (messageId: number, userId: string) => {
+export const getReaction = async (messageId: string, userId: string) => {
   return prisma.reaction.findUnique({
     where: { messageId_userId: { messageId, userId } }
   })
 }
 
 export const createReaction = async (
-  messageId: number,
+  messageId: string,
   userId: string,
   type: ReactionType
 ) => {
@@ -23,7 +23,7 @@ export const createReaction = async (
 }
 
 export const updateReaction = async (
-  messageId: number,
+  messageId: string,
   userId: string,
   type: ReactionType
 ) => {
@@ -33,7 +33,7 @@ export const updateReaction = async (
   })
 }
 
-export const deleteReaction = async (messageId: number, userId: string) => {
+export const deleteReaction = async (messageId: string, userId: string) => {
   return prisma.reaction.delete({
     where: { messageId_userId: { messageId, userId } }
   })

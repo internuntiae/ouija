@@ -1,63 +1,68 @@
-// ── Global tokens ──────────────────────────────────────────────────────────────
-:root {
-  --bg:          #0a0a0a;
-  --bg-surface:  #121212;
-  --bg-elevated: #1c1c1c;
-  --bg-hover:    rgba(255, 255, 255, 0.05);
-  --bg-active:   rgba(255, 255, 255, 0.10);
-  --border:      rgba(255, 255, 255, 0.05);
-  --border-mid:  rgba(255, 255, 255, 0.10);
+// ── CSS Variables — obsługa motywów ──────────────────────────────────────────
+// Ustawiane przez data-theme="dark|light" na <html>
+// Zmiana w Profile > Ustawienia > Motyw zapisuje się do localStorage
+// i jest aplikowana przez useEffect w Profile/page.tsx
 
-  --text-primary:   #ffffff;
-  --text-secondary: #d4d4d8;
-  --text-muted:     #71717a;
-  --text-faint:     #3f3f46;
-
-  --accent:      #ffffff;
-  --accent-text: #000000;
-
-  --radius-sm:   0.75rem;
-  --radius-md:   1rem;
-  --radius-lg:   1.5rem;
-  --radius-full: 9999px;
-
-  --font-sans: 'Plus Jakarta Sans', 'Kumbh Sans', 'Roboto', sans-serif;
-
-  --transition: 0.2s ease;
+:root,
+[data-theme='dark'] {
+  --bg-base: #14110f;
+  --bg-surface: #1e1c1a;
+  --bg-elevated: #2a2826;
+  --bg-hover: #35323c;
+  --border: #2e2b29;
+  --border-mid: #3a3836;
+  --text: #f3f3f4;
+  --text-muted: #aaaaaa;
+  --text-faint: rgba(243, 243, 244, 0.5);
+  --msg-own: #6b6865;
+  --msg-other: #35323c;
 }
 
-// ── Reset & base ───────────────────────────────────────────────────────────────
+[data-theme='light'] {
+  --bg-base: #f0ede8;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f5f2ee;
+  --bg-hover: #e8e4df;
+  --border: #d4cfc9;
+  --border-mid: #b8b2ab;
+  --text: #1a1714;
+  --text-muted: #6b6560;
+  --text-faint: rgba(26, 23, 20, 0.5);
+  --msg-own: #c8b99a;
+  --msg-other: #e8e2db;
+}
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  font-family: 'Kumbh Sans', 'Roboto', sans-serif;
 }
 
 html {
   font-size: 10px;
-}
 
-body {
-  width: 100%;
-  min-height: 100vh;
-  background-color: var(--bg);
-  color: var(--text-primary);
-  font-family: var(--font-sans);
-  font-size: 1.4rem;
-  font-weight: 400;
-  -webkit-font-smoothing: antialiased;
-
-  .container {
+  body {
     width: 100%;
-    height: 90vh;
-    overflow: auto;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    background-color: var(--bg);
-    color: var(--text-primary);
-    text-align: center;
-    font-weight: 500;
+    min-height: 100vh;
+    background-color: var(--bg-base);
+    color: var(--text);
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease;
+
+    .container {
+      width: 100%;
+      height: 90vh;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background-color: var(--bg-base);
+      color: var(--text);
+      text-align: center;
+      font-weight: 500;
+    }
   }
 }

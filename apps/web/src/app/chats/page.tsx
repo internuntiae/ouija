@@ -48,7 +48,7 @@ const STATUS_COLOR: Record<UserStatus, string> = {
 }
 
 interface Reaction {
-  messageId: number
+  messageId: string
   userId: string
   type: ReactionType
 }
@@ -59,7 +59,7 @@ interface Attachment {
   name?: string
 }
 interface Message {
-  id: number
+  id: string
   chatId: string
   senderId: string
   content: string | null
@@ -219,7 +219,7 @@ function generateMockMessages(chatId: string): Message[] {
   ]
   for (let i = 1; i <= 50; i++) {
     msgs.push({
-      id: i,
+      id: `mock-msg-${i}`,
       chatId,
       senderId: senders[i % senders.length],
       content: contents[i % contents.length],
@@ -227,7 +227,15 @@ function generateMockMessages(chatId: string): Message[] {
       editedAt: null,
       attachments: [],
       reactions:
-        i === 3 ? [{ messageId: i, userId: 'mock-friend-1', type: 'LIKE' }] : []
+        i === 3
+          ? [
+              {
+                messageId: `mock-msg-${i}`,
+                userId: 'mock-friend-1',
+                type: 'LIKE'
+              }
+            ]
+          : []
     })
   }
   return msgs
@@ -239,7 +247,7 @@ const ALL_MOCK_MESSAGES: Record<string, Message[]> = {
   'mock-chat-3': generateMockMessages('mock-chat-3')
 }
 
-const USE_MOCK = false // Ustaw na false aby używać prawdziwego API
+const USE_MOCK = false
 function avatarSrc(url?: string | null) {
   return url ?? '/ouija_white.svg'
 }
@@ -248,7 +256,7 @@ interface MessageBubbleProps {
   msg: Message
   isOwn: boolean
   userId: string
-  onReact: (messageId: number, type: ReactionType) => void
+  onReact: (messageId: string, type: ReactionType) => void
 }
 
 function MessageBubble({ msg, isOwn, userId, onReact }: MessageBubbleProps) {
@@ -264,10 +272,12 @@ function MessageBubble({ msg, isOwn, userId, onReact }: MessageBubbleProps) {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [showPicker])
 
-  const reactionCounts = msg.reactions.reduce<
+  const reactionCounts = (msg.reactions ?? []).reduce<
     Partial<Record<ReactionType, number>>
   >((acc, r) => ({ ...acc, [r.type]: (acc[r.type] ?? 0) + 1 }), {})
-  const myReaction = msg.reactions.find((r) => r.userId === userId)?.type
+  const myReaction = (msg.reactions ?? []).find(
+    (r) => r.userId === userId
+  )?.type
 
   return (
     <div
@@ -277,7 +287,7 @@ function MessageBubble({ msg, isOwn, userId, onReact }: MessageBubbleProps) {
         className={`${styles.MessageBubble} ${isOwn ? styles.MessageBubbleOwn : styles.MessageBubbleOther}`}
       >
         {msg.content && <p className={styles.MessageText}>{msg.content}</p>}
-        {msg.attachments.map((att) => (
+        {(msg.attachments ?? []).map((att) => (
           <div key={att.id} className={styles.MessageAttachment}>
             {att.type === 'IMAGE' ? (
               <img
@@ -381,9 +391,7 @@ function ChatsInner() {
   const [myStatus, setMyStatus] = useState<UserStatus>('ONLINE')
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [sentInvites, setSentInvites] = useState<Set<string>>(new Set())
-  const [allUsers, setAllUsers] = useState<UserSearchResult[]>([])
 
-  // Unified search
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchLoading, setSearchLoading] = useState(false)
@@ -396,28 +404,8 @@ function ChatsInner() {
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const messageContainerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const lastIdRef = useRef<number>(0)
+  const lastIdRef = useRef<string>('')
   const isFirstLoad = useRef(true)
-
-  // Pobierz wszystkich użytkowników (dla wyszukiwania lokalnego)
-  useEffect(() => {
-    if (USE_MOCK) return
-
-    const fetchAllUsers = async () => {
-      try {
-        const res = await fetch(`${API_URL}/api/`)
-        if (res.ok) {
-          const users = await res.json()
-          setAllUsers(users.filter((u: UserSearchResult) => u.id !== userId))
-          console.log('Pobrano użytkowników:', users.length)
-        }
-      } catch (err) {
-        console.error('Błąd pobierania użytkowników:', err)
-      }
-    }
-
-    fetchAllUsers()
-  }, [userId])
 
   // Pobierz czaty
   useEffect(() => {
@@ -452,7 +440,7 @@ function ChatsInner() {
     return () => document.removeEventListener('mousedown', onOutside)
   }, [])
 
-  // Wyszukiwanie lokalne (z pobranych wcześniej użytkowników)
+  // Wyszukiwanie z debouncingiem — używa GET /api/search?q=...
   useEffect(() => {
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
     const q = searchQuery.trim()
@@ -461,45 +449,49 @@ function ChatsInner() {
       return
     }
 
-    searchDebounceRef.current = setTimeout(() => {
+    searchDebounceRef.current = setTimeout(async () => {
       setSearchLoading(true)
-
       if (USE_MOCK) {
-        const results = MOCK_SEARCH_USERS.filter((u) =>
-          u.nickname.toLowerCase().includes(q.toLowerCase())
+        setSearchUsers(
+          MOCK_SEARCH_USERS.filter((u) =>
+            u.nickname.toLowerCase().includes(q.toLowerCase())
+          )
         )
-        setSearchUsers(results)
         setSearchLoading(false)
         return
       }
-
-      // Filtruj lokalnie z allUsers
-      const filtered = allUsers.filter((u) =>
-        u.nickname.toLowerCase().includes(q.toLowerCase())
-      )
-
-      setSearchUsers(filtered)
-      setSearchLoading(false)
-    }, 400)
+      try {
+        // GET /api/?q=... — wyszukiwanie przez istniejący endpoint
+        const res = await fetch(`${API_URL}/api/?q=${encodeURIComponent(q)}`)
+        if (res.ok) {
+          const data: UserSearchResult[] = await res.json()
+          // Odfiltruj siebie
+          setSearchUsers(data.filter((u) => u.id !== userId))
+        }
+      } catch (err) {
+        console.error('Błąd wyszukiwania:', err)
+      } finally {
+        setSearchLoading(false)
+      }
+    }, 400) // 400ms debounce — nie uderza po każdej literze
 
     return () => {
       if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
     }
-  }, [searchQuery, allUsers])
+  }, [searchQuery, userId])
 
   function getChatDisplayName(chat: Chat): string {
     if (chat.name) return chat.name
     return chat.users.find((u) => u.userId !== userId)?.user.nickname ?? 'Czat'
   }
 
-  // Czaty pasujące do query
   const filteredChats = searchQuery.trim()
     ? chats.filter((c) =>
         getChatDisplayName(c).toLowerCase().includes(searchQuery.toLowerCase())
       )
     : chats
 
-  // Osoby które NIE mają jeszcze czatu z nami
+  // Osoby z wyników wyszukiwania które NIE mają jeszcze czatu z nami
   const existingChatUserIds = new Set(
     chats.flatMap((c) => c.users.map((u) => u.userId))
   )
@@ -507,7 +499,7 @@ function ChatsInner() {
     ? searchUsers.filter((u) => !existingChatUserIds.has(u.id))
     : []
 
-  // Wyślij zaproszenie
+  // Wyślij zaproszenie do znajomych
   async function handleSendInvite(targetUserId: string) {
     if (USE_MOCK) {
       setSentInvites((prev) => new Set(prev).add(targetUserId))
@@ -527,6 +519,8 @@ function ChatsInner() {
   }
 
   // Otwórz lub utwórz czat z osobą
+  // WAŻNE: najpierw aktualizujemy chats state, POTEM ustawiamy activeChatId
+  // żeby useEffect dla wiadomości widział nowy czat na liście
   async function handleOpenChatWith(targetUserId: string) {
     const existing = chats.find(
       (c) =>
@@ -554,8 +548,17 @@ function ChatsInner() {
       })
       if (!res.ok) throw new Error('Błąd tworzenia czatu')
       const newChat: Chat = await res.json()
-      setChats((prev) => [newChat, ...prev])
-      setActiveChatId(newChat.id)
+
+      // Krok 1: dodaj czat do state (synchronicznie w tym samym batchu)
+      setChats((prev) => {
+        if (prev.some((c) => c.id === newChat.id)) return prev
+        return [newChat, ...prev]
+      })
+
+      // Krok 2: ustaw activeChatId dopiero w następnym ticku
+      // — React musi najpierw przetworzyć setChats zanim useEffect[activeChatId] odczyta chats
+      setTimeout(() => setActiveChatId(newChat.id), 0)
+
       setSearchQuery('')
       setSearchOpen(false)
     } catch (err) {
@@ -563,18 +566,19 @@ function ChatsInner() {
     }
   }
 
-  // Wiadomości
+  // Pobierz wiadomości przy zmianie aktywnego czatu
   useEffect(() => {
     if (!activeChatId) return
     setMessages([])
     setHasMore(true)
-    lastIdRef.current = 0
+    lastIdRef.current = ''
     isFirstLoad.current = true
     setLoadingMessages(true)
+
     if (USE_MOCK) {
       const all = ALL_MOCK_MESSAGES[activeChatId] ?? []
       const page = all.slice(-PAGE_SIZE)
-      lastIdRef.current = page[0]?.id ?? 0
+      lastIdRef.current = page[0]?.id ?? ''
       setMessages(page)
       setHasMore(all.length > PAGE_SIZE)
       setLoadingMessages(false)
@@ -585,9 +589,11 @@ function ChatsInner() {
     )
       .then((r) => r.json())
       .then((data: Message[]) => {
-        setMessages(data)
+        // Backend zwraca desc (najnowsze pierwsze) — odwracamy żeby wyświetlić chronologicznie
+        const sorted = [...data].reverse()
+        setMessages(sorted)
         setHasMore(data.length === PAGE_SIZE)
-        lastIdRef.current = data[0]?.id ?? 0
+        lastIdRef.current = data[data.length - 1]?.id ?? ''
       })
       .catch(console.error)
       .finally(() => setLoadingMessages(false))
@@ -616,7 +622,7 @@ function ChatsInner() {
         setLoadingMore(false)
         return
       }
-      lastIdRef.current = older[0].id
+      lastIdRef.current = older[0].id ?? ''
       setHasMore(start > 0)
       setMessages((prev) => [...older, ...prev])
       requestAnimationFrame(() => {
@@ -635,9 +641,11 @@ function ChatsInner() {
         setHasMore(false)
         return
       }
-      lastIdRef.current = older[0].id
+      // Backend zwraca desc — odwracamy przed doklejeniem na górze
+      const sorted = [...older].reverse()
+      lastIdRef.current = older[older.length - 1]?.id ?? ''
       setHasMore(older.length === PAGE_SIZE)
-      setMessages((prev) => [...older, ...prev])
+      setMessages((prev) => [...sorted, ...prev])
       requestAnimationFrame(() => {
         if (container)
           container.scrollTop = container.scrollHeight - prevScrollHeight
@@ -662,12 +670,13 @@ function ChatsInner() {
     return () => observer.disconnect()
   }, [loadMoreMessages])
 
-  // Wysyłanie
+  // Wysyłanie wiadomości
   async function handleSendMessage(e: FormEvent) {
     e.preventDefault()
     if (!activeChatId || (!messageText.trim() && pendingFiles.length === 0))
       return
     setSending(true)
+
     if (USE_MOCK) {
       const mockAttachments: Attachment[] = pendingFiles.map((f, i) => ({
         id: `att-${Date.now()}-${i}`,
@@ -682,7 +691,7 @@ function ChatsInner() {
       setMessages((prev) => [
         ...prev,
         {
-          id: Date.now(),
+          id: `mock-${Date.now()}`,
           chatId: activeChatId,
           senderId: userId,
           content: messageText.trim() || null,
@@ -701,6 +710,7 @@ function ChatsInner() {
       )
       return
     }
+
     try {
       let attachments: { url: string; type: AttachmentType }[] = []
       if (pendingFiles.length > 0) {
@@ -751,7 +761,7 @@ function ChatsInner() {
   }
 
   // Reakcje
-  async function handleReact(messageId: number, type: ReactionType) {
+  async function handleReact(messageId: string, type: ReactionType) {
     if (USE_MOCK) {
       setMessages((prev) =>
         prev.map((msg) => {
@@ -850,9 +860,24 @@ function ChatsInner() {
     }
   }
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setPendingFiles((prev) => [...prev, ...Array.from(e.target.files ?? [])])
-    e.target.value = ''
+  // Natywny event listener zamiast onChange — pewniejszy dla file inputów
+  useEffect(() => {
+    const input = fileInputRef.current
+    if (!input) return
+    function onFileSelect() {
+      const files = Array.from(input!.files ?? [])
+      if (files.length > 0) {
+        setPendingFiles((prev) => [...prev, ...files])
+        input!.value = ''
+      }
+    }
+    input.addEventListener('change', onFileSelect)
+    return () => input.removeEventListener('change', onFileSelect)
+  }, [])
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  function handleFileChange(_e: React.ChangeEvent<HTMLInputElement>) {
+    // kept for type compatibility, logic handled by useEffect above
   }
 
   function getOtherUser(chat: Chat) {
@@ -895,7 +920,7 @@ function ChatsInner() {
           </div>
         )}
 
-        {/* Jeden search bar */}
+        {/* Search */}
         <div className={styles.SearchSection}>
           <div className={styles.SearchWrap}>
             <input
@@ -917,7 +942,6 @@ function ChatsInner() {
                   setSearchQuery('')
                   setSearchOpen(false)
                 }}
-                title="Wyczyść"
               >
                 ✕
               </button>
@@ -1025,7 +1049,7 @@ function ChatsInner() {
           )}
         </div>
 
-        {/* Lista czatów (widoczna tylko gdy brak query) */}
+        {/* Lista czatów */}
         {loadingChats && <p className={styles.LoadingText}>Ładowanie...</p>}
         {!searchQuery.trim() &&
           filteredChats.map((chat) => {
@@ -1073,7 +1097,18 @@ function ChatsInner() {
           })}
       </div>
 
-      {/* Chat area */}
+      {/* Input zawsze w DOM niezależnie od activeChat — label htmlFor musi znaleźć input */}
+      <input
+        type="file"
+        id="file-upload-input"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        multiple
+        accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,audio/mpeg,audio/ogg,application/pdf"
+        style={{ display: 'none' }}
+      />
+
+      {/* Obszar czatu */}
       <div className={styles.Chat}>
         {activeChat ? (
           <>
@@ -1164,22 +1199,13 @@ function ChatsInner() {
 
             <div className={styles.ChatMessageToolbar}>
               <form onSubmit={handleSendMessage}>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  multiple
-                  accept="image/*,video/*,.pdf,.doc,.docx,.zip,.txt"
-                  style={{ display: 'none' }}
-                />
-                <button
-                  type="button"
+                <label
+                  htmlFor="file-upload-input"
                   className={styles.AttachBtn}
-                  onClick={() => fileInputRef.current?.click()}
                   title="Dodaj plik"
                 >
                   📎
-                </button>
+                </label>
                 <input
                   type="text"
                   placeholder="wpisz wiadomość"
