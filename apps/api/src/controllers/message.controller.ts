@@ -1,5 +1,7 @@
 import { Request, Response } from 'express'
 import * as msgService from '@services/message.service'
+import { sendToUsers } from '@/lib/ws'
+import { getChatMemberIds } from '@/lib/chat-members'
 
 export const getAllMessages = async (req: Request, res: Response) => {
   try {
@@ -25,6 +27,13 @@ export const createMessage = async (req: Request, res: Response) => {
       reactions
     )
     res.status(201).json(message)
+
+    // Notify all chat members
+    const memberIds = await getChatMemberIds(chatId)
+    sendToUsers(memberIds, {
+      type: 'message:created',
+      payload: { chatId, message }
+    })
   } catch (error) {
     res.status(500).json({ error: (error as Error).message })
   }
@@ -42,6 +51,12 @@ export const updateMessage = async (req: Request, res: Response) => {
       reactions
     )
     res.status(200).json(message)
+
+    const memberIds = await getChatMemberIds(chatId)
+    sendToUsers(memberIds, {
+      type: 'message:updated',
+      payload: { chatId, messageId, message }
+    })
   } catch (error) {
     res.status(500).json({ error: (error as Error).message })
   }
@@ -50,8 +65,15 @@ export const updateMessage = async (req: Request, res: Response) => {
 export const deleteMessage = async (req: Request, res: Response) => {
   try {
     const { chatId, messageId } = req.params
+    // Fetch members before deletion (record is gone after)
+    const memberIds = await getChatMemberIds(chatId)
     await msgService.deleteMessage(messageId, chatId)
     res.status(204).send()
+
+    sendToUsers(memberIds, {
+      type: 'message:deleted',
+      payload: { chatId, messageId }
+    })
   } catch (error) {
     res.status(500).json({ error: (error as Error).message })
   }

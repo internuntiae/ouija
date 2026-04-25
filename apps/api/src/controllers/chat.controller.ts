@@ -1,6 +1,8 @@
 import { Request, Response } from 'express'
 import * as chatService from '@services/chat.service'
 import { ChatType, ChatRole } from '@prisma/client'
+import { sendToUser, sendToUsers } from '@/lib/ws'
+import { getChatMemberIds } from '@/lib/chat-members'
 
 export const getChatById = async (req: Request, res: Response) => {
   try {
@@ -25,6 +27,12 @@ export const createChat = async (req: Request, res: Response) => {
     const { name, type, userIds } = req.body
     const chat = await chatService.createChat(name, type as ChatType, userIds)
     res.status(201).json(chat)
+
+    // Notify every member that a new chat was created (so their chat list updates)
+    sendToUsers(userIds as string[], {
+      type: 'chat:created',
+      payload: { chat }
+    })
   } catch (error) {
     res.status(500).json({ error: (error as Error).message })
   }
@@ -34,8 +42,15 @@ export const updateChat = async (req: Request, res: Response) => {
   try {
     const { chatId } = req.params
     const data: Partial<{ name: string; type: ChatType }> = req.body
+    // Fetch members before update so we have them even if data changes
+    const memberIds = await getChatMemberIds(chatId)
     const chat = await chatService.updateChat(chatId, data)
     res.status(200).json(chat)
+
+    sendToUsers(memberIds, {
+      type: 'chat:updated',
+      payload: { chatId, chat }
+    })
   } catch (error) {
     res.status(500).json({ error: (error as Error).message })
   }
@@ -43,8 +58,16 @@ export const updateChat = async (req: Request, res: Response) => {
 
 export const deleteChat = async (req: Request, res: Response) => {
   try {
-    await chatService.deleteChat(req.params.chatId)
+    const { chatId } = req.params
+    // Grab members before deletion — record won't exist after
+    const memberIds = await getChatMemberIds(chatId)
+    await chatService.deleteChat(chatId)
     res.status(204).send()
+
+    sendToUsers(memberIds, {
+      type: 'chat:deleted',
+      payload: { chatId }
+    })
   } catch (error) {
     res.status(500).json({ error: (error as Error).message })
   }
@@ -62,6 +85,13 @@ export const addUserToChat = async (req: Request, res: Response) => {
       role as ChatRole | undefined
     )
     res.status(201).json(chatUser)
+
+    // Tell existing members someone joined; tell the new user they're now in this chat
+    const memberIds = await getChatMemberIds(chatId)
+    sendToUsers(memberIds, {
+      type: 'chat:updated',
+      payload: { chatId, event: 'member_added', userId }
+    })
   } catch (error) {
     res.status(500).json({ error: (error as Error).message })
   }
@@ -70,8 +100,16 @@ export const addUserToChat = async (req: Request, res: Response) => {
 export const removeUserFromChat = async (req: Request, res: Response) => {
   try {
     const { chatId, userId } = req.params
+    // Snapshot members while the user is still in the chat
+    const memberIds = await getChatMemberIds(chatId)
     await chatService.removeUserFromChat(chatId, userId)
     res.status(204).send()
+
+    // Notify everyone (including the removed user, so they can navigate away)
+    sendToUsers(memberIds, {
+      type: 'chat:updated',
+      payload: { chatId, event: 'member_removed', userId }
+    })
   } catch (error) {
     res.status(500).json({ error: (error as Error).message })
   }
@@ -87,6 +125,12 @@ export const updateChatUserRole = async (req: Request, res: Response) => {
       role as ChatRole
     )
     res.status(200).json(chatUser)
+
+    // Only the affected user needs to know their role changed
+    sendToUser(userId, {
+      type: 'chat:updated',
+      payload: { chatId, event: 'role_updated', role }
+    })
   } catch (error) {
     res.status(500).json({ error: (error as Error).message })
   }
