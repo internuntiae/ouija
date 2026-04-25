@@ -1,6 +1,7 @@
 'use client'
 
 import styles from './Chats.module.scss'
+import ProfilePopup from './ProfilePopup'
 import {
   useState,
   useEffect,
@@ -392,6 +393,10 @@ function ChatsInner() {
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [sentInvites, setSentInvites] = useState<Set<string>>(new Set())
 
+  const [profilePopupUserId, setProfilePopupUserId] = useState<string | null>(
+    null
+  )
+
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchLoading, setSearchLoading] = useState(false)
@@ -504,6 +509,42 @@ function ChatsInner() {
     ? searchUsers.filter((u) => !existingChatUserIds.has(u.id))
     : []
 
+  // Otwórz czat z użytkownikiem (z ProfilePopup)
+  async function handleMessageFromProfile(targetUserId: string) {
+    try {
+      const chatsRes = await fetch(`${API_URL}/api/users/${userId}/chats`)
+      if (chatsRes.ok) {
+        const chatsData = await chatsRes.json()
+        const existing = chatsData.find(
+          (c: { type: string; users: { userId: string }[] }) =>
+            c.type === 'PRIVATE' &&
+            c.users.some((u: { userId: string }) => u.userId === targetUserId)
+        )
+        if (existing) {
+          setActiveChatId(existing.id)
+          return
+        }
+      }
+      const res = await fetch(`${API_URL}/api/chats`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'PRIVATE',
+          userIds: [userId, targetUserId]
+        })
+      })
+      if (!res.ok) {
+        alert('Błąd tworzenia czatu')
+        return
+      }
+      const chat = await res.json()
+      setChats((prev) => [...prev, chat])
+      setActiveChatId(chat.id)
+    } catch {
+      alert('Błąd tworzenia czatu')
+    }
+  }
+
   // Wyślij zaproszenie do znajomych
   async function handleSendInvite(targetUserId: string) {
     if (USE_MOCK) {
@@ -516,10 +557,13 @@ function ChatsInner() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ friendId: targetUserId })
       })
-      if (!res.ok) throw new Error('Błąd wysyłania zaproszenia')
+      if (!res.ok) {
+        alert('Błąd wysyłania zaproszenia')
+        return
+      }
       setSentInvites((prev) => new Set(prev).add(targetUserId))
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Błąd wysyłania zaproszenia')
+    } catch {
+      alert('Błąd wysyłania zaproszenia')
     }
   }
 
@@ -676,7 +720,11 @@ function ChatsInner() {
           method: 'POST',
           body: form
         })
-        if (!uploadRes.ok) throw new Error('Błąd uploadu pliku')
+        if (!uploadRes.ok) {
+          alert('Błąd uploadu pliku')
+          setSending(false)
+          return
+        }
         const mediaFiles: { url: string; mimeType: string }[] =
           await uploadRes.json()
         attachments = mediaFiles.map((mf) => ({
@@ -699,7 +747,11 @@ function ChatsInner() {
           attachments
         })
       })
-      if (!res.ok) throw new Error('Błąd wysyłania')
+      if (!res.ok) {
+        alert('Błąd wysyłania')
+        setSending(false)
+        return
+      }
       const data: Message = await res.json()
       setMessages((prev) => [...prev, data])
       setMessageText('')
@@ -928,9 +980,12 @@ function ChatsInner() {
                           className={styles.AvatarWrap}
                           style={{ cursor: 'pointer' }}
                           onClick={(e) => {
-                            e.stopPropagation() // żeby nie przełączyć czatu
+                            e.stopPropagation()
                             const other = getOtherUser(chat)
-                            if (other) router.push(`/profile/${other.id}`)
+                            if (other) {
+                              setProfilePopupUserId(other.id)
+                              setSearchOpen(false)
+                            }
                           }}
                         >
                           <img
@@ -964,7 +1019,10 @@ function ChatsInner() {
                       <div
                         className={styles.AvatarWrap}
                         style={{ cursor: 'pointer' }}
-                        onClick={() => router.push(`/profile/${person.id}`)}
+                        onClick={() => {
+                          setProfilePopupUserId(person.id)
+                          setSearchOpen(false)
+                        }}
                       >
                         <img
                           src={avatarSrc(person.avatarUrl)}
@@ -978,7 +1036,14 @@ function ChatsInner() {
                           style={{ background: STATUS_COLOR[person.status] }}
                         />
                       </div>
-                      <span className={styles.SearchDropdownItemName}>
+                      <span
+                        className={styles.SearchDropdownItemName}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          setProfilePopupUserId(person.id)
+                          setSearchOpen(false)
+                        }}
+                      >
                         {person.nickname}
                       </span>
                       <div className={styles.SearchDropdownActions}>
@@ -1201,6 +1266,19 @@ function ChatsInner() {
           <p className={styles.NoChatSelected}>Wybierz czat</p>
         )}
       </div>
+
+      {/* Profile Popup */}
+      {profilePopupUserId && (
+        <ProfilePopup
+          userId={profilePopupUserId}
+          viewerId={userId}
+          onClose={() => setProfilePopupUserId(null)}
+          onMessageUser={(targetId) => {
+            handleMessageFromProfile(targetId)
+            setProfilePopupUserId(null)
+          }}
+        />
+      )}
     </div>
   )
 }
