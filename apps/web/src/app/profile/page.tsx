@@ -69,7 +69,7 @@ const MOCK_FRIENDS = [
   }
 ]
 
-// Zaproszenia oczekujące — mock
+// Zaproszenia przychodzące — ktoś nas zaprosił (friendId === my userId)
 const MOCK_PENDING = [
   {
     userId: 'mock-stranger-1',
@@ -95,6 +95,21 @@ const MOCK_PENDING = [
   }
 ]
 
+// Zaproszenia wysłane — my zaprosiliśmy kogoś (userId === my userId)
+const MOCK_SENT_INVITES = [
+  {
+    userId: 'mock-user-1',
+    friendId: 'mock-stranger-3',
+    status: 'PENDING',
+    user: { id: 'mock-user-1', nickname: 'Jan Kowalski', status: 'ONLINE' },
+    friend: {
+      id: 'mock-stranger-3',
+      nickname: 'Tomasz Lewandowski',
+      status: 'AWAY'
+    }
+  }
+]
+
 const USE_MOCK = false
 
 const STATUS_COLOR: Record<string, string> = {
@@ -102,6 +117,13 @@ const STATUS_COLOR: Record<string, string> = {
   AWAY: '#f39c12',
   BUSY: '#e74c3c',
   OFFLINE: '#7f8c8d'
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  ONLINE: 'Aktywny',
+  AWAY: 'Zaraz wracam',
+  BUSY: 'Nie przeszkadzać',
+  OFFLINE: 'Offline'
 }
 
 function SettingRow({
@@ -138,6 +160,9 @@ function Toggle({
   )
 }
 
+type FriendEntry = (typeof MOCK_FRIENDS)[0]
+type InviteEntry = (typeof MOCK_PENDING)[0]
+
 export default function Profile() {
   const router = useRouter()
   const userId =
@@ -146,8 +171,9 @@ export default function Profile() {
       : MOCK_USER.id
 
   const [user, setUser] = useState<typeof MOCK_USER | null>(null)
-  const [friends, setFriends] = useState<typeof MOCK_FRIENDS>([])
-  const [pendingInvites, setPendingInvites] = useState<typeof MOCK_PENDING>([])
+  const [friends, setFriends] = useState<FriendEntry[]>([])
+  const [pendingInvites, setPendingInvites] = useState<InviteEntry[]>([])
+  const [sentInvites, setSentInvites] = useState<InviteEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -157,6 +183,41 @@ export default function Profile() {
 
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS)
   const [settingsSaved, setSettingsSaved] = useState(false)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    setAvatarUploading(true)
+    try {
+      if (USE_MOCK) {
+        const url = URL.createObjectURL(file)
+        setUser((prev) => (prev ? { ...prev, avatarUrl: url } : prev))
+        return
+      }
+      const form = new FormData()
+      form.append('ownerId', userId)
+      form.append('files', file)
+      const uploadRes = await fetch(`${API_URL}/api/media/upload`, {
+        method: 'POST',
+        body: form
+      })
+      if (!uploadRes.ok) throw new Error('Błąd uploadu')
+      const [media] = await uploadRes.json()
+
+      const updateRes = await fetch(`${API_URL}/api/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatarUrl: media.url })
+      })
+      if (!updateRes.ok) throw new Error('Błąd zapisu avatara')
+      setUser((prev) => (prev ? { ...prev, avatarUrl: media.url } : prev))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Błąd zmiany avatara')
+    } finally {
+      setAvatarUploading(false)
+    }
+  }
 
   useEffect(() => {
     try {
@@ -170,6 +231,7 @@ export default function Profile() {
       setUser(MOCK_USER)
       setFriends(MOCK_FRIENDS)
       setPendingInvites(MOCK_PENDING)
+      setSentInvites(MOCK_SENT_INVITES)
       setLoading(false)
       return
     }
@@ -179,7 +241,6 @@ export default function Profile() {
         const [userRes, friendsRes, pendingRes] = await Promise.all([
           fetch(`${API_URL}/api/?id=${userId}`),
           fetch(`${API_URL}/api/users/${userId}/friends?status=ACCEPTED`),
-          // Zaproszenia oczekujące — ktoś wysłał do nas
           fetch(`${API_URL}/api/users/${userId}/friends?status=PENDING`)
         ])
         if (!userRes.ok) throw new Error('Błąd pobierania profilu')
@@ -192,11 +253,12 @@ export default function Profile() {
 
         setUser(userData)
         setFriends(friendsData)
-        // Tylko zaproszenia gdzie MY jesteśmy friendId (ktoś nas zaprosił, nie my kogoś)
+        // Rozdziel zaproszenia przychodzące (ktoś nas zaprosił) od wysłanych (my kogoś)
         setPendingInvites(
-          pendingData.filter(
-            (f: (typeof MOCK_PENDING)[0]) => f.friendId === userId
-          )
+          pendingData.filter((f: InviteEntry) => f.friendId === userId)
+        )
+        setSentInvites(
+          pendingData.filter((f: InviteEntry) => f.userId === userId)
         )
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Błąd wczytywania')
@@ -207,12 +269,10 @@ export default function Profile() {
     fetchData()
   }, [userId])
 
-  // Aplikuj motyw i czcionkę do DOM — tu jest faktyczne działanie ustawień
+  // Aplikuj motyw i czcionkę do DOM
   useEffect(() => {
     const root = document.documentElement
-    // Motyw — data-theme na <html>, obsługiwany przez CSS variables w main-layout.scss
     root.setAttribute('data-theme', settings.theme)
-    // Rozmiar czcionki — zmiana font-size na <html> skaluje WSZYSTKIE rem w aplikacji
     const sizes: Record<FontSize, string> = {
       small: '8px',
       medium: '10px',
@@ -272,7 +332,9 @@ export default function Profile() {
     try {
       const res = await fetch(
         `${API_URL}/api/users/${userId}/friends/${friendId}`,
-        { method: 'DELETE' }
+        {
+          method: 'DELETE'
+        }
       )
       if (!res.ok) throw new Error('Błąd usuwania')
       setFriends((prev) =>
@@ -302,7 +364,6 @@ export default function Profile() {
     }
   }
 
-  // Przyjmij zaproszenie — PUT status na ACCEPTED
   async function handleAcceptInvite(inviterId: string) {
     if (USE_MOCK) {
       const invite = pendingInvites.find((i) => i.userId === inviterId)
@@ -312,6 +373,7 @@ export default function Profile() {
       return
     }
     try {
+      // 1. Akceptuj zaproszenie
       const res = await fetch(
         `${API_URL}/api/users/${inviterId}/friends/${userId}`,
         {
@@ -321,15 +383,37 @@ export default function Profile() {
         }
       )
       if (!res.ok) throw new Error('Błąd akceptacji')
-      const updated = await res.json()
-      setFriends((prev) => [...prev, updated])
+
+      // 2. Pobierz dane zaproszonego użytkownika
+      const inviterRes = await fetch(`${API_URL}/api/?id=${inviterId}`)
+      if (!inviterRes.ok) throw new Error('Błąd pobierania danych użytkownika')
+      const inviterData = await inviterRes.json()
+
+      // 3. Złóż pełny obiekt znajomości ręcznie
+      const newFriend: FriendEntry = {
+        userId: inviterId,
+        friendId: userId,
+        status: 'ACCEPTED',
+        user: {
+          id: inviterData.id,
+          nickname: inviterData.nickname,
+          status: inviterData.status
+        },
+        friend: {
+          id: user!.id,
+          nickname: user!.nickname,
+          status: user!.status
+        }
+      }
+
+      setFriends((prev) => [...prev, newFriend])
       setPendingInvites((prev) => prev.filter((i) => i.userId !== inviterId))
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Błąd')
     }
   }
 
-  // Odrzuć zaproszenie — DELETE
+  // Odrzuć zaproszenie przychodzące — DELETE
   async function handleRejectInvite(inviterId: string) {
     if (USE_MOCK) {
       setPendingInvites((prev) => prev.filter((i) => i.userId !== inviterId))
@@ -338,7 +422,9 @@ export default function Profile() {
     try {
       const res = await fetch(
         `${API_URL}/api/users/${inviterId}/friends/${userId}`,
-        { method: 'DELETE' }
+        {
+          method: 'DELETE'
+        }
       )
       if (!res.ok) throw new Error('Błąd odrzucenia')
       setPendingInvites((prev) => prev.filter((i) => i.userId !== inviterId))
@@ -347,7 +433,27 @@ export default function Profile() {
     }
   }
 
-  function getFriendUser(f: (typeof MOCK_FRIENDS)[0]) {
+  // Cofnij wysłane zaproszenie — DELETE
+  async function handleCancelInvite(friendId: string) {
+    if (USE_MOCK) {
+      setSentInvites((prev) => prev.filter((i) => i.friendId !== friendId))
+      return
+    }
+    try {
+      const res = await fetch(
+        `${API_URL}/api/users/${userId}/friends/${friendId}`,
+        {
+          method: 'DELETE'
+        }
+      )
+      if (!res.ok) throw new Error('Błąd cofania zaproszenia')
+      setSentInvites((prev) => prev.filter((i) => i.friendId !== friendId))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Błąd')
+    }
+  }
+
+  function getFriendUser(f: FriendEntry) {
     return f.userId === userId ? f.friend : f.user
   }
 
@@ -359,13 +465,25 @@ export default function Profile() {
     <div className={styles.PageWrapper}>
       {/* ── Profil ── */}
       <div className={`${styles.Section} ${styles.First}`}>
-        <Image
-          className={styles.SectionProfilePicture}
-          src={user.avatarUrl ?? '/ouija_white.png'}
-          alt="avatar"
-          width={120}
-          height={120}
-        />
+        <div className={styles.AvatarEditWrap}>
+          <img
+            className={styles.SectionProfilePicture}
+            src={user.avatarUrl ?? '/ouija_white.png'}
+            alt="avatar"
+            width={120}
+            height={120}
+          />
+          <label className={styles.AvatarEditBtn} title="Zmień zdjęcie">
+            {avatarUploading ? '...' : '📷'}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              style={{ display: 'none' }}
+              onChange={handleAvatarChange}
+              disabled={avatarUploading}
+            />
+          </label>
+        </div>
         <h2 className={styles.SectionHeading}>{user.nickname}</h2>
         <p className={styles.SectionText}>Email: {user.email}</p>
         <p className={styles.SectionText}>
@@ -401,7 +519,7 @@ export default function Profile() {
         )}
       </div>
 
-      {/* ── Zaproszenia oczekujące ── */}
+      {/* ── Zaproszenia przychodzące ── */}
       {pendingInvites.length > 0 && (
         <div className={styles.Section}>
           <h2 className={styles.SectionHeading}>
@@ -451,6 +569,51 @@ export default function Profile() {
         </div>
       )}
 
+      {/* ── Wysłane zaproszenia ── */}
+      {sentInvites.length > 0 && (
+        <div className={styles.Section}>
+          <h2 className={styles.SectionHeading}>
+            Wysłane zaproszenia
+            <span className={styles.Badge}>{sentInvites.length}</span>
+          </h2>
+          {sentInvites.map((invite) => (
+            <div
+              key={`${invite.userId}-${invite.friendId}`}
+              className={styles.SectionFriend}
+            >
+              <div className={styles.AvatarWrap}>
+                <Image
+                  className={styles.SectionFriendAvatar}
+                  src="/ouija_white.png"
+                  alt="avatar"
+                  width={48}
+                  height={48}
+                />
+                <span
+                  className={styles.StatusDot}
+                  style={{ background: STATUS_COLOR[invite.friend.status] }}
+                />
+              </div>
+              <div className={styles.FriendInfo}>
+                <h3 className={styles.SectionFriendName}>
+                  {invite.friend.nickname}
+                </h3>
+                <span className={styles.FriendStatusText}>
+                  {STATUS_LABEL[invite.friend.status] ?? invite.friend.status} ·
+                  oczekuje na odpowiedź
+                </span>
+              </div>
+              <button
+                className={styles.RejectBtn}
+                onClick={() => handleCancelInvite(invite.friendId)}
+              >
+                ✕ Cofnij
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* ── Znajomi ── */}
       <div className={styles.Section}>
         <h2 className={styles.SectionHeading}>Znajomi</h2>
@@ -483,7 +646,7 @@ export default function Profile() {
                   className={styles.FriendStatusText}
                   style={{ color: STATUS_COLOR[friend.status] }}
                 >
-                  {friend.status}
+                  {STATUS_LABEL[friend.status] ?? friend.status}
                 </span>
               </div>
               <button

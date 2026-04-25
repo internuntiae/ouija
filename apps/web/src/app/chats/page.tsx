@@ -1,7 +1,6 @@
 'use client'
 
 import styles from './Chats.module.scss'
-import Image from 'next/image'
 import {
   useState,
   useEffect,
@@ -518,54 +517,6 @@ function ChatsInner() {
     }
   }
 
-  // Otwórz lub utwórz czat z osobą
-  // WAŻNE: najpierw aktualizujemy chats state, POTEM ustawiamy activeChatId
-  // żeby useEffect dla wiadomości widział nowy czat na liście
-  async function handleOpenChatWith(targetUserId: string) {
-    const existing = chats.find(
-      (c) =>
-        c.type === 'PRIVATE' && c.users.some((u) => u.userId === targetUserId)
-    )
-    if (existing) {
-      setActiveChatId(existing.id)
-      setSearchQuery('')
-      setSearchOpen(false)
-      return
-    }
-    if (USE_MOCK) {
-      setSearchQuery('')
-      setSearchOpen(false)
-      return
-    }
-    try {
-      const res = await fetch(`${API_URL}/api/chats`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'PRIVATE',
-          userIds: [userId, targetUserId]
-        })
-      })
-      if (!res.ok) throw new Error('Błąd tworzenia czatu')
-      const newChat: Chat = await res.json()
-
-      // Krok 1: dodaj czat do state (synchronicznie w tym samym batchu)
-      setChats((prev) => {
-        if (prev.some((c) => c.id === newChat.id)) return prev
-        return [newChat, ...prev]
-      })
-
-      // Krok 2: ustaw activeChatId dopiero w następnym ticku
-      // — React musi najpierw przetworzyć setChats zanim useEffect[activeChatId] odczyta chats
-      setTimeout(() => setActiveChatId(newChat.id), 0)
-
-      setSearchQuery('')
-      setSearchOpen(false)
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Błąd tworzenia czatu')
-    }
-  }
-
   // Pobierz wiadomości przy zmianie aktywnego czatu
   useEffect(() => {
     if (!activeChatId) return
@@ -970,7 +921,7 @@ function ChatsInner() {
                         }}
                       >
                         <div className={styles.AvatarWrap}>
-                          <Image
+                          <img
                             src={avatarSrc(other?.avatarUrl)}
                             alt="avatar"
                             height={32}
@@ -999,7 +950,7 @@ function ChatsInner() {
                   {newPeopleResults.map((person) => (
                     <div key={person.id} className={styles.SearchDropdownItem}>
                       <div className={styles.AvatarWrap}>
-                        <Image
+                        <img
                           src={avatarSrc(person.avatarUrl)}
                           alt="avatar"
                           height={32}
@@ -1015,13 +966,6 @@ function ChatsInner() {
                         {person.nickname}
                       </span>
                       <div className={styles.SearchDropdownActions}>
-                        <button
-                          className={styles.SearchActionBtn}
-                          onClick={() => handleOpenChatWith(person.id)}
-                          title="Napisz wiadomość"
-                        >
-                          💬
-                        </button>
                         <button
                           className={`${styles.SearchActionBtn} ${sentInvites.has(person.id) ? styles.SearchActionBtnSent : ''}`}
                           onClick={() => handleSendInvite(person.id)}
@@ -1064,7 +1008,7 @@ function ChatsInner() {
                 onClick={() => setActiveChatId(chat.id)}
               >
                 <div className={styles.AvatarWrap}>
-                  <Image
+                  <img
                     src={avatarSrc(other?.avatarUrl)}
                     alt="avatar"
                     height={30}
@@ -1115,7 +1059,7 @@ function ChatsInner() {
             <div className={styles.ChatContactInfo}>
               <div className={styles.ChatContactInfoLeft}>
                 <div className={styles.AvatarWrap}>
-                  <Image
+                  <img
                     src={avatarSrc(otherUser?.avatarUrl)}
                     alt="avatar"
                     height={36}
