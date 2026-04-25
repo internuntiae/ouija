@@ -17,7 +17,7 @@ const app: Express = express()
 
 app.use(
   cors({
-    origin: 'http://localhost:3000',
+    origin: true, // reflect the request origin — allows web, mobile, and any client
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
   })
