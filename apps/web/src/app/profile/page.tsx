@@ -1,7 +1,6 @@
 'use client'
 
 import styles from './Profile.module.scss'
-import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
@@ -42,18 +41,34 @@ const MOCK_FRIENDS = [
     userId: 'mock-user-1',
     friendId: 'mock-friend-1',
     status: 'ACCEPTED',
-    user: { id: 'mock-user-1', nickname: 'Jan Kowalski', status: 'ONLINE' },
-    friend: { id: 'mock-friend-1', nickname: 'Anna Nowak', status: 'AWAY' }
+    user: {
+      id: 'mock-user-1',
+      nickname: 'Jan Kowalski',
+      status: 'ONLINE',
+      avatarUrl: null as string | null
+    },
+    friend: {
+      id: 'mock-friend-1',
+      nickname: 'Anna Nowak',
+      status: 'AWAY',
+      avatarUrl: null as string | null
+    }
   },
   {
     userId: 'mock-user-1',
     friendId: 'mock-friend-2',
     status: 'ACCEPTED',
-    user: { id: 'mock-user-1', nickname: 'Jan Kowalski', status: 'ONLINE' },
+    user: {
+      id: 'mock-user-1',
+      nickname: 'Jan Kowalski',
+      status: 'ONLINE',
+      avatarUrl: null as string | null
+    },
     friend: {
       id: 'mock-friend-2',
       nickname: 'Piotr Wiśniewski',
-      status: 'BUSY'
+      status: 'BUSY',
+      avatarUrl: null as string | null
     }
   },
   {
@@ -63,13 +78,18 @@ const MOCK_FRIENDS = [
     user: {
       id: 'mock-friend-3',
       nickname: 'Kasia Kowalczyk',
-      status: 'OFFLINE'
+      status: 'OFFLINE',
+      avatarUrl: null as string | null
     },
-    friend: { id: 'mock-user-1', nickname: 'Jan Kowalski', status: 'ONLINE' }
+    friend: {
+      id: 'mock-user-1',
+      nickname: 'Jan Kowalski',
+      status: 'ONLINE',
+      avatarUrl: null as string | null
+    }
   }
 ]
 
-// Zaproszenia przychodzące — ktoś nas zaprosił (friendId === my userId)
 const MOCK_PENDING = [
   {
     userId: 'mock-stranger-1',
@@ -78,9 +98,15 @@ const MOCK_PENDING = [
     user: {
       id: 'mock-stranger-1',
       nickname: 'Marek Zielony',
-      status: 'ONLINE'
+      status: 'ONLINE',
+      avatarUrl: null as string | null
     },
-    friend: { id: 'mock-user-1', nickname: 'Jan Kowalski', status: 'ONLINE' }
+    friend: {
+      id: 'mock-user-1',
+      nickname: 'Jan Kowalski',
+      status: 'ONLINE',
+      avatarUrl: null as string | null
+    }
   },
   {
     userId: 'mock-stranger-2',
@@ -89,23 +115,34 @@ const MOCK_PENDING = [
     user: {
       id: 'mock-stranger-2',
       nickname: 'Zofia Kamińska',
-      status: 'OFFLINE'
+      status: 'OFFLINE',
+      avatarUrl: null as string | null
     },
-    friend: { id: 'mock-user-1', nickname: 'Jan Kowalski', status: 'ONLINE' }
+    friend: {
+      id: 'mock-user-1',
+      nickname: 'Jan Kowalski',
+      status: 'ONLINE',
+      avatarUrl: null as string | null
+    }
   }
 ]
 
-// Zaproszenia wysłane — my zaprosiliśmy kogoś (userId === my userId)
 const MOCK_SENT_INVITES = [
   {
     userId: 'mock-user-1',
     friendId: 'mock-stranger-3',
     status: 'PENDING',
-    user: { id: 'mock-user-1', nickname: 'Jan Kowalski', status: 'ONLINE' },
+    user: {
+      id: 'mock-user-1',
+      nickname: 'Jan Kowalski',
+      status: 'ONLINE',
+      avatarUrl: null as string | null
+    },
     friend: {
       id: 'mock-stranger-3',
       nickname: 'Tomasz Lewandowski',
-      status: 'AWAY'
+      status: 'AWAY',
+      avatarUrl: null as string | null
     }
   }
 ]
@@ -124,6 +161,10 @@ const STATUS_LABEL: Record<string, string> = {
   AWAY: 'Zaraz wracam',
   BUSY: 'Nie przeszkadzać',
   OFFLINE: 'Offline'
+}
+
+function avatarSrc(url?: string | null) {
+  return url ?? '/ouija_white.png'
 }
 
 function SettingRow({
@@ -160,8 +201,22 @@ function Toggle({
   )
 }
 
-type FriendEntry = (typeof MOCK_FRIENDS)[0]
-type InviteEntry = (typeof MOCK_PENDING)[0]
+interface UserEntry {
+  id: string
+  nickname: string
+  status: string
+  avatarUrl?: string | null
+}
+
+interface FriendEntry {
+  userId: string
+  friendId: string
+  status: string
+  user: UserEntry
+  friend: UserEntry
+}
+
+type InviteEntry = FriendEntry
 
 export default function Profile() {
   const router = useRouter()
@@ -204,7 +259,6 @@ export default function Profile() {
       })
       if (!uploadRes.ok) throw new Error('Błąd uploadu')
       const [media] = await uploadRes.json()
-
       const updateRes = await fetch(`${API_URL}/api/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -244,16 +298,13 @@ export default function Profile() {
           fetch(`${API_URL}/api/users/${userId}/friends?status=PENDING`)
         ])
         if (!userRes.ok) throw new Error('Błąd pobierania profilu')
-
         const [userData, friendsData, pendingData] = await Promise.all([
           userRes.json(),
           friendsRes.json(),
           pendingRes.json()
         ])
-
         setUser(userData)
         setFriends(friendsData)
-        // Rozdziel zaproszenia przychodzące (ktoś nas zaprosił) od wysłanych (my kogoś)
         setPendingInvites(
           pendingData.filter((f: InviteEntry) => f.friendId === userId)
         )
@@ -269,7 +320,6 @@ export default function Profile() {
     fetchData()
   }, [userId])
 
-  // Aplikuj motyw i czcionkę do DOM
   useEffect(() => {
     const root = document.documentElement
     root.setAttribute('data-theme', settings.theme)
@@ -332,9 +382,7 @@ export default function Profile() {
     try {
       const res = await fetch(
         `${API_URL}/api/users/${userId}/friends/${friendId}`,
-        {
-          method: 'DELETE'
-        }
+        { method: 'DELETE' }
       )
       if (!res.ok) throw new Error('Błąd usuwania')
       setFriends((prev) =>
@@ -351,6 +399,18 @@ export default function Profile() {
       return
     }
     try {
+      const chatsRes = await fetch(`${API_URL}/api/users/${userId}/chats`)
+      if (chatsRes.ok) {
+        const chats = await chatsRes.json()
+        const existing = chats.find(
+          (c: { type: string; users: { userId: string }[] }) =>
+            c.type === 'PRIVATE' && c.users.some((u) => u.userId === friendId)
+        )
+        if (existing) {
+          router.push(`/chats?chatId=${existing.id}`)
+          return
+        }
+      }
       const res = await fetch(`${API_URL}/api/chats`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -373,7 +433,6 @@ export default function Profile() {
       return
     }
     try {
-      // 1. Akceptuj zaproszenie
       const res = await fetch(
         `${API_URL}/api/users/${inviterId}/friends/${userId}`,
         {
@@ -383,13 +442,9 @@ export default function Profile() {
         }
       )
       if (!res.ok) throw new Error('Błąd akceptacji')
-
-      // 2. Pobierz dane zaproszonego użytkownika
       const inviterRes = await fetch(`${API_URL}/api/?id=${inviterId}`)
       if (!inviterRes.ok) throw new Error('Błąd pobierania danych użytkownika')
       const inviterData = await inviterRes.json()
-
-      // 3. Złóż pełny obiekt znajomości ręcznie
       const newFriend: FriendEntry = {
         userId: inviterId,
         friendId: userId,
@@ -397,15 +452,16 @@ export default function Profile() {
         user: {
           id: inviterData.id,
           nickname: inviterData.nickname,
-          status: inviterData.status
+          status: inviterData.status,
+          avatarUrl: inviterData.avatarUrl ?? null
         },
         friend: {
           id: user!.id,
           nickname: user!.nickname,
-          status: user!.status
+          status: user!.status,
+          avatarUrl: user!.avatarUrl ?? null
         }
       }
-
       setFriends((prev) => [...prev, newFriend])
       setPendingInvites((prev) => prev.filter((i) => i.userId !== inviterId))
     } catch (err) {
@@ -413,7 +469,6 @@ export default function Profile() {
     }
   }
 
-  // Odrzuć zaproszenie przychodzące — DELETE
   async function handleRejectInvite(inviterId: string) {
     if (USE_MOCK) {
       setPendingInvites((prev) => prev.filter((i) => i.userId !== inviterId))
@@ -422,9 +477,7 @@ export default function Profile() {
     try {
       const res = await fetch(
         `${API_URL}/api/users/${inviterId}/friends/${userId}`,
-        {
-          method: 'DELETE'
-        }
+        { method: 'DELETE' }
       )
       if (!res.ok) throw new Error('Błąd odrzucenia')
       setPendingInvites((prev) => prev.filter((i) => i.userId !== inviterId))
@@ -433,7 +486,6 @@ export default function Profile() {
     }
   }
 
-  // Cofnij wysłane zaproszenie — DELETE
   async function handleCancelInvite(friendId: string) {
     if (USE_MOCK) {
       setSentInvites((prev) => prev.filter((i) => i.friendId !== friendId))
@@ -442,9 +494,7 @@ export default function Profile() {
     try {
       const res = await fetch(
         `${API_URL}/api/users/${userId}/friends/${friendId}`,
-        {
-          method: 'DELETE'
-        }
+        { method: 'DELETE' }
       )
       if (!res.ok) throw new Error('Błąd cofania zaproszenia')
       setSentInvites((prev) => prev.filter((i) => i.friendId !== friendId))
@@ -453,7 +503,7 @@ export default function Profile() {
     }
   }
 
-  function getFriendUser(f: FriendEntry) {
+  function getFriendUser(f: FriendEntry): UserEntry {
     return f.userId === userId ? f.friend : f.user
   }
 
@@ -468,7 +518,7 @@ export default function Profile() {
         <div className={styles.AvatarEditWrap}>
           <img
             className={styles.SectionProfilePicture}
-            src={user.avatarUrl ?? '/ouija_white.png'}
+            src={avatarSrc(user.avatarUrl)}
             alt="avatar"
             width={120}
             height={120}
@@ -531,10 +581,14 @@ export default function Profile() {
               key={`${invite.userId}-${invite.friendId}`}
               className={styles.SectionFriend}
             >
-              <div className={styles.AvatarWrap}>
-                <Image
+              <div
+                className={styles.AvatarWrap}
+                style={{ cursor: 'pointer' }}
+                onClick={() => router.push(`/profile/${invite.user.id}`)}
+              >
+                <img
                   className={styles.SectionFriendAvatar}
-                  src="/ouija_white.png"
+                  src={avatarSrc(invite.user.avatarUrl)}
                   alt="avatar"
                   width={48}
                   height={48}
@@ -581,10 +635,14 @@ export default function Profile() {
               key={`${invite.userId}-${invite.friendId}`}
               className={styles.SectionFriend}
             >
-              <div className={styles.AvatarWrap}>
-                <Image
+              <div
+                className={styles.AvatarWrap}
+                style={{ cursor: 'pointer' }}
+                onClick={() => router.push(`/profile/${invite.friend.id}`)}
+              >
+                <img
                   className={styles.SectionFriendAvatar}
-                  src="/ouija_white.png"
+                  src={avatarSrc(invite.friend.avatarUrl)}
                   alt="avatar"
                   width={48}
                   height={48}
@@ -627,10 +685,14 @@ export default function Profile() {
               key={`${friendship.userId}-${friendship.friendId}`}
               className={styles.SectionFriend}
             >
-              <div className={styles.AvatarWrap}>
-                <Image
+              <div
+                className={styles.AvatarWrap}
+                style={{ cursor: 'pointer' }}
+                onClick={() => router.push(`/profile/${friend.id}`)}
+              >
+                <img
                   className={styles.SectionFriendAvatar}
-                  src="/ouija_white.png"
+                  src={avatarSrc(friend.avatarUrl)}
                   alt="avatar"
                   width={48}
                   height={48}

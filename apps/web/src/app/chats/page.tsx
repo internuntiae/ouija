@@ -9,7 +9,7 @@ import {
   Suspense,
   useCallback
 } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -371,6 +371,7 @@ function MessageBubble({ msg, isOwn, userId, onReact }: MessageBubbleProps) {
 
 function ChatsInner() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const initialChatId = searchParams.get('chatId')
   const userId =
     typeof window !== 'undefined'
@@ -405,6 +406,11 @@ function ChatsInner() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const lastIdRef = useRef<string>('')
   const isFirstLoad = useRef(true)
+
+  useEffect(() => {
+    const chatId = searchParams.get('chatId')
+    if (chatId) setActiveChatId(chatId)
+  }, [searchParams])
 
   // Pobierz czaty
   useEffect(() => {
@@ -535,9 +541,7 @@ function ChatsInner() {
       setLoadingMessages(false)
       return
     }
-    fetch(
-      `${API_URL}/api/chats/${activeChatId}/messages?limit=${PAGE_SIZE}&lastId=0`
-    )
+    fetch(`${API_URL}/api/chats/${activeChatId}/messages?limit=${PAGE_SIZE}`)
       .then((r) => r.json())
       .then((data: Message[]) => {
         // Backend zwraca desc (najnowsze pierwsze) — odwracamy żeby wyświetlić chronologicznie
@@ -920,7 +924,15 @@ function ChatsInner() {
                           setSearchOpen(false)
                         }}
                       >
-                        <div className={styles.AvatarWrap}>
+                        <div
+                          className={styles.AvatarWrap}
+                          style={{ cursor: 'pointer' }}
+                          onClick={(e) => {
+                            e.stopPropagation() // żeby nie przełączyć czatu
+                            const other = getOtherUser(chat)
+                            if (other) router.push(`/profile/${other.id}`)
+                          }}
+                        >
                           <img
                             src={avatarSrc(other?.avatarUrl)}
                             alt="avatar"
@@ -949,7 +961,11 @@ function ChatsInner() {
                   <p className={styles.SearchDropdownSection}>Nowe osoby</p>
                   {newPeopleResults.map((person) => (
                     <div key={person.id} className={styles.SearchDropdownItem}>
-                      <div className={styles.AvatarWrap}>
+                      <div
+                        className={styles.AvatarWrap}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => router.push(`/profile/${person.id}`)}
+                      >
                         <img
                           src={avatarSrc(person.avatarUrl)}
                           alt="avatar"
@@ -1007,7 +1023,15 @@ function ChatsInner() {
                 className={`${styles.ContactsChatPreview} ${chat.id === activeChatId ? styles.ContactsChatPreviewActive : ''}`}
                 onClick={() => setActiveChatId(chat.id)}
               >
-                <div className={styles.AvatarWrap}>
+                <div
+                  className={styles.AvatarWrap}
+                  style={{ cursor: 'pointer' }}
+                  onClick={(e) => {
+                    e.stopPropagation() // żeby nie przełączyć czatu
+                    const other = getOtherUser(chat)
+                    if (other) router.push(`/profile/${other.id}`)
+                  }}
+                >
                   <img
                     src={avatarSrc(other?.avatarUrl)}
                     alt="avatar"
@@ -1058,7 +1082,13 @@ function ChatsInner() {
           <>
             <div className={styles.ChatContactInfo}>
               <div className={styles.ChatContactInfoLeft}>
-                <div className={styles.AvatarWrap}>
+                <div
+                  className={styles.AvatarWrap}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() =>
+                    otherUser && router.push(`/profile/${otherUser.id}`)
+                  }
+                >
                   <img
                     src={avatarSrc(otherUser?.avatarUrl)}
                     alt="avatar"
