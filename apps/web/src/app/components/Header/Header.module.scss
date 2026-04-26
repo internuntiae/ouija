@@ -2,58 +2,80 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-
   padding-block: 1rem;
   padding-inline: 3rem;
   gap: 2rem;
-  min-height: 10vh;
-
-  background: #14110f;
-
-  font-weight: 200;
-  color: #f3f3f4;
-  font-size: 2.5rem;
+  height: 7.2rem;
+  background-color: rgba(10, 10, 10, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 0.1rem solid var(--border);
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  font-size: 1.6rem;
+  position: sticky;
+  top: 0;
+  z-index: 50;
 
   &Right {
     display: flex;
     justify-content: flex-end;
+    align-items: center;
     width: 100%;
-    gap: 6rem;
+    gap: 4rem;
   }
 
   &Link {
     display: inline-block;
     text-decoration: none;
-    color: #f3f3f4;
+    color: var(--text-muted);
+    font-size: 1.4rem;
+    font-weight: 500;
+    transition: color var(--transition);
 
-    background-image: linear-gradient(#f3f3f4, #f3f3f4);
-    background-repeat: no-repeat;
-    background-size: 0 0.1rem;
-    background-position: center bottom;
-
-    transition: background-size 0.3s ease;
-  }
-
-  /*&Link:after{
-    to change this logic, id prefer after rather than background for this tbh + collides with the letters which ✨isn't cool✨.
-    for some reason after appears after the entire website, so im thinking it might be due to nesting problems, or me missing
-    a semicolon or smth
-  }*/
-
-  &Link:hover {
-    background-size: 100% 0.1rem;
+    &:hover {
+      color: var(--text-primary);
+    }
   }
 
   &Logo {
+    display: block;
+    transition: opacity var(--transition);
+
+    &:hover {
+      opacity: 0.7;
+    }
   }
 
-  .HeaderText {
+  &Text {
+    color: var(--text-primary);
+    font-size: 2rem;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+
+  &Logout {
+    background: transparent;
+    border: 1px solid var(--border-mid);
+    color: var(--text-secondary);
+    font-size: 1.3rem;
+    font-weight: 500;
+    font-family: var(--font-sans);
+    padding: 0.6rem 1.6rem;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: border-color var(--transition), color var(--transition), background var(--transition);
+
+    &:hover {
+      border-color: var(--text-primary);
+      color: var(--text-primary);
+      background: var(--bg-hover);
+    }
   }
 
   .Invisible {
     color: transparent;
     user-select: none;
-    transition: color 0.2s ease-in-out;
-    // transition between switch from frontpage to subpage
+    transition: color var(--transition);
   }
 }

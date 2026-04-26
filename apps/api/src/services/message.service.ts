@@ -5,10 +5,12 @@ import { Attachment, Reaction } from '@prisma/client'
 export const getAllMessages = async (
   chatId: string,
   limit: number,
-  lastId: number
+  lastId: string // pusty string = od końca, cuid = paginacja kursorem
 ) => {
-  const isInRedis = await msgRedisRepo.findMessage(chatId, lastId)
-  if (lastId == 0 || !isInRedis) {
+  const isInRedis = lastId
+    ? await msgRedisRepo.findMessage(chatId, lastId)
+    : null
+  if (!lastId || !isInRedis) {
     return msgPostgreRepo.getAllMessages(chatId, limit, lastId)
   }
   return msgRedisRepo.getAllMessages(chatId)
@@ -18,14 +20,15 @@ export const createMessage = async (
   chatId: string,
   userId: string,
   content: string,
-  attachments: Attachment[],
-  reactions: Reaction[]
+  attachments: Omit<Attachment, 'id' | 'messageId'>[],
+  reactions: Omit<Reaction, 'messageId' | 'createdAt'>[]
 ) => {
-  if (content == null) {
-    throw new Error('Content is null')
+  if (content == null && attachments.length === 0) {
+    throw new Error('Content and attachments cannot both be empty')
   }
 
-  await msgPostgreRepo.createMessage(
+  // Zwracamy wiadomość żeby controller mógł ją odesłać klientowi (201)
+  return msgPostgreRepo.createMessage(
     chatId,
     userId,
     content,
@@ -35,16 +38,14 @@ export const createMessage = async (
 }
 
 export const updateMessage = async (
-  messageId: number,
+  messageId: string,
   chatId: string,
   content: string,
-  attachments: Attachment[],
-  reactions: Reaction[]
+  attachments: Omit<Attachment, 'id' | 'messageId'>[],
+  reactions: Omit<Reaction, 'messageId' | 'createdAt'>[]
 ) => {
   const target = await msgPostgreRepo.findMessage(chatId, messageId)
-  if (target == null) {
-    throw new Error('Record does not exist')
-  }
+  if (target == null) throw new Error('Record does not exist')
 
   return msgPostgreRepo.updateMessage(
     messageId,
@@ -55,11 +56,9 @@ export const updateMessage = async (
   )
 }
 
-export const deleteMessage = async (messageId: number, chatId: string) => {
+export const deleteMessage = async (messageId: string, chatId: string) => {
   const target = await msgPostgreRepo.findMessage(chatId, messageId)
-  if (target == null) {
-    throw new Error('Record does not exist')
-  }
+  if (target == null) throw new Error('Record does not exist')
 
   return msgPostgreRepo.deleteMessage(messageId, chatId)
 }

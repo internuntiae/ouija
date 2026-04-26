@@ -3,13 +3,14 @@ import * as userService from '@services/user.service'
 
 export const getUsers = async (req: Request, res: Response) => {
   try {
-    const { id, email, nickname } = req.query
+    const { id, email, nickname, q } = req.query
 
     if (id) return res.json(await userService.getUserById(id as string))
     if (email)
       return res.json(await userService.getUserByEmail(email as string))
     if (nickname)
       return res.json(await userService.getUserByNickname(nickname as string))
+    if (q) return res.json(await userService.searchUsers(q as string))
 
     const users = await userService.getUsers()
     res.json(users)

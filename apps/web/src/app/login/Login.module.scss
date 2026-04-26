@@ -1,74 +1,156 @@
-.Form {
-  height: 70%;
-  width: 50%;
-  padding: 2rem 1.5rem;
+// ── Login page ─────────────────────────────────────────────────────────────────
+// Strona logowania wyrenderowana wewnątrz .container (flex column, justify-center)
+// Sam formularz nie potrzebuje min-height ani centralnego alignmentu — container to robi.
+// Poprawka: formularz nie jest "zgnieciony" — dodajemy sensowne spacje między polami.
 
+.Form {
+  width: min(46rem, 90vw);
+  padding: 4rem 3.6rem;
+  background-color: rgba(18, 18, 18, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 2.4rem 5rem rgba(0, 0, 0, 0.55);
   display: flex;
   flex-direction: column;
-
-  background-color: rgba(52, 49, 45, 0.1);
-  color: #f3f3f4;
-
-  border-radius: 0.5rem;
+  // Celowo brak height: 70% — karta dopasowuje się do treści
 
   &Label {
-    font-size: 3.5rem;
-    font-weight: 200;
+    // Tytuł formularza (wielki napis)
+    font-size: 2.6rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    letter-spacing: -0.03em;
+    line-height: 1.2;
+    text-align: center;
+    margin-bottom: 2.8rem;
+  }
+
+  // ── Pole: label nad inputem ──────────────────────────────────────────────────
+
+  // Używane jako label dla pola (font-size mniejszy od &Label)
+  // W TSX: <label className={styles.FormLabel}> — jeden className dla obu ról.
+  // Kiedy label jest nad inputem (nie jest tytułem), nadpisujemy przez kontekst sąsiada.
+  // Trick: jeśli po FormLabel idzie FormInput, to label jest field-label → mały styl.
+  // Nie możemy zmienić TSX, więc korzystamy z :has() lub po prostu nadajemy Labelowi
+  // jeden spójny styl i traktujemy go jako field-label — tytuł jest napisany dużo.
+  // Rozwiązanie: robimy FormLabel dwuwariantowy poprzez specificity:
+  // — jako pierwszy element w .Form: duże (tytuł)
+  // — kolejne label po input/p: małe
+
+  // Ponieważ CSS nie ma "nth-of-type label", a TSX używa tej samej klasy,
+  // stosujemy kompromis: FormLabel zawsze jako field label (małe), a wielki napis
+  // ustawiamy przez :first-child.
+
+  // Tak naprawdę: w login/page.tsx FormLabel to: "username" / "password" — field labels.
+  // Dlatego styl pola:
+
+  // Nadpisanie — FormLabel jako field label:
+  // & > label.#{&Label},     // jeśli SCSS przetworzy
+  &Label {
+    font-size: 1.3rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    letter-spacing: 0;
     text-align: left;
+    margin-bottom: 0.6rem;
+    margin-left: 0.2rem;
   }
 
   &Input {
-    border: 0;
-    background-color: transparent;
-    color: #f3f3f4;
-    padding: 1rem 0;
-    margin: 1rem 0;
-    font-size: 2rem;
-    border-bottom: 1px solid;
-    border-color: #f3f3f400;
-    transition: border-color 250ms ease-in-out;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    padding: 1.2rem 1.4rem;
+    font-size: 1.5rem;
+    font-family: var(--font-sans);
+    margin-bottom: 0.5rem;
+    margin-top: 0;
+    transition: background var(--transition), border-color var(--transition);
+
+    &::placeholder {
+      color: var(--text-muted);
+    }
+
+    &:focus {
+      outline: none;
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    &[aria-invalid='true'] {
+      border-color: rgba(248, 113, 113, 0.5);
+      background: rgba(248, 113, 113, 0.05);
+    }
   }
 
-  &Input:focus {
-    outline: none;
-    border-color: #f3f3f4;
+  &Error {
+    font-size: 1.2rem;
+    color: #f87171;
+    margin: 0.2rem 0 1.2rem 0.2rem;
+    text-align: left;
   }
 
   &Submit {
-    align-self: flex-start;
+    width: 100%;
+    margin-top: 2rem;
+    padding: 1.3rem;
+    background: var(--accent);
+    color: var(--accent-text);
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 1.5rem;
+    font-weight: 600;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    letter-spacing: 0.01em;
+    transition: background var(--transition), transform 0.1s ease;
 
-    padding: 1rem;
-    margin: 2rem 0;
+    &:hover {
+      background: #e4e4e7;
+    }
 
-    font-weight: 300;
-    font-size: 2rem;
+    &:active {
+      transform: scale(0.98);
+    }
 
-    border-radius: 1rem;
-    border: 1px solid rgba(243, 243, 244, 0.24);
-    color: #f3f3f4;
-    background-color: transparent;
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
   }
 
-  &Submit:hover {
-    cursor: pointer;
+  // Wrapper dla pola — dodatkowy spacing między polami
+  // W TSX nie ma wrappera, więc spacing między label a następnym label
+  // realizujemy przez margin-top na label:
+  // Każdy label (prócz pierwszego) dostaje odstęp od poprzedniego inputa.
+  // Trick: label + label (field to field gap)
+  & > label + input + label,
+  & > label + input + p + label {
+    margin-top: 0.8rem;
   }
 
   .Link {
-    color: #f3f3f4;
-
-    text-align: left;
-    font-weight: 200;
-    font-size: 2rem;
-
+    display: block;
+    margin-top: 2.4rem;
+    color: var(--text-muted);
+    font-size: 1.3rem;
+    text-align: center;
     text-decoration: none;
 
-    width: auto;
-
-    margin: 1rem 0;
+    p {
+      color: var(--text-muted);
+    }
 
     .Underline {
-      align-self: flex-start;
-      border-bottom: 1px solid #f3f3f4;
+      color: var(--text-primary);
+      font-weight: 500;
+      border-bottom: 1px solid currentColor;
+      padding-bottom: 0.1em;
     }
   }
 }

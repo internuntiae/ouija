@@ -1,4 +1,36 @@
-@import url('https://fonts.googleapis.com/css2?family=Kumbh+Sans:wght,YOPQ@100..900,300&display=swap');
+// ── CSS Variables — obsługa motywów ──────────────────────────────────────────
+// Ustawiane przez data-theme="dark|light" na <html>
+// Zmiana w Profile > Ustawienia > Motyw zapisuje się do localStorage
+// i jest aplikowana przez useEffect w Profile/page.tsx
+
+:root,
+[data-theme='dark'] {
+  --bg-base: #14110f;
+  --bg-surface: #1e1c1a;
+  --bg-elevated: #2a2826;
+  --bg-hover: #35323c;
+  --border: #2e2b29;
+  --border-mid: #3a3836;
+  --text: #f3f3f4;
+  --text-muted: #aaaaaa;
+  --text-faint: rgba(243, 243, 244, 0.5);
+  --msg-own: #6b6865;
+  --msg-other: #35323c;
+}
+
+[data-theme='light'] {
+  --bg-base: #f0ede8;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f5f2ee;
+  --bg-hover: #e8e4df;
+  --border: #d4cfc9;
+  --border-mid: #b8b2ab;
+  --text: #1a1714;
+  --text-muted: #6b6560;
+  --text-faint: rgba(26, 23, 20, 0.5);
+  --msg-own: #c8b99a;
+  --msg-other: #e8e2db;
+}
 
 * {
   margin: 0;
@@ -13,21 +45,22 @@ html {
   body {
     width: 100%;
     min-height: 100vh;
+    background-color: var(--bg-base);
+    color: var(--text);
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease;
 
     .container {
       width: 100%;
-      height: 90vh;
-
-      padding-bottom: 10vh;
-
+      min-height: 90vh;
+      overflow: auto;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-
-      background-color: #14110f;
-      color: #f3f3f4;
-
+      background-color: var(--bg-base);
+      color: var(--text);
       text-align: center;
       font-weight: 500;
     }

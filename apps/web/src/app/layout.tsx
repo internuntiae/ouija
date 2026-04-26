@@ -1,18 +1,20 @@
 import type { Metadata } from 'next'
 
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Kumbh_Sans, Plus_Jakarta_Sans } from 'next/font/google'
 import './main-layout.scss'
 import Header from '@/app/components/Header/Header'
 import React from 'react'
 
-const geistSans = Geist({
-  subsets: ['latin'],
-  variable: '--font-geist-sans'
+const kumbhSans = Kumbh_Sans({
+  variable: '--font-kumbh-sans',
+  subsets: ['latin-ext'],
+  weight: 'variable'
 })
 
-const geistMono = Geist_Mono({
-  subsets: ['latin'],
-  variable: '--font-geist-mono'
+const plusJakartaSans = Plus_Jakarta_Sans({
+  variable: '--font-plus-jakarta-sans',
+  subsets: ['latin-ext'],
+  weight: ['400', '500', '600', '700']
 })
 
 export const metadata: Metadata = {
@@ -21,16 +23,16 @@ export const metadata: Metadata = {
 }
 
 export default function RootLayout({
-  children
-}: Readonly<{
+                                     children
+                                   }: Readonly<{
   children: React.ReactNode
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <Header />
-        <div className="container">{children}</div>
-      </body>
+    <body className={`${kumbhSans.variable} ${plusJakartaSans.variable}`}>
+    <Header />
+    <div className="container">{children}</div>
+    </body>
     </html>
   )
 }
