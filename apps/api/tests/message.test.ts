@@ -1,7 +1,7 @@
 import request from 'supertest'
-import { app } from '../src/app'
-import { prisma } from '../src/lib'
-import { redis } from '../src/lib/redis'
+import { app } from '@/app'
+import { prisma } from '@/lib'
+import { redis } from '@/lib'
 import {
   mockMessage1,
   mockMessage2,

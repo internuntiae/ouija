@@ -1,4 +1,4 @@
-import { sha256 } from '../src/utils/hash'
+import { sha256 } from '@utils/hash'
 
 describe('Checks multiple SHA-256 hashes', () => {
   describe('Int to string', () => {

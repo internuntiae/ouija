@@ -1,7 +1,7 @@
 import * as supertest from 'supertest'
 const request = supertest.default ?? supertest
-import { app } from '../src/app'
-import { prisma } from '../src/lib'
+import { app } from '@/app'
+import { prisma } from '@/lib'
 import {
   mockUser1,
   mockUser2,

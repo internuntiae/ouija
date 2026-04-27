@@ -1,6 +1,6 @@
 import request from 'supertest'
-import { app } from '../src/app'
-import { prisma } from '../src/lib'
+import { app } from '@/app'
+import { prisma } from '@/lib'
 import { mockUser1, mockUser2, mockUser3 } from './fixtures'
 
 import { PrismaClient } from '@prisma/client'
