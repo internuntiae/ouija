@@ -6,7 +6,8 @@
   padding-inline: 3rem;
   gap: 2rem;
   height: 7.2rem;
-  background-color: rgba(10, 10, 10, 0.8);
+  // Zamiast hardcoded rgba(10,10,10,0.8) — używamy zmiennej CSS zależnej od motywu
+  background-color: var(--header-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 0.1rem solid var(--border);
@@ -16,6 +17,7 @@
   position: sticky;
   top: 0;
   z-index: 50;
+  transition: background-color var(--transition);
 
   &Right {
     display: flex;
@@ -64,7 +66,10 @@
     padding: 0.6rem 1.6rem;
     border-radius: var(--radius-md);
     cursor: pointer;
-    transition: border-color var(--transition), color var(--transition), background var(--transition);
+    transition:
+      border-color var(--transition),
+      color var(--transition),
+      background var(--transition);
 
     &:hover {
       border-color: var(--text-primary);

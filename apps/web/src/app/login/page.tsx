@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { FormEvent, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { sha256 } from '@utils/hash'
+import { useTranslation } from '@/i18n/translations'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -14,23 +15,23 @@ interface FormErrors {
   submit?: string
 }
 
-function validateUsername(username: string): string | undefined {
-  if (!username) return 'Nazwa użytkownika jest wymagana'
-  if (username.length < 3)
-    return 'Nazwa użytkownika musi mieć co najmniej 3 znaki'
-}
-
-function validatePassword(password: string): string | undefined {
-  if (!password) return 'Hasło jest wymagane'
-  if (password.length < 8) return 'Hasło musi mieć co najmniej 8 znaków'
-}
-
 export default function Login() {
   const router = useRouter()
+  const { t } = useTranslation()
   const [passwordResetEnabled, setPasswordResetEnabled] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(false)
+
+  function validateUsername(username: string): string | undefined {
+    if (!username) return t('login.username') + ' jest wymagana'
+    if (username.length < 3) return t('login.username') + ' — min. 3 znaki'
+  }
+
+  function validatePassword(password: string): string | undefined {
+    if (!password) return t('login.password') + ' jest wymagane'
+    if (password.length < 8) return t('login.password') + ' — min. 8 znaków'
+  }
 
   useEffect(() => {
     fetch(`${API_URL}/api/auth/config`)
@@ -95,7 +96,6 @@ export default function Login() {
       if (user.password == sha256(password)) {
         localStorage.setItem('userId', user.id)
         localStorage.setItem('userNickname', user.nickname)
-
         router.push('/chats')
       } else {
         setErrors((prev) => ({
@@ -115,11 +115,11 @@ export default function Login() {
     <>
       <form onSubmit={handleSubmit} className={styles.Form} noValidate>
         <label htmlFor="username" className={styles.FormLabel}>
-          username
+          {t('login.username')}
         </label>
         <input
           type="text"
-          placeholder="username"
+          placeholder={t('login.username')}
           name="username"
           id="username"
           className={styles.FormInput}
@@ -131,11 +131,11 @@ export default function Login() {
         )}
 
         <label htmlFor="password" className={styles.FormLabel}>
-          password
+          {t('login.password')}
         </label>
         <input
           type="password"
-          placeholder="password"
+          placeholder={t('login.password')}
           name="password"
           id="password"
           className={styles.FormInput}
@@ -150,21 +150,24 @@ export default function Login() {
 
         <input
           type="submit"
-          value={loading ? 'logowanie...' : 'Login'}
+          value={loading ? '...' : t('login.submit')}
           disabled={loading}
           className={styles.FormSubmit}
         />
 
         <Link href={'/register'} className={styles.Link}>
           <p>
-            no account? <span className={styles.Underline}>click here</span>
+            {t('login.noAccount')}{' '}
+            <span className={styles.Underline}>{t('login.register')}</span>
           </p>
         </Link>
 
         {passwordResetEnabled && (
           <Link href={'/forgot-password'} className={styles.Link}>
             <p>
-              forgot password? <span className={styles.Underline}>reset</span>
+              <span className={styles.Underline}>
+                {t('login.forgotPassword')}
+              </span>
             </p>
           </Link>
         )}

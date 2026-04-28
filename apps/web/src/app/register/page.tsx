@@ -3,6 +3,7 @@
 import styles from './Register.module.scss'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
+import { useTranslation } from '@/i18n/translations'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -48,6 +49,7 @@ function validatePasswordConfirm(
 }
 
 export default function Register() {
+  const { t } = useTranslation()
   const [errors, setErrors] = useState<FormErrors>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
   const [requiresVerification, setRequiresVerification] = useState(false)
@@ -97,7 +99,6 @@ export default function Register() {
       form.elements.namedItem('password-confirm') as HTMLInputElement
     ).value.trim()
 
-    // 1. Validation Logic
     const newErrors: FormErrors = {
       email: validateEmail(email),
       username: validateUsername(nickname),
@@ -114,7 +115,7 @@ export default function Register() {
     setErrors(newErrors)
 
     if (Object.values(newErrors).some(Boolean)) {
-      setStatus('idle') // Reset status if validation fails
+      setStatus('idle')
       return
     }
 
@@ -128,7 +129,6 @@ export default function Register() {
       const data = await res.json()
 
       if (!res.ok) {
-        // Handle server-side validation errors
         const msg: string = data?.error ?? 'Błąd rejestracji'
         if (
           msg.includes('email already exists') ||
@@ -169,7 +169,7 @@ export default function Register() {
         </label>
         <p
           style={{
-            color: '#f3f3f4',
+            color: 'var(--text-primary)',
             fontSize: '1.5rem',
             fontWeight: 200,
             margin: '1rem 0'
@@ -192,11 +192,11 @@ export default function Register() {
     <>
       <form onSubmit={handleSubmit} className={styles.Form} noValidate>
         <label htmlFor="email" className={styles.FormLabel}>
-          e-mail
+          {t('register.email')}
         </label>
         <input
           type="email"
-          placeholder="e-mail"
+          placeholder={t('register.email')}
           name="email"
           id="email"
           className={styles.FormInput}
@@ -208,11 +208,11 @@ export default function Register() {
         )}
 
         <label htmlFor={'username'} className={styles.FormLabel}>
-          username
+          {t('register.username')}
         </label>
         <input
           type="text"
-          placeholder="username"
+          placeholder={t('register.username')}
           name="username"
           id="username"
           className={styles.FormInput}
@@ -224,11 +224,11 @@ export default function Register() {
         )}
 
         <label htmlFor="password" className={styles.FormLabel}>
-          password
+          {t('register.password')}
         </label>
         <input
           type="password"
-          placeholder="password"
+          placeholder={t('register.password')}
           name="password"
           id="password"
           className={styles.FormInput}
@@ -240,11 +240,11 @@ export default function Register() {
         )}
 
         <label htmlFor="password-confirm" className={styles.FormLabel}>
-          repeat password
+          {t('register.passwordConfirm')}
         </label>
         <input
           type="password"
-          placeholder="password"
+          placeholder={t('register.password')}
           name="password-confirm"
           id="password-confirm"
           className={styles.FormInput}
@@ -271,15 +271,15 @@ export default function Register() {
 
         <input
           type={'submit'}
-          value={status === 'loading' ? 'creating…' : 'create'}
+          value={status === 'loading' ? '...' : t('register.submit')}
           disabled={status === 'loading'}
           className={styles.FormSubmit}
         />
 
         <Link href={'/login'} className={styles.Link}>
           <p>
-            already have an account?{' '}
-            <span className={styles.Underline}>login</span>
+            {t('register.hasAccount')}{' '}
+            <span className={styles.Underline}>{t('register.login')}</span>
           </p>
         </Link>
       </form>

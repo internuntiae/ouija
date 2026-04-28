@@ -7,9 +7,9 @@ import {
   UserStatus,
   UserSearchResult,
   STATUS_COLOR,
-  STATUS_LABEL,
   avatarSrc
 } from './types'
+import { useTranslation } from '@/i18n/translations'
 
 interface Props {
   userId: string
@@ -37,17 +37,7 @@ interface Props {
 
 function getChatDisplayName(chat: Chat, userId: string): string {
   if (chat.name) return chat.name
-  return chat.users.find((u) => u.userId !== userId)?.user.nickname ?? 'Czat'
-}
-
-function getLastMessagePreview(chat: Chat, userId: string): string {
-  const msg = chat.lastMessage
-  if (!msg) return ''
-  const isOwn = msg.senderId === userId
-  if (isOwn) return `Ty: ${msg.content ?? '📎 Załącznik'}`
-  const sender =
-    chat.users.find((u) => u.userId === msg.senderId)?.user.nickname ?? ''
-  return `${sender}: ${msg.content ?? '📎 Załącznik'}`
+  return chat.users.find((u) => u.userId !== userId)?.user.nickname ?? 'Chat'
 }
 
 export default function ChatSidebar({
@@ -72,10 +62,25 @@ export default function ChatSidebar({
   onSendInvite,
   onOpenChatWith
 }: Props) {
+  const { t, lang } = useTranslation()
   const searchInputRef = useRef<HTMLInputElement>(null)
   const searchDropdownRef = useRef<HTMLDivElement>(null)
 
-  const STATUS_KEYS = Object.keys(STATUS_LABEL) as UserStatus[]
+  const STATUS_KEYS: UserStatus[] = ['ONLINE', 'AWAY', 'BUSY', 'OFFLINE']
+
+  function getLastMessagePreview(chat: Chat): string {
+    const msg = chat.lastMessage
+    if (!msg) return ''
+    const isOwn = msg.senderId === userId
+    const attachment = t('chat.attachment')
+    if (isOwn) return `${t('chat.sentByMe')}: ${msg.content ?? attachment}`
+    const sender =
+      chat.users.find((u) => u.userId === msg.senderId)?.user.nickname ?? ''
+    return `${sender}: ${msg.content ?? attachment}`
+  }
+
+  // Lokalizacja czasu — pl-PL albo en-GB zależnie od języka
+  const timeLocale = lang === 'en' ? 'en-GB' : 'pl-PL'
 
   return (
     <div className={styles.Contacts}>
@@ -88,7 +93,9 @@ export default function ChatSidebar({
           className={styles.StatusDot}
           style={{ background: STATUS_COLOR[myStatus] }}
         />
-        <span className={styles.StatusLabel}>{STATUS_LABEL[myStatus]}</span>
+        <span className={styles.StatusLabel}>
+          {t(`status.${myStatus}` as never)}
+        </span>
         <span className={styles.StatusChevron}>▾</span>
       </div>
 
@@ -104,7 +111,7 @@ export default function ChatSidebar({
                 className={styles.StatusDot}
                 style={{ background: STATUS_COLOR[s] }}
               />
-              {STATUS_LABEL[s]}
+              {t(`status.${s}` as never)}
             </button>
           ))}
         </div>
@@ -117,13 +124,14 @@ export default function ChatSidebar({
             ref={searchInputRef}
             type="text"
             className={styles.SearchInput}
-            placeholder="Szukaj czatów i osób..."
+            placeholder={t('chat.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value)
               setSearchOpen(true)
             }}
             onFocus={() => setSearchOpen(true)}
+            data-search-input
           />
           {searchQuery && (
             <button
@@ -139,14 +147,22 @@ export default function ChatSidebar({
         </div>
 
         {searchOpen && searchQuery.trim() && (
-          <div ref={searchDropdownRef} className={styles.SearchDropdown}>
+          <div
+            ref={searchDropdownRef}
+            className={styles.SearchDropdown}
+            data-search-dropdown
+          >
             {searchLoading && (
-              <p className={styles.SearchDropdownLoading}>Szukam...</p>
+              <p className={styles.SearchDropdownLoading}>
+                {t('chat.searchLoading')}
+              </p>
             )}
 
             {filteredChats.length > 0 && (
               <>
-                <p className={styles.SearchDropdownSection}>Czaty</p>
+                <p className={styles.SearchDropdownSection}>
+                  {t('chat.searchSectionChats')}
+                </p>
                 {filteredChats.map((chat) => {
                   const other = chat.users.find(
                     (u) => u.userId !== userId
@@ -193,7 +209,9 @@ export default function ChatSidebar({
 
             {newPeopleResults.length > 0 && (
               <>
-                <p className={styles.SearchDropdownSection}>Nowe osoby</p>
+                <p className={styles.SearchDropdownSection}>
+                  {t('chat.searchSectionPeople')}
+                </p>
                 {newPeopleResults.map((person) => (
                   <div key={person.id} className={styles.SearchDropdownItem}>
                     <div
@@ -230,7 +248,7 @@ export default function ChatSidebar({
                       <button
                         className={styles.SearchActionBtn}
                         onClick={() => onOpenChatWith(person.id)}
-                        title="Napisz wiadomość"
+                        title={t('chat.writeMessage')}
                       >
                         💬
                       </button>
@@ -240,8 +258,8 @@ export default function ChatSidebar({
                         disabled={sentInvites.has(person.id)}
                         title={
                           sentInvites.has(person.id)
-                            ? 'Wysłano'
-                            : 'Dodaj znajomego'
+                            ? t('chat.sentInvite')
+                            : t('chat.addFriend')
                         }
                       >
                         {sentInvites.has(person.id) ? '✓' : '+'}
@@ -255,19 +273,23 @@ export default function ChatSidebar({
             {!searchLoading &&
               filteredChats.length === 0 &&
               newPeopleResults.length === 0 && (
-                <p className={styles.SearchDropdownEmpty}>Brak wyników</p>
+                <p className={styles.SearchDropdownEmpty}>
+                  {t('chat.searchNoResults')}
+                </p>
               )}
           </div>
         )}
       </div>
 
       {/* ── Lista czatów ── */}
-      {loadingChats && <p className={styles.LoadingText}>Ładowanie...</p>}
+      {loadingChats && (
+        <p className={styles.LoadingText}>{t('chat.loading')}</p>
+      )}
 
       {!searchQuery.trim() &&
         chats.map((chat) => {
           const other = chat.users.find((u) => u.userId !== userId)?.user
-          const lastMsg = getLastMessagePreview(chat, userId)
+          const lastMsg = getLastMessagePreview(chat)
           const unread = chat.unreadCount ?? 0
 
           return (
@@ -309,7 +331,7 @@ export default function ChatSidebar({
                   {chat.lastMessage && (
                     <span className={styles.ChatPreviewTime}>
                       {new Date(chat.lastMessage.sentAt).toLocaleTimeString(
-                        'pl-PL',
+                        timeLocale,
                         { hour: '2-digit', minute: '2-digit' }
                       )}
                     </span>

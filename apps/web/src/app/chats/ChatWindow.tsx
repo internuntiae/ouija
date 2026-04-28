@@ -3,14 +3,8 @@
 import { FormEvent, RefObject } from 'react'
 import styles from './Chats.module.scss'
 import MessageBubble from './MessageBubble'
-import {
-  Chat,
-  Message,
-  ReactionType,
-  STATUS_COLOR,
-  STATUS_LABEL,
-  avatarSrc
-} from './types'
+import { Chat, Message, ReactionType, STATUS_COLOR, avatarSrc } from './types'
+import { useTranslation } from '@/i18n/translations'
 
 interface Props {
   activeChat: Chat | null
@@ -59,10 +53,12 @@ export default function ChatWindow({
   onOpenProfile,
   getChatDisplayName
 }: Props) {
+  const { t } = useTranslation()
+
   if (!activeChat) {
     return (
       <div className={styles.Chat}>
-        <p className={styles.NoChatSelected}>Wybierz czat</p>
+        <p className={styles.NoChatSelected}>{t('chat.noChat')}</p>
       </div>
     )
   }
@@ -110,8 +106,7 @@ export default function ChatWindow({
                     ] ?? '#7f8c8d'
                 }}
               >
-                {STATUS_LABEL[otherUser.status as keyof typeof STATUS_LABEL] ??
-                  otherUser.status}
+                {t(`status.${otherUser.status}` as never)}
               </h5>
             )}
           </div>
@@ -122,10 +117,10 @@ export default function ChatWindow({
       <div className={styles.ChatMessageContainer} ref={messageContainerRef}>
         <div ref={topSentinelRef} className={styles.TopSentinel} />
         {loadingMore && (
-          <p className={styles.LoadingMore}>Ładowanie starszych...</p>
+          <p className={styles.LoadingMore}>{t('chat.loadingOlder')}</p>
         )}
         {loadingMessages && (
-          <p className={styles.LoadingText}>Ładowanie wiadomości...</p>
+          <p className={styles.LoadingText}>{t('chat.loadingMessages')}</p>
         )}
         {messages.map((msg) => (
           <MessageBubble
@@ -173,13 +168,13 @@ export default function ChatWindow({
           <label
             htmlFor="file-upload-input"
             className={styles.AttachBtn}
-            title="Dodaj plik"
+            title={t('chat.attachTitle')}
           >
             📎
           </label>
           <input
             type="text"
-            placeholder="wpisz wiadomość"
+            placeholder={t('chat.messagePlaceholder')}
             className={styles.ChatMessageToolbarInput}
             value={messageText}
             onChange={(e) => setMessageText(e.target.value)}
@@ -187,7 +182,7 @@ export default function ChatWindow({
           />
           <input
             type="submit"
-            value={sending ? '...' : 'wyślij'}
+            value={sending ? t('chat.sending') : t('chat.sendBtn')}
             className={styles.ChatMessageToolbarSubmit}
             disabled={sending}
           />

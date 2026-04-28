@@ -3,30 +3,16 @@
 import styles from './Profile.module.scss'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import {
+  useSettings,
+  type AppSettings,
+  type Theme,
+  type Language,
+  type FontSize
+} from '@/context/SettingsContext'
+import { useTranslation } from '@/i18n/translations'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
-
-type Theme = 'dark' | 'light'
-type Language = 'pl' | 'en'
-type FontSize = 'small' | 'medium' | 'large'
-
-interface AppSettings {
-  theme: Theme
-  language: Language
-  fontSize: FontSize
-  notificationsEnabled: boolean
-  notificationSound: boolean
-  notificationDesktop: boolean
-}
-
-const DEFAULT_SETTINGS: AppSettings = {
-  theme: 'dark',
-  language: 'pl',
-  fontSize: 'medium',
-  notificationsEnabled: true,
-  notificationSound: true,
-  notificationDesktop: false
-}
 
 const MOCK_USER = {
   id: 'mock-user-1',
@@ -220,6 +206,10 @@ type InviteEntry = FriendEntry
 
 export default function Profile() {
   const router = useRouter()
+  // Używamy globalnego kontekstu zamiast lokalnego stanu ustawień
+  const { settings, updateSetting } = useSettings()
+  const { t } = useTranslation()
+
   const userId =
     typeof window !== 'undefined'
       ? (localStorage.getItem('userId') ?? MOCK_USER.id)
@@ -236,7 +226,6 @@ export default function Profile() {
   const [newPassword, setNewPassword] = useState('')
   const [passwordMsg, setPasswordMsg] = useState<string | null>(null)
 
-  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS)
   const [settingsSaved, setSettingsSaved] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
 
@@ -274,13 +263,6 @@ export default function Profile() {
   }
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('appSettings')
-      if (stored) setSettings(JSON.parse(stored))
-    } catch {
-      /* ignoruj */
-    }
-
     if (USE_MOCK) {
       setUser(MOCK_USER)
       setFriends(MOCK_FRIENDS)
@@ -320,27 +302,12 @@ export default function Profile() {
     fetchData()
   }, [userId])
 
-  useEffect(() => {
-    const root = document.documentElement
-    root.setAttribute('data-theme', settings.theme)
-    const sizes: Record<FontSize, string> = {
-      small: '8px',
-      medium: '10px',
-      large: '12px'
-    }
-    root.style.fontSize = sizes[settings.fontSize]
-    root.setAttribute('lang', settings.language)
-  }, [settings])
-
+  // Wrapper który wywołuje updateSetting z kontekstu i pokazuje "Zapisano"
   function handleSaveSetting<K extends keyof AppSettings>(
     key: K,
     value: AppSettings[K]
   ) {
-    setSettings((prev) => {
-      const next = { ...prev, [key]: value }
-      localStorage.setItem('appSettings', JSON.stringify(next))
-      return next
-    })
+    updateSetting(key, value)
     setSettingsSaved(true)
     setTimeout(() => setSettingsSaved(false), 2000)
   }
@@ -507,7 +474,8 @@ export default function Profile() {
     return f.userId === userId ? f.friend : f.user
   }
 
-  if (loading) return <p className={styles.LoadingText}>Ładowanie...</p>
+  if (loading)
+    return <p className={styles.LoadingText}>{t('common.loading')}</p>
   if (error) return <p className={styles.ErrorText}>{error}</p>
   if (!user) return null
 
@@ -730,31 +698,37 @@ export default function Profile() {
 
       {/* ── Ustawienia ── */}
       <div className={styles.Section}>
-        <h2 className={styles.SectionHeading}>Ustawienia strony</h2>
-        {settingsSaved && <p className={styles.SuccessMsg}>Zapisano ✓</p>}
+        <h2 className={styles.SectionHeading}>{t('profile.settings')}</h2>
+        {settingsSaved && (
+          <p className={styles.SuccessMsg}>{t('profile.saved')}</p>
+        )}
 
         <div className={styles.SettingsGroup}>
-          <h3 className={styles.SettingsGroupTitle}>Wygląd</h3>
-          <SettingRow label="Motyw">
+          <h3 className={styles.SettingsGroupTitle}>
+            {t('profile.appearance')}
+          </h3>
+          <SettingRow label={t('profile.theme')}>
             <div className={styles.SegmentedControl}>
-              {(['dark', 'light'] as Theme[]).map((t) => (
+              {(['dark', 'light'] as Theme[]).map((th) => (
                 <button
-                  key={t}
-                  className={`${styles.SegmentBtn} ${settings.theme === t ? styles.SegmentBtnActive : ''}`}
-                  onClick={() => handleSaveSetting('theme', t)}
+                  key={th}
+                  className={`${styles.SegmentBtn} ${settings.theme === th ? styles.SegmentBtnActive : ''}`}
+                  onClick={() => handleSaveSetting('theme', th)}
                 >
-                  {t === 'dark' ? '🌙 Ciemny' : '☀️ Jasny'}
+                  {th === 'dark'
+                    ? t('profile.themeDark')
+                    : t('profile.themeLight')}
                 </button>
               ))}
             </div>
           </SettingRow>
-          <SettingRow label="Rozmiar czcionki">
+          <SettingRow label={t('profile.fontSize')}>
             <div className={styles.SegmentedControl}>
               {(
                 [
-                  ['small', 'Mały'],
-                  ['medium', 'Średni'],
-                  ['large', 'Duży']
+                  ['small', t('profile.fontSmall')],
+                  ['medium', t('profile.fontMedium')],
+                  ['large', t('profile.fontLarge')]
                 ] as [FontSize, string][]
               ).map(([val, label]) => (
                 <button
@@ -770,13 +744,13 @@ export default function Profile() {
         </div>
 
         <div className={styles.SettingsGroup}>
-          <h3 className={styles.SettingsGroupTitle}>Język</h3>
-          <SettingRow label="Język interfejsu">
+          <h3 className={styles.SettingsGroupTitle}>{t('profile.language')}</h3>
+          <SettingRow label={t('profile.language')}>
             <div className={styles.SegmentedControl}>
               {(
                 [
-                  ['pl', '🇵🇱 Polski'],
-                  ['en', '🇬🇧 English']
+                  ['pl', t('profile.langPl')],
+                  ['en', t('profile.langEn')]
                 ] as [Language, string][]
               ).map(([val, label]) => (
                 <button
@@ -792,20 +766,22 @@ export default function Profile() {
         </div>
 
         <div className={styles.SettingsGroup}>
-          <h3 className={styles.SettingsGroupTitle}>Powiadomienia</h3>
-          <SettingRow label="Powiadomienia">
+          <h3 className={styles.SettingsGroupTitle}>
+            {t('profile.notifications')}
+          </h3>
+          <SettingRow label={t('profile.notifications')}>
             <Toggle
               checked={settings.notificationsEnabled}
               onChange={(v) => handleSaveSetting('notificationsEnabled', v)}
             />
           </SettingRow>
-          <SettingRow label="Dźwięk">
+          <SettingRow label={t('profile.notifSound')}>
             <Toggle
               checked={settings.notificationSound}
               onChange={(v) => handleSaveSetting('notificationSound', v)}
             />
           </SettingRow>
-          <SettingRow label="Powiadomienia systemowe">
+          <SettingRow label={t('profile.notifDesktop')}>
             <Toggle
               checked={settings.notificationDesktop}
               onChange={(v) => {
@@ -826,7 +802,7 @@ export default function Profile() {
         </div>
 
         <div className={styles.SettingsGroup}>
-          <h3 className={styles.SettingsGroupTitle}>Konto</h3>
+          <h3 className={styles.SettingsGroupTitle}>{t('profile.account')}</h3>
           <button
             className={styles.DangerBtn}
             onClick={() => {
@@ -837,7 +813,7 @@ export default function Profile() {
               }
             }}
           >
-            Wyloguj się
+            {t('profile.logout')}
           </button>
         </div>
       </div>

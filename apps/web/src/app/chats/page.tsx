@@ -21,9 +21,10 @@ import {
   ReactionType,
   AttachmentType,
   API_URL,
-  PAGE_SIZE,
-  getSettings
+  PAGE_SIZE
 } from './types'
+import { useSettings } from '@/context/SettingsContext'
+import { useTranslation } from '@/i18n/translations'
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -262,13 +263,9 @@ function ChatsInner() {
   const isFirstLoad = useRef(true)
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // ── Aplikuj ustawienia motywu przy wejściu ──
-  useEffect(() => {
-    const s = getSettings()
-    document.documentElement.setAttribute('data-theme', s.theme)
-    const sizes = { small: '8px', medium: '10px', large: '12px' }
-    document.documentElement.style.fontSize = sizes[s.fontSize]
-  }, [])
+  // Motyw jest teraz zarządzany przez SettingsContext w layout.tsx — nie trzeba go tu aplikować
+  const { settings } = useSettings()
+  const { t } = useTranslation()
 
   // ── Status z bazy ──
   useEffect(() => {
@@ -495,11 +492,11 @@ function ChatsInner() {
 
   // ── Powiadomienia ──
   function triggerNotification(title: string, body: string) {
-    const s = getSettings()
-    if (!s.notificationsEnabled) return
+    // Używamy settings z SettingsContext zamiast getSettings()
+    if (!settings.notificationsEnabled) return
 
     // Dźwięk
-    if (s.notificationSound) {
+    if (settings.notificationSound) {
       try {
         const ctx = new AudioContext()
         const osc = ctx.createOscillator()
@@ -517,7 +514,7 @@ function ChatsInner() {
 
     // Powiadomienie systemowe
     if (
-      s.notificationDesktop &&
+      settings.notificationDesktop &&
       'Notification' in window &&
       Notification.permission === 'granted'
     ) {
@@ -570,7 +567,7 @@ function ChatsInner() {
           body: form
         })
         if (!uploadRes.ok) {
-          alert('Błąd uploadu pliku')
+          alert(t('chat.errorUpload'))
           setSending(false)
           return
         }
@@ -597,7 +594,7 @@ function ChatsInner() {
         })
       })
       if (!res.ok) {
-        alert('Błąd wysyłania')
+        alert(t('chat.errorSend'))
         setSending(false)
         return
       }
@@ -616,7 +613,7 @@ function ChatsInner() {
         50
       )
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Błąd wysyłania')
+      alert(err instanceof Error ? err.message : t('chat.errorSend'))
     } finally {
       setSending(false)
     }
@@ -750,7 +747,7 @@ function ChatsInner() {
           userIds: [userId, targetUserId]
         })
       })
-      if (!res.ok) throw new Error('Błąd tworzenia czatu')
+      if (!res.ok) throw new Error(t('chat.errorCreate'))
       const newChat: Chat = await res.json()
       setChats((prev) =>
         prev.some((c) => c.id === newChat.id) ? prev : [newChat, ...prev]
@@ -759,7 +756,7 @@ function ChatsInner() {
       setSearchQuery('')
       setSearchOpen(false)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Błąd')
+      alert(err instanceof Error ? err.message : t('chat.errorCreate'))
     }
   }
 
@@ -778,7 +775,7 @@ function ChatsInner() {
       if (!res.ok) throw new Error()
       setSentInvites((prev) => new Set(prev).add(targetUserId))
     } catch {
-      alert('Błąd wysyłania zaproszenia')
+      alert(t('chat.errorInvite'))
     }
   }
 
@@ -921,7 +918,7 @@ function ChatsInner() {
 
 export default function Chats() {
   return (
-    <Suspense fallback={<p style={{ padding: '2rem' }}>Ładowanie...</p>}>
+    <Suspense fallback={<p style={{ padding: '2rem' }}>Loading...</p>}>
       <ChatsInner />
     </Suspense>
   )

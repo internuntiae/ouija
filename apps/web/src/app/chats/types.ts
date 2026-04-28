@@ -81,6 +81,8 @@ export const REACTION_EMOJI: Record<ReactionType, string> = {
   THUMBS_DOWN: '👇'
 }
 
+// STATUS_LABEL jest teraz w i18n/translations.ts (klucze 'status.ONLINE' itd.)
+// Zostawiamy tu wersję fallback dla komponentów które nie mają dostępu do hooka
 export const STATUS_LABEL: Record<UserStatus, string> = {
   ONLINE: 'Aktywny',
   AWAY: 'Zaraz wracam',
