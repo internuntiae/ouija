@@ -10,93 +10,24 @@ import {
   Suspense,
   useCallback
 } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
+import ChatSidebar from './ChatSidebar'
+import ChatWindow from './ChatWindow'
+import {
+  Chat,
+  Message,
+  UserStatus,
+  UserSearchResult,
+  ReactionType,
+  AttachmentType,
+  API_URL,
+  PAGE_SIZE,
+  getSettings
+} from './types'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
-
-type ReactionType =
-  | 'LIKE'
-  | 'LOVE'
-  | 'LAUGH'
-  | 'SAD'
-  | 'ANGRY'
-  | 'THUMBS_UP'
-  | 'THUMBS_DOWN'
-type AttachmentType = 'IMAGE' | 'VIDEO' | 'FILE' | 'AUDIO'
-type UserStatus = 'ONLINE' | 'OFFLINE' | 'AWAY' | 'BUSY'
-
-const REACTION_EMOJI: Record<ReactionType, string> = {
-  LIKE: '👍',
-  LOVE: '❤️',
-  LAUGH: '😂',
-  SAD: '😢',
-  ANGRY: '😡',
-  THUMBS_UP: '👆',
-  THUMBS_DOWN: '👇'
-}
-const STATUS_LABEL: Record<UserStatus, string> = {
-  ONLINE: 'Aktywny',
-  AWAY: 'Zaraz wracam',
-  BUSY: 'Nie przeszkadzać',
-  OFFLINE: 'Offline'
-}
-const STATUS_COLOR: Record<UserStatus, string> = {
-  ONLINE: '#2ecc71',
-  AWAY: '#f39c12',
-  BUSY: '#e74c3c',
-  OFFLINE: '#7f8c8d'
-}
-
-interface Reaction {
-  messageId: string
-  userId: string
-  type: ReactionType
-}
-interface Attachment {
-  id: string
-  url: string
-  type: AttachmentType
-  name?: string
-}
-interface Message {
-  id: string
-  chatId: string
-  senderId: string
-  content: string | null
-  sentAt: string
-  editedAt: string | null
-  attachments: Attachment[]
-  reactions: Reaction[]
-}
-interface ChatUserEntry {
-  userId: string
-  chatId: string
-  role: string
-  joinedAt: string
-  user: {
-    id: string
-    nickname: string
-    status: UserStatus
-    avatarUrl?: string | null
-  }
-}
-interface Chat {
-  id: string
-  name: string | null
-  type: string
-  createdAt: string
-  updatedAt: string
-  users: ChatUserEntry[]
-}
-interface UserSearchResult {
-  id: string
-  nickname: string
-  status: UserStatus
-  avatarUrl?: string | null
-}
+// ─── Mock data ────────────────────────────────────────────────────────────────
 
 const MOCK_USER_ID = 'mock-user-1'
-const PAGE_SIZE = 20
 
 const MOCK_CHATS: Chat[] = [
   {
@@ -120,7 +51,18 @@ const MOCK_CHATS: Chat[] = [
         joinedAt: '',
         user: { id: 'mock-friend-1', nickname: 'Anna Nowak', status: 'AWAY' }
       }
-    ]
+    ],
+    lastMessage: {
+      id: 'lm1',
+      chatId: 'mock-chat-1',
+      senderId: 'mock-friend-1',
+      content: 'Hej, co słychać?',
+      sentAt: new Date(Date.now() - 300000).toISOString(),
+      editedAt: null,
+      attachments: [],
+      reactions: []
+    },
+    unreadCount: 2
   },
   {
     id: 'mock-chat-2',
@@ -147,7 +89,18 @@ const MOCK_CHATS: Chat[] = [
           status: 'BUSY'
         }
       }
-    ]
+    ],
+    lastMessage: {
+      id: 'lm2',
+      chatId: 'mock-chat-2',
+      senderId: 'mock-user-1',
+      content: 'Dobra, do jutra!',
+      sentAt: new Date(Date.now() - 3600000).toISOString(),
+      editedAt: null,
+      attachments: [],
+      reactions: []
+    },
+    unreadCount: 0
   },
   {
     id: 'mock-chat-3',
@@ -181,19 +134,22 @@ const MOCK_CHATS: Chat[] = [
           status: 'BUSY'
         }
       }
-    ]
+    ],
+    lastMessage: {
+      id: 'lm3',
+      chatId: 'mock-chat-3',
+      senderId: 'mock-friend-1',
+      content: 'Kiedy spotkanie?',
+      sentAt: new Date(Date.now() - 7200000).toISOString(),
+      editedAt: null,
+      attachments: [],
+      reactions: []
+    },
+    unreadCount: 5
   }
-]
-const MOCK_SEARCH_USERS: UserSearchResult[] = [
-  { id: 'mock-stranger-1', nickname: 'Marek Zielony', status: 'ONLINE' },
-  { id: 'mock-stranger-2', nickname: 'Zofia Kamińska', status: 'OFFLINE' },
-  { id: 'mock-stranger-3', nickname: 'Tomasz Lewandowski', status: 'AWAY' },
-  { id: 'mock-friend-1', nickname: 'Anna Nowak', status: 'AWAY' },
-  { id: 'mock-friend-2', nickname: 'Piotr Wiśniewski', status: 'BUSY' }
 ]
 
 function generateMockMessages(chatId: string): Message[] {
-  const msgs: Message[] = []
   const senders = ['mock-user-1', 'mock-friend-1', 'mock-friend-2']
   const contents = [
     'Hej, co słychać?',
@@ -217,28 +173,25 @@ function generateMockMessages(chatId: string): Message[] {
     'Okej',
     'Dobra dobra'
   ]
-  for (let i = 1; i <= 50; i++) {
-    msgs.push({
-      id: `mock-msg-${i}`,
-      chatId,
-      senderId: senders[i % senders.length],
-      content: contents[i % contents.length],
-      sentAt: new Date(Date.now() - (50 - i) * 60000).toISOString(),
-      editedAt: null,
-      attachments: [],
-      reactions:
-        i === 3
-          ? [
-              {
-                messageId: `mock-msg-${i}`,
-                userId: 'mock-friend-1',
-                type: 'LIKE'
-              }
-            ]
-          : []
-    })
-  }
-  return msgs
+  return Array.from({ length: 50 }, (_, i) => ({
+    id: `mock-msg-${i + 1}`,
+    chatId,
+    senderId: senders[(i + 1) % senders.length],
+    content: contents[(i + 1) % contents.length],
+    sentAt: new Date(Date.now() - (50 - i) * 60000).toISOString(),
+    editedAt: null,
+    attachments: [],
+    reactions:
+      i === 2
+        ? [
+            {
+              messageId: `mock-msg-${i + 1}`,
+              userId: 'mock-friend-1',
+              type: 'LIKE' as const
+            }
+          ]
+        : []
+  }))
 }
 
 const ALL_MOCK_MESSAGES: Record<string, Message[]> = {
@@ -247,140 +200,40 @@ const ALL_MOCK_MESSAGES: Record<string, Message[]> = {
   'mock-chat-3': generateMockMessages('mock-chat-3')
 }
 
+const MOCK_SEARCH_USERS = [
+  {
+    id: 'mock-stranger-1',
+    nickname: 'Marek Zielony',
+    status: 'ONLINE' as UserStatus
+  },
+  {
+    id: 'mock-stranger-2',
+    nickname: 'Zofia Kamińska',
+    status: 'OFFLINE' as UserStatus
+  },
+  {
+    id: 'mock-stranger-3',
+    nickname: 'Tomasz Lewandowski',
+    status: 'AWAY' as UserStatus
+  }
+]
+
 const USE_MOCK = false
-function avatarSrc(url?: string | null) {
-  return url ?? '/ouija_white.svg'
-}
 
-interface MessageBubbleProps {
-  msg: Message
-  isOwn: boolean
-  userId: string
-  onReact: (messageId: string, type: ReactionType) => void
-}
-
-function MessageBubble({ msg, isOwn, userId, onReact }: MessageBubbleProps) {
-  const [showPicker, setShowPicker] = useState(false)
-  const pickerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (pickerRef.current && !pickerRef.current.contains(e.target as Node))
-        setShowPicker(false)
-    }
-    if (showPicker) document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [showPicker])
-
-  const reactionCounts = (msg.reactions ?? []).reduce<
-    Partial<Record<ReactionType, number>>
-  >((acc, r) => ({ ...acc, [r.type]: (acc[r.type] ?? 0) + 1 }), {})
-  const myReaction = (msg.reactions ?? []).find(
-    (r) => r.userId === userId
-  )?.type
-
-  return (
-    <div
-      className={`${styles.MessageWrapper} ${isOwn ? styles.MessageWrapperOwn : ''}`}
-    >
-      <div
-        className={`${styles.MessageBubble} ${isOwn ? styles.MessageBubbleOwn : styles.MessageBubbleOther}`}
-      >
-        {msg.content && <p className={styles.MessageText}>{msg.content}</p>}
-        {(msg.attachments ?? []).map((att) => (
-          <div key={att.id} className={styles.MessageAttachment}>
-            {att.type === 'IMAGE' ? (
-              <img
-                src={att.url}
-                alt="załącznik"
-                className={styles.MessageAttachmentImage}
-              />
-            ) : att.type === 'VIDEO' ? (
-              <video
-                src={att.url}
-                controls
-                className={styles.MessageAttachmentVideo}
-              />
-            ) : (
-              <a
-                href={att.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.MessageAttachmentFile}
-              >
-                📎 {att.name ?? 'Plik'}
-              </a>
-            )}
-          </div>
-        ))}
-        <span className={styles.MessageTime}>
-          {new Date(msg.sentAt).toLocaleTimeString('pl-PL', {
-            hour: '2-digit',
-            minute: '2-digit'
-          })}
-          {msg.editedAt && ' (edytowano)'}
-        </span>
-        <button
-          className={styles.MessageReactBtn}
-          onClick={() => setShowPicker((v) => !v)}
-          title="Dodaj reakcję"
-        >
-          {myReaction ? REACTION_EMOJI[myReaction] : '＋'}
-        </button>
-        {showPicker && (
-          <div
-            ref={pickerRef}
-            className={`${styles.ReactionPicker} ${isOwn ? styles.ReactionPickerLeft : styles.ReactionPickerRight}`}
-          >
-            {(Object.keys(REACTION_EMOJI) as ReactionType[]).map((type) => (
-              <button
-                key={type}
-                className={`${styles.ReactionPickerBtn} ${myReaction === type ? styles.ReactionPickerBtnActive : ''}`}
-                onClick={() => {
-                  onReact(msg.id, type)
-                  setShowPicker(false)
-                }}
-                title={type}
-              >
-                {REACTION_EMOJI[type]}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-      {Object.keys(reactionCounts).length > 0 && (
-        <div
-          className={`${styles.ReactionBar} ${isOwn ? styles.ReactionBarOwn : ''}`}
-        >
-          {(Object.entries(reactionCounts) as [ReactionType, number][]).map(
-            ([type, count]) => (
-              <span
-                key={type}
-                className={`${styles.ReactionChip} ${myReaction === type ? styles.ReactionChipActive : ''}`}
-                onClick={() => onReact(msg.id, type)}
-                title={type}
-              >
-                {REACTION_EMOJI[type]} {count}
-              </span>
-            )
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
+// ─── Główny komponent ─────────────────────────────────────────────────────────
 
 function ChatsInner() {
   const searchParams = useSearchParams()
-  const router = useRouter()
-  const initialChatId = searchParams.get('chatId')
   const userId =
     typeof window !== 'undefined'
       ? (localStorage.getItem('userId') ?? MOCK_USER_ID)
       : MOCK_USER_ID
 
+  // ── Stan ──
   const [chats, setChats] = useState<Chat[]>([])
-  const [activeChatId, setActiveChatId] = useState<string | null>(initialChatId)
+  const [activeChatId, setActiveChatId] = useState<string | null>(
+    searchParams.get('chatId')
+  )
   const [messages, setMessages] = useState<Message[]>([])
   const [messageText, setMessageText] = useState('')
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
@@ -392,65 +245,110 @@ function ChatsInner() {
   const [myStatus, setMyStatus] = useState<UserStatus>('ONLINE')
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [sentInvites, setSentInvites] = useState<Set<string>>(new Set())
-
   const [profilePopupUserId, setProfilePopupUserId] = useState<string | null>(
     null
   )
-
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchUsers, setSearchUsers] = useState<UserSearchResult[]>([])
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const searchInputRef = useRef<HTMLInputElement>(null)
-  const searchDropdownRef = useRef<HTMLDivElement>(null)
 
+  // ── Refs ──
   const bottomRef = useRef<HTMLDivElement>(null)
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const messageContainerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const lastIdRef = useRef<string>('')
   const isFirstLoad = useRef(true)
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // ── Aplikuj ustawienia motywu przy wejściu ──
   useEffect(() => {
-    const chatId = searchParams.get('chatId')
-    if (chatId) setActiveChatId(chatId)
-  }, [searchParams])
+    const s = getSettings()
+    document.documentElement.setAttribute('data-theme', s.theme)
+    const sizes = { small: '8px', medium: '10px', large: '12px' }
+    document.documentElement.style.fontSize = sizes[s.fontSize]
+  }, [])
 
-  // Pobierz czaty
+  // ── Status z bazy ──
+  useEffect(() => {
+    const cached = localStorage.getItem('userStatus') as UserStatus | null
+    if (cached) setMyStatus(cached)
+    if (USE_MOCK) return
+    fetch(`${API_URL}/api/?id=${userId}`)
+      .then((r) => r.json())
+      .then((data: { status?: UserStatus }) => {
+        if (data?.status) {
+          setMyStatus(data.status)
+          localStorage.setItem('userStatus', data.status)
+        }
+      })
+      .catch(console.error)
+  }, [userId])
+
+  // ── Pobierz czaty ──
   useEffect(() => {
     if (USE_MOCK) {
-      setChats(MOCK_CHATS)
-      if (!activeChatId) setActiveChatId(MOCK_CHATS[0].id)
+      // Sortuj malejąco po dacie ostatniej wiadomości
+      const sorted = [...MOCK_CHATS].sort((a, b) => {
+        const ta = a.lastMessage?.sentAt ?? a.updatedAt
+        const tb = b.lastMessage?.sentAt ?? b.updatedAt
+        return new Date(tb).getTime() - new Date(ta).getTime()
+      })
+      setChats(sorted)
+      if (!activeChatId) setActiveChatId(sorted[0].id)
       setLoadingChats(false)
       return
     }
     fetch(`${API_URL}/api/users/${userId}/chats`)
       .then((r) => r.json())
       .then((data: Chat[]) => {
-        setChats(data)
-        if (!activeChatId && data.length > 0) setActiveChatId(data[0].id)
+        // Dla każdego czatu pobierz ostatnią wiadomość
+        return Promise.all(
+          data.map(async (chat) => {
+            try {
+              const res = await fetch(
+                `${API_URL}/api/chats/${chat.id}/messages?limit=1`
+              )
+              if (res.ok) {
+                const msgs: Message[] = await res.json()
+                return { ...chat, lastMessage: msgs[0] ?? null }
+              }
+            } catch {
+              /* ignoruj */
+            }
+            return chat
+          })
+        )
+      })
+      .then((enriched) => {
+        // Sortuj malejąco po ostatniej wiadomości
+        const sorted = enriched.sort((a, b) => {
+          const ta = a.lastMessage?.sentAt ?? a.updatedAt
+          const tb = b.lastMessage?.sentAt ?? b.updatedAt
+          return new Date(tb).getTime() - new Date(ta).getTime()
+        })
+        setChats(sorted)
+        if (!activeChatId && sorted.length > 0) setActiveChatId(sorted[0].id)
       })
       .catch(console.error)
       .finally(() => setLoadingChats(false))
   }, [userId])
 
-  // Zamknij dropdown po kliknięciu poza
+  // ── Zamknij dropdown ──
   useEffect(() => {
     function onOutside(e: MouseEvent) {
-      if (
-        searchDropdownRef.current &&
-        !searchDropdownRef.current.contains(e.target as Node) &&
-        searchInputRef.current &&
-        !searchInputRef.current.contains(e.target as Node)
-      )
-        setSearchOpen(false)
+      const t = e.target as Node
+      const inSearch =
+        document.querySelector('[data-search-dropdown]')?.contains(t) ||
+        document.querySelector('[data-search-input]')?.contains(t)
+      if (!inSearch) setSearchOpen(false)
     }
     document.addEventListener('mousedown', onOutside)
     return () => document.removeEventListener('mousedown', onOutside)
   }, [])
 
-  // Wyszukiwanie z debouncingiem — używa GET /api/search?q=...
+  // ── Wyszukiwanie z debouncingiem ──
   useEffect(() => {
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
     const q = searchQuery.trim()
@@ -471,103 +369,24 @@ function ChatsInner() {
         return
       }
       try {
-        // GET /api/?q=... — wyszukiwanie przez istniejący endpoint
         const res = await fetch(`${API_URL}/api/?q=${encodeURIComponent(q)}`)
-        if (res.ok) {
-          const data: UserSearchResult[] = await res.json()
-          // Odfiltruj siebie
-          setSearchUsers(data.filter((u) => u.id !== userId))
-        }
-      } catch (err) {
-        console.error('Błąd wyszukiwania:', err)
+        if (res.ok)
+          setSearchUsers(
+            (await res.json()).filter((u: UserSearchResult) => u.id !== userId)
+          )
+      } catch {
+        /* ignoruj */
       } finally {
         setSearchLoading(false)
       }
-    }, 400) // 400ms debounce — nie uderza po każdej literze
+    }, 400)
 
     return () => {
       if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
     }
   }, [searchQuery, userId])
 
-  function getChatDisplayName(chat: Chat): string {
-    if (chat.name) return chat.name
-    return chat.users.find((u) => u.userId !== userId)?.user.nickname ?? 'Czat'
-  }
-
-  const filteredChats = searchQuery.trim()
-    ? chats.filter((c) =>
-        getChatDisplayName(c).toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : chats
-
-  // Osoby z wyników wyszukiwania które NIE mają jeszcze czatu z nami
-  const existingChatUserIds = new Set(
-    chats.flatMap((c) => c.users.map((u) => u.userId))
-  )
-  const newPeopleResults = searchQuery.trim()
-    ? searchUsers.filter((u) => !existingChatUserIds.has(u.id))
-    : []
-
-  // Otwórz czat z użytkownikiem (z ProfilePopup)
-  async function handleMessageFromProfile(targetUserId: string) {
-    try {
-      const chatsRes = await fetch(`${API_URL}/api/users/${userId}/chats`)
-      if (chatsRes.ok) {
-        const chatsData = await chatsRes.json()
-        const existing = chatsData.find(
-          (c: { type: string; users: { userId: string }[] }) =>
-            c.type === 'PRIVATE' &&
-            c.users.some((u: { userId: string }) => u.userId === targetUserId)
-        )
-        if (existing) {
-          setActiveChatId(existing.id)
-          return
-        }
-      }
-      const res = await fetch(`${API_URL}/api/chats`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'PRIVATE',
-          userIds: [userId, targetUserId]
-        })
-      })
-      if (!res.ok) {
-        alert('Błąd tworzenia czatu')
-        return
-      }
-      const chat = await res.json()
-      setChats((prev) => [...prev, chat])
-      setActiveChatId(chat.id)
-    } catch {
-      alert('Błąd tworzenia czatu')
-    }
-  }
-
-  // Wyślij zaproszenie do znajomych
-  async function handleSendInvite(targetUserId: string) {
-    if (USE_MOCK) {
-      setSentInvites((prev) => new Set(prev).add(targetUserId))
-      return
-    }
-    try {
-      const res = await fetch(`${API_URL}/api/users/${userId}/friends`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ friendId: targetUserId })
-      })
-      if (!res.ok) {
-        alert('Błąd wysyłania zaproszenia')
-        return
-      }
-      setSentInvites((prev) => new Set(prev).add(targetUserId))
-    } catch {
-      alert('Błąd wysyłania zaproszenia')
-    }
-  }
-
-  // Pobierz wiadomości przy zmianie aktywnego czatu
+  // ── Pobierz wiadomości ──
   useEffect(() => {
     if (!activeChatId) return
     setMessages([])
@@ -575,6 +394,11 @@ function ChatsInner() {
     lastIdRef.current = ''
     isFirstLoad.current = true
     setLoadingMessages(true)
+
+    // Oznacz czat jako przeczytany
+    setChats((prev) =>
+      prev.map((c) => (c.id === activeChatId ? { ...c, unreadCount: 0 } : c))
+    )
 
     if (USE_MOCK) {
       const all = ALL_MOCK_MESSAGES[activeChatId] ?? []
@@ -588,7 +412,6 @@ function ChatsInner() {
     fetch(`${API_URL}/api/chats/${activeChatId}/messages?limit=${PAGE_SIZE}`)
       .then((r) => r.json())
       .then((data: Message[]) => {
-        // Backend zwraca desc (najnowsze pierwsze) — odwracamy żeby wyświetlić chronologicznie
         const sorted = [...data].reverse()
         setMessages(sorted)
         setHasMore(data.length === PAGE_SIZE)
@@ -598,6 +421,7 @@ function ChatsInner() {
       .finally(() => setLoadingMessages(false))
   }, [activeChatId])
 
+  // ── Scroll do dołu przy pierwszym ładowaniu ──
   useEffect(() => {
     if (messages.length > 0 && isFirstLoad.current) {
       bottomRef.current?.scrollIntoView({ behavior: 'auto' })
@@ -605,6 +429,7 @@ function ChatsInner() {
     }
   }, [messages])
 
+  // ── Ładuj starsze wiadomości ──
   const loadMoreMessages = useCallback(async () => {
     if (!activeChatId || loadingMore || !hasMore) return
     setLoadingMore(true)
@@ -613,10 +438,10 @@ function ChatsInner() {
 
     if (USE_MOCK) {
       const all = ALL_MOCK_MESSAGES[activeChatId] ?? []
-      const currentIndex = all.findIndex((m) => m.id === lastIdRef.current)
-      const start = Math.max(0, currentIndex - PAGE_SIZE)
-      const older = all.slice(start, currentIndex)
-      if (older.length === 0) {
+      const idx = all.findIndex((m) => m.id === lastIdRef.current)
+      const start = Math.max(0, idx - PAGE_SIZE)
+      const older = all.slice(start, idx)
+      if (!older.length) {
         setHasMore(false)
         setLoadingMore(false)
         return
@@ -636,11 +461,10 @@ function ChatsInner() {
         `${API_URL}/api/chats/${activeChatId}/messages?limit=${PAGE_SIZE}&lastId=${lastIdRef.current}`
       )
       const older: Message[] = await res.json()
-      if (older.length === 0) {
+      if (!older.length) {
         setHasMore(false)
         return
       }
-      // Backend zwraca desc — odwracamy przed doklejeniem na górze
       const sorted = [...older].reverse()
       lastIdRef.current = older[older.length - 1]?.id ?? ''
       setHasMore(older.length === PAGE_SIZE)
@@ -669,7 +493,39 @@ function ChatsInner() {
     return () => observer.disconnect()
   }, [loadMoreMessages])
 
-  // Wysyłanie wiadomości
+  // ── Powiadomienia ──
+  function triggerNotification(title: string, body: string) {
+    const s = getSettings()
+    if (!s.notificationsEnabled) return
+
+    // Dźwięk
+    if (s.notificationSound) {
+      try {
+        const ctx = new AudioContext()
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.frequency.value = 880
+        gain.gain.value = 0.1
+        osc.start()
+        osc.stop(ctx.currentTime + 0.1)
+      } catch {
+        /* ignoruj */
+      }
+    }
+
+    // Powiadomienie systemowe
+    if (
+      s.notificationDesktop &&
+      'Notification' in window &&
+      Notification.permission === 'granted'
+    ) {
+      new Notification(title, { body, icon: '/ouija_white.png' })
+    }
+  }
+
+  // ── Wysyłanie wiadomości ──
   async function handleSendMessage(e: FormEvent) {
     e.preventDefault()
     if (!activeChatId || (!messageText.trim() && pendingFiles.length === 0))
@@ -677,29 +533,22 @@ function ChatsInner() {
     setSending(true)
 
     if (USE_MOCK) {
-      const mockAttachments: Attachment[] = pendingFiles.map((f, i) => ({
-        id: `att-${Date.now()}-${i}`,
-        url: URL.createObjectURL(f),
-        type: f.type.startsWith('image/')
-          ? 'IMAGE'
-          : f.type.startsWith('video/')
-            ? 'VIDEO'
-            : 'FILE',
-        name: f.name
-      }))
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `mock-${Date.now()}`,
-          chatId: activeChatId,
-          senderId: userId,
-          content: messageText.trim() || null,
-          sentAt: new Date().toISOString(),
-          editedAt: null,
-          attachments: mockAttachments,
-          reactions: []
-        }
-      ])
+      const newMsg: Message = {
+        id: `mock-${Date.now()}`,
+        chatId: activeChatId,
+        senderId: userId,
+        content: messageText.trim() || null,
+        sentAt: new Date().toISOString(),
+        editedAt: null,
+        attachments: [],
+        reactions: []
+      }
+      setMessages((prev) => [...prev, newMsg])
+      setChats((prev) =>
+        prev.map((c) =>
+          c.id === activeChatId ? { ...c, lastMessage: newMsg } : c
+        )
+      )
       setMessageText('')
       setPendingFiles([])
       setSending(false)
@@ -754,6 +603,12 @@ function ChatsInner() {
       }
       const data: Message = await res.json()
       setMessages((prev) => [...prev, data])
+      // Aktualizuj lastMessage w liście czatów
+      setChats((prev) =>
+        prev.map((c) =>
+          c.id === activeChatId ? { ...c, lastMessage: data } : c
+        )
+      )
       setMessageText('')
       setPendingFiles([])
       setTimeout(
@@ -767,7 +622,7 @@ function ChatsInner() {
     }
   }
 
-  // Reakcje
+  // ── Reakcje ──
   async function handleReact(messageId: string, type: ReactionType) {
     if (USE_MOCK) {
       setMessages((prev) =>
@@ -852,9 +707,11 @@ function ChatsInner() {
     }
   }
 
+  // ── Zmiana statusu ──
   async function handleStatusChange(status: UserStatus) {
     setMyStatus(status)
     setShowStatusMenu(false)
+    localStorage.setItem('userStatus', status)
     if (USE_MOCK) return
     try {
       await fetch(`${API_URL}/api/${userId}`, {
@@ -867,7 +724,71 @@ function ChatsInner() {
     }
   }
 
-  // Natywny event listener zamiast onChange — pewniejszy dla file inputów
+  // ── Otwórz lub utwórz czat ──
+  async function handleOpenChatWith(targetUserId: string) {
+    const existing = chats.find(
+      (c) =>
+        c.type === 'PRIVATE' && c.users.some((u) => u.userId === targetUserId)
+    )
+    if (existing) {
+      setActiveChatId(existing.id)
+      setSearchQuery('')
+      setSearchOpen(false)
+      return
+    }
+    if (USE_MOCK) {
+      setSearchQuery('')
+      setSearchOpen(false)
+      return
+    }
+    try {
+      const res = await fetch(`${API_URL}/api/chats`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'PRIVATE',
+          userIds: [userId, targetUserId]
+        })
+      })
+      if (!res.ok) throw new Error('Błąd tworzenia czatu')
+      const newChat: Chat = await res.json()
+      setChats((prev) =>
+        prev.some((c) => c.id === newChat.id) ? prev : [newChat, ...prev]
+      )
+      setTimeout(() => setActiveChatId(newChat.id), 0)
+      setSearchQuery('')
+      setSearchOpen(false)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Błąd')
+    }
+  }
+
+  // ── Wyślij zaproszenie ──
+  async function handleSendInvite(targetUserId: string) {
+    if (USE_MOCK) {
+      setSentInvites((prev) => new Set(prev).add(targetUserId))
+      return
+    }
+    try {
+      const res = await fetch(`${API_URL}/api/users/${userId}/friends`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ friendId: targetUserId })
+      })
+      if (!res.ok) throw new Error()
+      setSentInvites((prev) => new Set(prev).add(targetUserId))
+    } catch {
+      alert('Błąd wysyłania zaproszenia')
+    }
+  }
+
+  // ── Otwórz czat z ProfilePopup ──
+  async function handleMessageFromProfile(targetUserId: string) {
+    await handleOpenChatWith(targetUserId)
+    setProfilePopupUserId(null)
+  }
+
+  // ── Natywny listener dla file input ──
   useEffect(() => {
     const input = fileInputRef.current
     if (!input) return
@@ -882,255 +803,49 @@ function ChatsInner() {
     return () => input.removeEventListener('change', onFileSelect)
   }, [])
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  function handleFileChange(_e: React.ChangeEvent<HTMLInputElement>) {
-    // kept for type compatibility, logic handled by useEffect above
+  function handleFileChange() {
+    /* handled by useEffect */
   }
 
-  function getOtherUser(chat: Chat) {
-    return chat.users.find((u) => u.userId !== userId)?.user ?? null
+  // ── Pochodne ──
+  function getChatDisplayName(chat: Chat): string {
+    if (chat.name) return chat.name
+    return chat.users.find((u) => u.userId !== userId)?.user.nickname ?? 'Czat'
   }
+
+  const filteredChats = searchQuery.trim()
+    ? chats.filter((c) =>
+        getChatDisplayName(c).toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : chats
+
+  const existingChatUserIds = new Set(
+    chats.flatMap((c) => c.users.map((u) => u.userId))
+  )
+  const newPeopleResults = searchQuery.trim()
+    ? searchUsers.filter((u) => !existingChatUserIds.has(u.id))
+    : []
 
   const activeChat = chats.find((c) => c.id === activeChatId) ?? null
-  const otherUser = activeChat ? getOtherUser(activeChat) : null
+  const otherUser =
+    activeChat?.users.find((u) => u.userId !== userId)?.user ?? null
+
+  // ── Powiadomienia dla nowych wiadomości od innych ──
+  // (uruchamia się gdy zmienią się messages i nie jesteśmy focusem)
+  useEffect(() => {
+    if (!messages.length) return
+    const last = messages[messages.length - 1]
+    if (last.senderId !== userId && document.hidden) {
+      const senderName =
+        activeChat?.users.find((u) => u.userId === last.senderId)?.user
+          .nickname ?? 'Ktoś'
+      triggerNotification(senderName, last.content ?? '📎 Załącznik')
+    }
+  }, [messages])
 
   return (
     <div className={styles.container}>
-      <div className={styles.Contacts}>
-        {/* Status */}
-        <div
-          className={styles.MyStatus}
-          onClick={() => setShowStatusMenu((v) => !v)}
-        >
-          <span
-            className={styles.StatusDot}
-            style={{ background: STATUS_COLOR[myStatus] }}
-          />
-          <span className={styles.StatusLabel}>{STATUS_LABEL[myStatus]}</span>
-          <span className={styles.StatusChevron}>▾</span>
-        </div>
-        {showStatusMenu && (
-          <div className={styles.StatusMenu}>
-            {(Object.keys(STATUS_LABEL) as UserStatus[]).map((s) => (
-              <button
-                key={s}
-                className={`${styles.StatusMenuBtn} ${myStatus === s ? styles.StatusMenuBtnActive : ''}`}
-                onClick={() => handleStatusChange(s)}
-              >
-                <span
-                  className={styles.StatusDot}
-                  style={{ background: STATUS_COLOR[s] }}
-                />
-                {STATUS_LABEL[s]}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Search */}
-        <div className={styles.SearchSection}>
-          <div className={styles.SearchWrap}>
-            <input
-              ref={searchInputRef}
-              type="text"
-              className={styles.SearchInput}
-              placeholder="Szukaj czatów i osób..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value)
-                setSearchOpen(true)
-              }}
-              onFocus={() => setSearchOpen(true)}
-            />
-            {searchQuery && (
-              <button
-                className={styles.SearchClear}
-                onClick={() => {
-                  setSearchQuery('')
-                  setSearchOpen(false)
-                }}
-              >
-                ✕
-              </button>
-            )}
-          </div>
-
-          {searchOpen && searchQuery.trim() && (
-            <div ref={searchDropdownRef} className={styles.SearchDropdown}>
-              {searchLoading && (
-                <p className={styles.SearchDropdownLoading}>Szukam...</p>
-              )}
-
-              {filteredChats.length > 0 && (
-                <>
-                  <p className={styles.SearchDropdownSection}>Czaty</p>
-                  {filteredChats.map((chat) => {
-                    const other = getOtherUser(chat)
-                    return (
-                      <div
-                        key={chat.id}
-                        className={styles.SearchDropdownItem}
-                        onClick={() => {
-                          setActiveChatId(chat.id)
-                          setSearchQuery('')
-                          setSearchOpen(false)
-                        }}
-                      >
-                        <div
-                          className={styles.AvatarWrap}
-                          style={{ cursor: 'pointer' }}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            const other = getOtherUser(chat)
-                            if (other) {
-                              setProfilePopupUserId(other.id)
-                              setSearchOpen(false)
-                            }
-                          }}
-                        >
-                          <img
-                            src={avatarSrc(other?.avatarUrl)}
-                            alt="avatar"
-                            height={32}
-                            width={32}
-                            className={styles.ContactsChatPreviewProfilePicture}
-                          />
-                          {other && (
-                            <span
-                              className={styles.StatusDotSmall}
-                              style={{ background: STATUS_COLOR[other.status] }}
-                            />
-                          )}
-                        </div>
-                        <span className={styles.SearchDropdownItemName}>
-                          {getChatDisplayName(chat)}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </>
-              )}
-
-              {newPeopleResults.length > 0 && (
-                <>
-                  <p className={styles.SearchDropdownSection}>Nowe osoby</p>
-                  {newPeopleResults.map((person) => (
-                    <div key={person.id} className={styles.SearchDropdownItem}>
-                      <div
-                        className={styles.AvatarWrap}
-                        style={{ cursor: 'pointer' }}
-                        onClick={() => {
-                          setProfilePopupUserId(person.id)
-                          setSearchOpen(false)
-                        }}
-                      >
-                        <img
-                          src={avatarSrc(person.avatarUrl)}
-                          alt="avatar"
-                          height={32}
-                          width={32}
-                          className={styles.ContactsChatPreviewProfilePicture}
-                        />
-                        <span
-                          className={styles.StatusDotSmall}
-                          style={{ background: STATUS_COLOR[person.status] }}
-                        />
-                      </div>
-                      <span
-                        className={styles.SearchDropdownItemName}
-                        style={{ cursor: 'pointer' }}
-                        onClick={() => {
-                          setProfilePopupUserId(person.id)
-                          setSearchOpen(false)
-                        }}
-                      >
-                        {person.nickname}
-                      </span>
-                      <div className={styles.SearchDropdownActions}>
-                        <button
-                          className={`${styles.SearchActionBtn} ${sentInvites.has(person.id) ? styles.SearchActionBtnSent : ''}`}
-                          onClick={() => handleSendInvite(person.id)}
-                          disabled={sentInvites.has(person.id)}
-                          title={
-                            sentInvites.has(person.id)
-                              ? 'Wysłano'
-                              : 'Dodaj znajomego'
-                          }
-                        >
-                          {sentInvites.has(person.id) ? '✓' : '+'}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </>
-              )}
-
-              {!searchLoading &&
-                filteredChats.length === 0 &&
-                newPeopleResults.length === 0 && (
-                  <p className={styles.SearchDropdownEmpty}>Brak wyników</p>
-                )}
-            </div>
-          )}
-        </div>
-
-        {/* Lista czatów */}
-        {loadingChats && <p className={styles.LoadingText}>Ładowanie...</p>}
-        {!searchQuery.trim() &&
-          filteredChats.map((chat) => {
-            const other = getOtherUser(chat)
-            const lastMsg = USE_MOCK
-              ? ((ALL_MOCK_MESSAGES[chat.id] ?? []).slice(-1)[0]?.content ?? '')
-              : ''
-            return (
-              <div
-                key={chat.id}
-                className={`${styles.ContactsChatPreview} ${chat.id === activeChatId ? styles.ContactsChatPreviewActive : ''}`}
-                onClick={() => setActiveChatId(chat.id)}
-              >
-                <div
-                  className={styles.AvatarWrap}
-                  style={{ cursor: 'pointer' }}
-                  onClick={(e) => {
-                    e.stopPropagation() // żeby nie przełączyć czatu
-                    const other = getOtherUser(chat)
-                    if (other) router.push(`/profile/${other.id}`)
-                  }}
-                >
-                  <img
-                    src={avatarSrc(other?.avatarUrl)}
-                    alt="avatar"
-                    height={30}
-                    width={30}
-                    className={styles.ContactsChatPreviewProfilePicture}
-                  />
-                  {other && (
-                    <span
-                      className={styles.StatusDotSmall}
-                      style={{ background: STATUS_COLOR[other.status] }}
-                    />
-                  )}
-                </div>
-                <div className={styles.ContactsChatPreviewMessageContainer}>
-                  <h4
-                    className={styles.ContactsChatPreviewMessageContainerName}
-                  >
-                    {getChatDisplayName(chat)}
-                  </h4>
-                  <p
-                    className={
-                      styles.ContactsChatPreviewMessageContainerMessage
-                    }
-                  >
-                    {lastMsg}
-                  </p>
-                </div>
-              </div>
-            )
-          })}
-      </div>
-
-      {/* Input zawsze w DOM niezależnie od activeChat — label htmlFor musi znaleźć input */}
+      {/* Input poza warunkowym renderem */}
       <input
         type="file"
         id="file-upload-input"
@@ -1141,142 +856,63 @@ function ChatsInner() {
         style={{ display: 'none' }}
       />
 
-      {/* Obszar czatu */}
-      <div className={styles.Chat}>
-        {activeChat ? (
-          <>
-            <div className={styles.ChatContactInfo}>
-              <div className={styles.ChatContactInfoLeft}>
-                <div
-                  className={styles.AvatarWrap}
-                  style={{ cursor: 'pointer' }}
-                  onClick={() =>
-                    otherUser && router.push(`/profile/${otherUser.id}`)
-                  }
-                >
-                  <img
-                    src={avatarSrc(otherUser?.avatarUrl)}
-                    alt="avatar"
-                    height={36}
-                    width={36}
-                    className={styles.ContactsChatPreviewProfilePicture}
-                  />
-                  {otherUser && (
-                    <span
-                      className={styles.StatusDotSmall}
-                      style={{ background: STATUS_COLOR[otherUser.status] }}
-                    />
-                  )}
-                </div>
-                <div>
-                  <h2 className={styles.ChatContactName}>
-                    {getChatDisplayName(activeChat)}
-                  </h2>
-                  {otherUser && (
-                    <h5
-                      className={styles.ChatContactStatus}
-                      style={{ color: STATUS_COLOR[otherUser.status] }}
-                    >
-                      {STATUS_LABEL[otherUser.status]}
-                    </h5>
-                  )}
-                </div>
-              </div>
-            </div>
+      <ChatSidebar
+        userId={userId}
+        chats={chats}
+        activeChatId={activeChatId}
+        myStatus={myStatus}
+        showStatusMenu={showStatusMenu}
+        setShowStatusMenu={setShowStatusMenu}
+        onStatusChange={handleStatusChange}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        searchOpen={searchOpen}
+        setSearchOpen={setSearchOpen}
+        searchLoading={searchLoading}
+        searchUsers={searchUsers}
+        filteredChats={filteredChats}
+        newPeopleResults={newPeopleResults}
+        sentInvites={sentInvites}
+        loadingChats={loadingChats}
+        onSelectChat={(id) => {
+          setActiveChatId(id)
+          setChats((prev) =>
+            prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c))
+          )
+        }}
+        onOpenProfile={setProfilePopupUserId}
+        onSendInvite={handleSendInvite}
+        onOpenChatWith={handleOpenChatWith}
+      />
 
-            <div
-              className={styles.ChatMessageContainer}
-              ref={messageContainerRef}
-            >
-              <div ref={topSentinelRef} className={styles.TopSentinel} />
-              {loadingMore && (
-                <p className={styles.LoadingMore}>Ładowanie starszych...</p>
-              )}
-              {loadingMessages && (
-                <p className={styles.LoadingText}>Ładowanie wiadomości...</p>
-              )}
-              {messages.map((msg) => (
-                <MessageBubble
-                  key={msg.id}
-                  msg={msg}
-                  isOwn={msg.senderId === userId}
-                  userId={userId}
-                  onReact={handleReact}
-                />
-              ))}
-              <div ref={bottomRef} />
-            </div>
+      <ChatWindow
+        activeChat={activeChat}
+        otherUser={otherUser}
+        userId={userId}
+        messages={messages}
+        loadingMessages={loadingMessages}
+        loadingMore={loadingMore}
+        messageText={messageText}
+        setMessageText={setMessageText}
+        pendingFiles={pendingFiles}
+        setPendingFiles={setPendingFiles}
+        sending={sending}
+        bottomRef={bottomRef}
+        topSentinelRef={topSentinelRef}
+        messageContainerRef={messageContainerRef}
+        fileInputRef={fileInputRef}
+        onSendMessage={handleSendMessage}
+        onReact={handleReact}
+        onOpenProfile={setProfilePopupUserId}
+        getChatDisplayName={getChatDisplayName}
+      />
 
-            {pendingFiles.length > 0 && (
-              <div className={styles.PendingFiles}>
-                {pendingFiles.map((f, i) => (
-                  <div key={i} className={styles.PendingFile}>
-                    {f.type.startsWith('image/') ? (
-                      <img
-                        src={URL.createObjectURL(f)}
-                        alt={f.name}
-                        className={styles.PendingFileThumb}
-                      />
-                    ) : (
-                      <span className={styles.PendingFileIcon}>📎</span>
-                    )}
-                    <span className={styles.PendingFileName}>{f.name}</span>
-                    <button
-                      className={styles.PendingFileRemove}
-                      onClick={() =>
-                        setPendingFiles((prev) =>
-                          prev.filter((_, idx) => idx !== i)
-                        )
-                      }
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className={styles.ChatMessageToolbar}>
-              <form onSubmit={handleSendMessage}>
-                <label
-                  htmlFor="file-upload-input"
-                  className={styles.AttachBtn}
-                  title="Dodaj plik"
-                >
-                  📎
-                </label>
-                <input
-                  type="text"
-                  placeholder="wpisz wiadomość"
-                  className={styles.ChatMessageToolbarInput}
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
-                  disabled={sending}
-                />
-                <input
-                  type="submit"
-                  value={sending ? '...' : 'wyślij'}
-                  className={styles.ChatMessageToolbarSubmit}
-                  disabled={sending}
-                />
-              </form>
-            </div>
-          </>
-        ) : (
-          <p className={styles.NoChatSelected}>Wybierz czat</p>
-        )}
-      </div>
-
-      {/* Profile Popup */}
       {profilePopupUserId && (
         <ProfilePopup
           userId={profilePopupUserId}
           viewerId={userId}
           onClose={() => setProfilePopupUserId(null)}
-          onMessageUser={(targetId) => {
-            handleMessageFromProfile(targetId)
-            setProfilePopupUserId(null)
-          }}
+          onMessageUser={handleMessageFromProfile}
         />
       )}
     </div>

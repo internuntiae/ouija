@@ -1,9 +1,11 @@
 .PageWrapper {
   width: 100%;
-  padding: 10rem 0 4rem;
+  padding: 4rem 0 6rem;
   display: flex;
   flex-direction: column;
   align-items: center;
+  background: var(--bg-base);
+  min-height: 100%;
 }
 
 .Section {
@@ -13,10 +15,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  background-color: #1e1c1a;
-  border: 1px solid #2e2b29;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
   border-radius: 1.5rem;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
 }
 
 .First {
@@ -25,7 +27,8 @@
 
 .SectionProfilePicture {
   border-radius: 50%;
-  border: 2px solid #3a3836;
+  margin-bottom: 1.2rem;
+  border: 2px solid var(--border-mid);
   object-fit: cover;
 }
 
@@ -35,6 +38,7 @@
   margin-bottom: 1rem;
   width: 100%;
   text-align: center;
+  color: var(--text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -57,16 +61,16 @@
 .SectionText {
   font-size: 1.3rem;
   margin: 0.3rem 0;
-  color: #ccc;
+  color: var(--text-muted);
 
   a {
     margin-left: 0.6rem;
-    color: #aaa;
+    color: var(--text-muted);
     cursor: pointer;
     text-decoration: underline;
     transition: color 0.2s;
     &:hover {
-      color: #fff;
+      color: var(--text);
     }
   }
 }
@@ -81,25 +85,25 @@
 
 .PasswordInput {
   flex: 1;
-  background: transparent;
-  border: 1px solid #3a3836;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-mid);
   border-radius: 0.6rem;
-  color: #f3f3f4;
+  color: var(--text);
   padding: 0.6rem 1rem;
   font-size: 1.3rem;
   font-family: inherit;
   transition: border-color 0.2s;
   &:focus {
     outline: none;
-    border-color: #f3f3f4;
+    border-color: var(--text);
   }
 }
 
 .SaveBtn {
-  background: transparent;
-  border: 1px solid rgba(243, 243, 244, 0.3);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-mid);
   border-radius: 0.6rem;
-  color: #f3f3f4;
+  color: var(--text);
   padding: 0.6rem 1.4rem;
   font-size: 1.3rem;
   font-family: inherit;
@@ -108,8 +112,8 @@
     border-color 0.2s,
     background 0.2s;
   &:hover {
-    border-color: #f3f3f4;
-    background: #2a2826;
+    border-color: var(--text);
+    background: var(--bg-hover);
   }
 }
 
@@ -125,7 +129,7 @@
 }
 .LoadingText {
   padding: 2rem;
-  color: #aaa;
+  color: var(--text-muted);
   font-size: 1.4rem;
 }
 .ErrorText {
@@ -143,9 +147,9 @@
   gap: 1.2rem;
   padding: 1rem;
   margin: 0.4rem 0;
-  background-color: #2a2826;
+  background-color: var(--bg-elevated);
   border-radius: 1rem;
-  border: 1px solid #3a3836;
+  border: 1px solid var(--border-mid);
 }
 
 .AvatarWrap {
@@ -165,7 +169,7 @@
   width: 1rem;
   height: 1rem;
   border-radius: 50%;
-  border: 2px solid #1e1c1a;
+  border: 2px solid var(--bg-surface);
 }
 
 .FriendInfo {
@@ -179,6 +183,7 @@
 .SectionFriendName {
   font-size: 1.4rem;
   font-weight: 600;
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -186,7 +191,7 @@
 
 .FriendStatusText {
   font-size: 1.1rem;
-  color: #aaa;
+  color: var(--text-muted);
 }
 
 .SectionFriendMessageButton,
@@ -195,9 +200,9 @@
 .RejectBtn {
   padding: 0.5rem 1.2rem;
   border-radius: 0.7rem;
-  border: 1px solid rgba(243, 243, 244, 0.2);
+  border: 1px solid var(--border-mid);
   background-color: transparent;
-  color: #f3f3f4;
+  color: var(--text);
   cursor: pointer;
   font-family: inherit;
   font-size: 1.2rem;
@@ -207,11 +212,12 @@
 }
 
 .SectionFriendMessageButton:hover {
-  background-color: #3a3836;
+  background-color: var(--bg-hover);
 }
 .SectionFriendDeleteButton:hover {
   background-color: #5a1f1f;
   border-color: #c0392b;
+  color: #e74c3c;
 }
 .AcceptBtn:hover {
   background-color: #1a4a2e;
@@ -229,7 +235,7 @@
 .SettingsGroup {
   width: 100%;
   margin-bottom: 2rem;
-  border-bottom: 1px solid #2e2b29;
+  border-bottom: 1px solid var(--border);
   padding-bottom: 1.5rem;
   &:last-child {
     border-bottom: none;
@@ -241,7 +247,7 @@
 .SettingsGroupTitle {
   font-size: 1.3rem;
   font-weight: 600;
-  color: #aaa;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   margin-bottom: 1.2rem;
@@ -252,12 +258,16 @@
   align-items: center;
   justify-content: space-between;
   gap: 2rem;
-  padding: 0.6rem 0;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--border);
+  &:last-child {
+    border-bottom: none;
+  }
 }
 
 .SettingLabel {
   font-size: 1.4rem;
-  color: #f3f3f4;
+  color: var(--text);
   flex-shrink: 0;
 }
 .SettingControl {
@@ -267,8 +277,8 @@
 
 .SegmentedControl {
   display: flex;
-  background: #14110f;
-  border: 1px solid #3a3836;
+  background: var(--bg-base);
+  border: 1px solid var(--border-mid);
   border-radius: 0.8rem;
   overflow: hidden;
 }
@@ -276,22 +286,23 @@
 .SegmentBtn {
   background: transparent;
   border: none;
-  color: #aaa;
+  color: var(--text-muted);
   font-size: 1.2rem;
   font-family: inherit;
   padding: 0.5rem 1.2rem;
   cursor: pointer;
   transition:
-    background 0.15s ease,
-    color 0.15s ease;
+    background 0.15s,
+    color 0.15s;
   &:hover {
-    color: #f3f3f4;
+    color: var(--text);
+    background: var(--bg-elevated);
   }
 }
 
 .SegmentBtnActive {
-  background: #3a3836;
-  color: #f3f3f4;
+  background: var(--bg-elevated);
+  color: var(--text);
   font-weight: 600;
 }
 
@@ -299,7 +310,7 @@
   position: relative;
   width: 4.4rem;
   height: 2.4rem;
-  background: #3a3836;
+  background: var(--border-mid);
   border: none;
   border-radius: 1.2rem;
   cursor: pointer;
@@ -317,7 +328,7 @@
   left: 0.3rem;
   width: 1.8rem;
   height: 1.8rem;
-  background: #f3f3f4;
+  background: #fff;
   border-radius: 50%;
   transition: transform 0.2s ease;
   .ToggleOn & {
@@ -335,12 +346,12 @@
   padding: 0.7rem 2rem;
   cursor: pointer;
   transition:
-    background 0.2s ease,
-    color 0.2s ease;
+    background 0.2s,
+    color 0.2s;
   margin-top: 0.5rem;
   &:hover {
     background: #5a1f1f;
-    color: #f3f3f4;
+    color: #fff;
   }
 }
 
@@ -355,8 +366,8 @@
   position: absolute;
   bottom: 0;
   right: 0;
-  background: #2a2826;
-  border: 1px solid #3a3836;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-mid);
   border-radius: 50%;
   width: 3.2rem;
   height: 3.2rem;
@@ -367,6 +378,6 @@
   font-size: 1.4rem;
   transition: background 0.2s;
   &:hover {
-    background: #3a3836;
+    background: var(--bg-hover);
   }
 }
