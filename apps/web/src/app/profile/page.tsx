@@ -142,13 +142,6 @@ const STATUS_COLOR: Record<string, string> = {
   OFFLINE: '#7f8c8d'
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  ONLINE: 'Aktywny',
-  AWAY: 'Zaraz wracam',
-  BUSY: 'Nie przeszkadzać',
-  OFFLINE: 'Offline'
-}
-
 function avatarSrc(url?: string | null) {
   return url ?? '/ouija_white.png'
 }
@@ -206,7 +199,6 @@ type InviteEntry = FriendEntry
 
 export default function Profile() {
   const router = useRouter()
-  // Używamy globalnego kontekstu zamiast lokalnego stanu ustawień
   const { settings, updateSetting } = useSettings()
   const { t } = useTranslation()
 
@@ -221,10 +213,6 @@ export default function Profile() {
   const [sentInvites, setSentInvites] = useState<InviteEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  const [showPasswordForm, setShowPasswordForm] = useState(false)
-  const [newPassword, setNewPassword] = useState('')
-  const [passwordMsg, setPasswordMsg] = useState<string | null>(null)
 
   const [settingsSaved, setSettingsSaved] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
@@ -294,7 +282,7 @@ export default function Profile() {
           pendingData.filter((f: InviteEntry) => f.userId === userId)
         )
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Błąd wczytywania')
+        setError(err instanceof Error ? err.message : t('common.error'))
       } finally {
         setLoading(false)
       }
@@ -302,7 +290,6 @@ export default function Profile() {
     fetchData()
   }, [userId])
 
-  // Wrapper który wywołuje updateSetting z kontekstu i pokazuje "Zapisano"
   function handleSaveSetting<K extends keyof AppSettings>(
     key: K,
     value: AppSettings[K]
@@ -310,33 +297,6 @@ export default function Profile() {
     updateSetting(key, value)
     setSettingsSaved(true)
     setTimeout(() => setSettingsSaved(false), 2000)
-  }
-
-  async function handleChangePassword(e: React.FormEvent) {
-    e.preventDefault()
-    setPasswordMsg(null)
-    if (USE_MOCK) {
-      setPasswordMsg('Hasło zmienione! (mock)')
-      setShowPasswordForm(false)
-      setNewPassword('')
-      return
-    }
-    try {
-      const res = await fetch(`${API_URL}/api/${userId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: newPassword })
-      })
-      if (!res.ok) {
-        const d = await res.json()
-        throw new Error(d?.error ?? 'Błąd')
-      }
-      setPasswordMsg('Hasło zmienione pomyślnie!')
-      setShowPasswordForm(false)
-      setNewPassword('')
-    } catch (err) {
-      setPasswordMsg(err instanceof Error ? err.message : 'Błąd zmiany hasła')
-    }
   }
 
   async function handleRemoveFriend(friendId: string) {
@@ -491,7 +451,10 @@ export default function Profile() {
             width={120}
             height={120}
           />
-          <label className={styles.AvatarEditBtn} title="Zmień zdjęcie">
+          <label
+            className={styles.AvatarEditBtn}
+            title={t('profile.changeAvatar')}
+          >
             {avatarUploading ? '...' : '📷'}
             <input
               type="file"
@@ -505,43 +468,21 @@ export default function Profile() {
         <h2 className={styles.SectionHeading}>{user.nickname}</h2>
         <p className={styles.SectionText}>Email: {user.email}</p>
         <p className={styles.SectionText}>
-          Hasło:{' '}
-          <a onClick={() => setShowPasswordForm((v) => !v)}>
-            {showPasswordForm ? 'Anuluj' : 'Zmień hasło'}
+          {t('profile.passwordLabel')}{' '}
+          <a
+            style={{ cursor: 'pointer' }}
+            onClick={() => router.push('/forgot-password')}
+          >
+            {t('profile.changePasswordRedirect')}
           </a>
         </p>
-        {showPasswordForm && (
-          <form onSubmit={handleChangePassword} className={styles.PasswordForm}>
-            <input
-              type="password"
-              placeholder="Nowe hasło (min. 8 znaków)"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              minLength={8}
-              required
-              className={styles.PasswordInput}
-            />
-            <button type="submit" className={styles.SaveBtn}>
-              Zapisz
-            </button>
-          </form>
-        )}
-        {passwordMsg && (
-          <p
-            className={
-              passwordMsg.includes('!') ? styles.SuccessMsg : styles.ErrorMsg
-            }
-          >
-            {passwordMsg}
-          </p>
-        )}
       </div>
 
       {/* ── Zaproszenia przychodzące ── */}
       {pendingInvites.length > 0 && (
         <div className={styles.Section}>
           <h2 className={styles.SectionHeading}>
-            Zaproszenia do znajomych
+            {t('profile.pendingInvites')}
             <span className={styles.Badge}>{pendingInvites.length}</span>
           </h2>
           {pendingInvites.map((invite) => (
@@ -571,20 +512,20 @@ export default function Profile() {
                   {invite.user.nickname}
                 </h3>
                 <span className={styles.FriendStatusText}>
-                  chce zostać Twoim znajomym
+                  {t('profile.wantsToBeYourFriend')}
                 </span>
               </div>
               <button
                 className={styles.AcceptBtn}
                 onClick={() => handleAcceptInvite(invite.userId)}
               >
-                ✓ Akceptuj
+                {t('profile.accept')}
               </button>
               <button
                 className={styles.RejectBtn}
                 onClick={() => handleRejectInvite(invite.userId)}
               >
-                ✕ Odrzuć
+                {t('profile.reject')}
               </button>
             </div>
           ))}
@@ -595,7 +536,7 @@ export default function Profile() {
       {sentInvites.length > 0 && (
         <div className={styles.Section}>
           <h2 className={styles.SectionHeading}>
-            Wysłane zaproszenia
+            {t('profile.sentInvites')}
             <span className={styles.Badge}>{sentInvites.length}</span>
           </h2>
           {sentInvites.map((invite) => (
@@ -625,15 +566,18 @@ export default function Profile() {
                   {invite.friend.nickname}
                 </h3>
                 <span className={styles.FriendStatusText}>
-                  {STATUS_LABEL[invite.friend.status] ?? invite.friend.status} ·
-                  oczekuje na odpowiedź
+                  {t(
+                    `status.${invite.friend.status}` as `status.${string}` &
+                      Parameters<typeof t>[0]
+                  ) ?? invite.friend.status}{' '}
+                  · {t('profile.awaitingResponse')}
                 </span>
               </div>
               <button
                 className={styles.RejectBtn}
                 onClick={() => handleCancelInvite(invite.friendId)}
               >
-                ✕ Cofnij
+                {t('profile.cancel')}
               </button>
             </div>
           ))}
@@ -642,9 +586,9 @@ export default function Profile() {
 
       {/* ── Znajomi ── */}
       <div className={styles.Section}>
-        <h2 className={styles.SectionHeading}>Znajomi</h2>
+        <h2 className={styles.SectionHeading}>{t('profile.friends')}</h2>
         {friends.length === 0 && (
-          <p className={styles.SectionText}>Brak znajomych</p>
+          <p className={styles.SectionText}>{t('profile.noFriends')}</p>
         )}
         {friends.map((friendship) => {
           const friend = getFriendUser(friendship)
@@ -676,20 +620,23 @@ export default function Profile() {
                   className={styles.FriendStatusText}
                   style={{ color: STATUS_COLOR[friend.status] }}
                 >
-                  {STATUS_LABEL[friend.status] ?? friend.status}
+                  {t(
+                    `status.${friend.status}` as `status.${string}` &
+                      Parameters<typeof t>[0]
+                  ) ?? friend.status}
                 </span>
               </div>
               <button
                 className={styles.SectionFriendMessageButton}
                 onClick={() => handleMessageFriend(friend.id)}
               >
-                Wiadomość
+                {t('profile.message')}
               </button>
               <button
                 className={styles.SectionFriendDeleteButton}
                 onClick={() => handleRemoveFriend(friend.id)}
               >
-                Usuń
+                {t('profile.remove')}
               </button>
             </div>
           )
@@ -806,7 +753,7 @@ export default function Profile() {
           <button
             className={styles.DangerBtn}
             onClick={() => {
-              if (confirm('Na pewno chcesz się wylogować?')) {
+              if (confirm(t('profile.logoutConfirm'))) {
                 localStorage.removeItem('userId')
                 localStorage.removeItem('userNickname')
                 router.push('/login')

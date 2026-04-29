@@ -37,37 +37,43 @@ const SettingsContext = createContext<SettingsContextValue>({
   updateSetting: () => {}
 })
 
+// Odczytaj ustawienia synchronicznie z localStorage — działa tylko po stronie klienta.
+// Wywoływane raz przy inicjalizacji useState żeby uniknąć cyklu mount→null→mount.
+function readStoredSettings(): AppSettings {
+  if (typeof window === 'undefined') return DEFAULT_SETTINGS
+  try {
+    const stored = localStorage.getItem('appSettings')
+    if (stored) return { ...DEFAULT_SETTINGS, ...JSON.parse(stored) }
+  } catch {
+    /* ignoruj */
+  }
+  return DEFAULT_SETTINGS
+}
+
+// Aplikuj motyw/font bezpośrednio na <html> — wywoływane synchronicznie
+// żeby uniknąć flash of wrong theme.
+function applyToDOM(s: AppSettings) {
+  const root = document.documentElement
+  root.setAttribute('data-theme', s.theme)
+  root.setAttribute('lang', s.language)
+  const sizes: Record<FontSize, string> = {
+    small: '8px',
+    medium: '10px',
+    large: '12px'
+  }
+  root.style.fontSize = sizes[s.fontSize]
+}
+
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS)
-  const [mounted, setMounted] = useState(false)
+  // Inicjalizujemy od razu z localStorage — bez osobnego useEffect i bez mounted flag.
+  // Dzięki temu children NIGDY się nie odmontowuje (brak `if (!mounted) return null`),
+  // co eliminuje podwójne wczytywanie wiadomości w ChatsInner.
+  const [settings, setSettings] = useState<AppSettings>(readStoredSettings)
 
-  // Wczytaj z localStorage przy montowaniu
+  // Aplikuj na DOM przy każdej zmianie (w tym przy pierwszym renderze)
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('appSettings')
-      if (stored) {
-        const parsed: AppSettings = JSON.parse(stored)
-        setSettings(parsed)
-      }
-    } catch {
-      /* ignoruj błędy parsowania */
-    }
-    setMounted(true)
-  }, [])
-
-  // Aplikuj data-theme, font-size i lang na <html> przy każdej zmianie settings
-  useEffect(() => {
-    if (!mounted) return
-    const root = document.documentElement
-    root.setAttribute('data-theme', settings.theme)
-    root.setAttribute('lang', settings.language)
-    const sizes: Record<FontSize, string> = {
-      small: '8px',
-      medium: '10px',
-      large: '12px'
-    }
-    root.style.fontSize = sizes[settings.fontSize]
-  }, [settings, mounted])
+    applyToDOM(settings)
+  }, [settings])
 
   function updateSetting<K extends keyof AppSettings>(
     key: K,
@@ -79,9 +85,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       return next
     })
   }
-
-  // Zapobiegaj flash przed wczytaniem ustawień
-  if (!mounted) return null
 
   return (
     <SettingsContext.Provider value={{ settings, updateSetting }}>

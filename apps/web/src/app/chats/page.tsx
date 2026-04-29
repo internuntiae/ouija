@@ -263,7 +263,6 @@ function ChatsInner() {
   const isFirstLoad = useRef(true)
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Motyw jest teraz zarządzany przez SettingsContext w layout.tsx — nie trzeba go tu aplikować
   const { settings } = useSettings()
   const { t } = useTranslation()
 
@@ -293,7 +292,7 @@ function ChatsInner() {
         return new Date(tb).getTime() - new Date(ta).getTime()
       })
       setChats(sorted)
-      if (!activeChatId) setActiveChatId(sorted[0].id)
+      setActiveChatId((prev) => prev ?? sorted[0].id)
       setLoadingChats(false)
       return
     }
@@ -326,7 +325,9 @@ function ChatsInner() {
           return new Date(tb).getTime() - new Date(ta).getTime()
         })
         setChats(sorted)
-        if (!activeChatId && sorted.length > 0) setActiveChatId(sorted[0].id)
+        setActiveChatId(
+          (prev) => prev ?? (sorted.length > 0 ? sorted[0].id : null)
+        )
       })
       .catch(console.error)
       .finally(() => setLoadingChats(false))
@@ -429,6 +430,7 @@ function ChatsInner() {
   // ── Ładuj starsze wiadomości ──
   const loadMoreMessages = useCallback(async () => {
     if (!activeChatId || loadingMore || !hasMore) return
+    if (isFirstLoad.current) return
     setLoadingMore(true)
     const container = messageContainerRef.current
     const prevScrollHeight = container?.scrollHeight ?? 0
@@ -492,10 +494,7 @@ function ChatsInner() {
 
   // ── Powiadomienia ──
   function triggerNotification(title: string, body: string) {
-    // Używamy settings z SettingsContext zamiast getSettings()
     if (!settings.notificationsEnabled) return
-
-    // Dźwięk
     if (settings.notificationSound) {
       try {
         const ctx = new AudioContext()
@@ -827,12 +826,28 @@ function ChatsInner() {
   const otherUser =
     activeChat?.users.find((u) => u.userId !== userId)?.user ?? null
 
+  const lastNotifiedMsgId = useRef<string | null>(null)
+
   // ── Powiadomienia dla nowych wiadomości od innych ──
-  // (uruchamia się gdy zmienią się messages i nie jesteśmy focusem)
+  // lastNotifiedMsgId zapobiega powiadomieniu przy pierwszym załadowaniu czatu
   useEffect(() => {
-    if (!messages.length) return
+    if (!messages.length) {
+      lastNotifiedMsgId.current = null
+      return
+    }
     const last = messages[messages.length - 1]
-    if (last.senderId !== userId && document.hidden) {
+    // Ustaw punkt startowy przy pierwszym załadowaniu — nie powiadamiaj
+    if (lastNotifiedMsgId.current === null) {
+      lastNotifiedMsgId.current = last.id
+      return
+    }
+    // Powiadamiaj tylko o naprawdę nowych wiadomościach (nowe id, nie moje)
+    if (
+      last.id !== lastNotifiedMsgId.current &&
+      last.senderId !== userId &&
+      document.hidden
+    ) {
+      lastNotifiedMsgId.current = last.id
       const senderName =
         activeChat?.users.find((u) => u.userId === last.senderId)?.user
           .nickname ?? 'Ktoś'

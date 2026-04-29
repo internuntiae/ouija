@@ -24,13 +24,13 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
 
   function validateUsername(username: string): string | undefined {
-    if (!username) return t('login.username') + ' jest wymagana'
-    if (username.length < 3) return t('login.username') + ' — min. 3 znaki'
+    if (!username) return t('login.errorUsernameRequired')
+    if (username.length < 3) return t('login.errorUsernameShort')
   }
 
   function validatePassword(password: string): string | undefined {
-    if (!password) return t('login.password') + ' jest wymagane'
-    if (password.length < 8) return t('login.password') + ' — min. 8 znaków'
+    if (!password) return t('login.errorPasswordRequired')
+    if (password.length < 8) return t('login.errorPasswordShort')
   }
 
   useEffect(() => {
@@ -77,19 +77,13 @@ export default function Login() {
       )
 
       if (!res.ok) {
-        setErrors((prev) => ({
-          ...prev,
-          submit: 'Nieprawidłowa nazwa użytkownika lub hasło'
-        }))
+        setErrors((prev) => ({ ...prev, submit: t('login.errorInvalid') }))
         return
       }
       const user = await res.json()
 
       if (!user) {
-        setErrors((prev) => ({
-          ...prev,
-          submit: 'Nieprawidłowa nazwa użytkownika lub hasło'
-        }))
+        setErrors((prev) => ({ ...prev, submit: t('login.errorInvalid') }))
         return
       }
 
@@ -98,14 +92,11 @@ export default function Login() {
         localStorage.setItem('userNickname', user.nickname)
         router.push('/chats')
       } else {
-        setErrors((prev) => ({
-          ...prev,
-          submit: 'Nieprawidłowa nazwa użytkownika lub hasło'
-        }))
+        setErrors((prev) => ({ ...prev, submit: t('login.errorInvalid') }))
         return
       }
     } catch {
-      setErrors((prev) => ({ ...prev, submit: 'Brak połączenia z serwerem' }))
+      setErrors((prev) => ({ ...prev, submit: t('login.errorServer') }))
     } finally {
       setLoading(false)
     }
@@ -150,7 +141,7 @@ export default function Login() {
 
         <input
           type="submit"
-          value={loading ? '...' : t('login.submit')}
+          value={loading ? t('login.submitting') : t('login.submit')}
           disabled={loading}
           className={styles.FormSubmit}
         />

@@ -70,6 +70,76 @@ export const translations = {
     'register.goToLogin': 'przejdź do',
     'register.goToLoginLink': 'logowania',
     'register.errorServer': 'Brak połączenia z serwerem',
+    'register.errorEmailRequired': 'E-mail jest wymagany',
+    'register.errorEmailInvalid': 'Nieprawidłowy format e-mail',
+    'register.errorUsernameRequired': 'Nazwa użytkownika jest wymagana',
+    'register.errorUsernameShort':
+      'Nazwa użytkownika musi mieć co najmniej 3 znaki',
+    'register.errorUsernameLong':
+      'Nazwa użytkownika może mieć maksymalnie 32 znaki',
+    'register.errorUsernameChars':
+      'Dozwolone znaki: litery, cyfry, podkreślnik',
+    'register.errorPasswordRequired': 'Hasło jest wymagane',
+    'register.errorPasswordShort': 'Hasło musi mieć co najmniej 8 znaków',
+    'register.errorPasswordUppercase':
+      'Hasło musi zawierać co najmniej jedną wielką literę',
+    'register.errorPasswordDigit':
+      'Hasło musi zawierać co najmniej jedną cyfrę',
+    'register.errorPasswordConfirmRequired': 'Powtórzenie hasła jest wymagane',
+    'register.errorPasswordConfirmMatch': 'Hasła nie są identyczne',
+    'register.errorEmailExists': 'Konto z tym e-mailem już istnieje',
+    'register.errorUsernameExists': "Konto z tym username'm już istnieje",
+
+    // ── Forgot Password ───────────────────────────────────────────────────────
+    'forgotPassword.title': 'Zapomniałem hasła',
+    'forgotPassword.email': 'E-mail',
+    'forgotPassword.submit': 'Wyślij link resetujący',
+    'forgotPassword.submitting': 'Wysyłanie...',
+    'forgotPassword.rememberedIt': 'Pamiętasz hasło?',
+    'forgotPassword.backToLogin': 'Zaloguj się',
+    'forgotPassword.doneTitle': 'sprawdź skrzynkę',
+    'forgotPassword.doneText':
+      'Jeśli ten adres jest zarejestrowany, wysłaliśmy link resetujący. Link wygasa po 1 godzinie.',
+    'forgotPassword.backTo': 'wróć do',
+    'forgotPassword.backToLoginLink': 'logowania',
+    'forgotPassword.errorEmailRequired': 'E-mail jest wymagany',
+    'forgotPassword.errorEmailInvalid': 'Nieprawidłowy format e-mail',
+
+    // ── Reset Password ────────────────────────────────────────────────────────
+    'resetPassword.title': 'nowe hasło',
+    'resetPassword.newPassword': 'Nowe hasło',
+    'resetPassword.confirmPassword': 'Powtórz hasło',
+    'resetPassword.submit': 'Ustaw nowe hasło',
+    'resetPassword.submitting': 'Zapisywanie...',
+    'resetPassword.doneTitle': 'hasło zmienione',
+    'resetPassword.doneText':
+      'Twoje hasło zostało zmienione. Możesz się teraz zalogować.',
+    'resetPassword.goTo': 'przejdź do',
+    'resetPassword.goToLoginLink': 'logowania',
+    'resetPassword.invalidLinkTitle': 'nieprawidłowy link',
+    'resetPassword.invalidLinkText':
+      'Link resetujący nie zawiera tokenu. Poproś o nowy.',
+    'resetPassword.requestNew': 'poproś o nowy link',
+    'resetPassword.errorPasswordRequired': 'Hasło jest wymagane',
+    'resetPassword.errorPasswordShort': 'Hasło musi mieć co najmniej 8 znaków',
+    'resetPassword.errorPasswordUppercase':
+      'Hasło musi zawierać co najmniej jedną wielką literę',
+    'resetPassword.errorPasswordDigit':
+      'Hasło musi zawierać co najmniej jedną cyfrę',
+    'resetPassword.errorPasswordMatch': 'Hasła nie są identyczne',
+    'resetPassword.errorConfirmRequired': 'Powtórzenie hasła jest wymagane',
+    'resetPassword.errorServer': 'Wystąpił błąd sieci. Spróbuj ponownie.',
+
+    // ── Verify Email ──────────────────────────────────────────────────────────
+    'verifyEmail.titleLoading': 'weryfikacja...',
+    'verifyEmail.titleDone': 'zweryfikowano ✓',
+    'verifyEmail.titleError': 'ups',
+    'verifyEmail.messageDone':
+      'Twój adres e-mail został zweryfikowany. Możesz się teraz zalogować.',
+    'verifyEmail.messageNoToken':
+      'Brak tokenu weryfikacyjnego w linku. Sprawdź e-mail i spróbuj ponownie.',
+    'verifyEmail.goTo': 'przejdź do',
+    'verifyEmail.goToLoginLink': 'logowania',
 
     // ── Chaty ────────────────────────────────────────────────────────────────
     'chat.loading': 'Ładowanie...',
@@ -120,6 +190,7 @@ export const translations = {
     'profile.notifDesktop': 'Powiadomienia systemowe',
     'profile.account': 'Konto',
     'profile.logout': 'Wyloguj się',
+    'profile.logoutConfirm': 'Na pewno chcesz się wylogować?',
     'profile.saved': 'Zapisano ✓',
     'profile.friends': 'Znajomi',
     'profile.noFriends': 'Brak znajomych',
@@ -132,12 +203,45 @@ export const translations = {
     'profile.cancel': '✕ Cofnij',
     'profile.message': 'Wiadomość',
     'profile.remove': 'Usuń',
+    'profile.passwordLabel': 'Hasło:',
     'profile.changePassword': 'Zmień hasło',
     'profile.cancelChange': 'Anuluj',
     'profile.savePassword': 'Zapisz',
     'profile.newPasswordPlaceholder': 'Nowe hasło (min. 8 znaków)',
     'profile.passwordChanged': 'Hasło zmienione pomyślnie!',
     'profile.changeAvatar': 'Zmień zdjęcie',
+    'profile.changePasswordRedirect': 'Zmień hasło przez e-mail',
+    'profile.errorPasswordRequired': 'Hasło jest wymagane',
+    'profile.errorPasswordShort': 'Hasło musi mieć co najmniej 8 znaków',
+    'profile.errorPasswordUppercase':
+      'Hasło musi zawierać co najmniej jedną wielką literę',
+    'profile.errorPasswordDigit': 'Hasło musi zawierać co najmniej jedną cyfrę',
+    'profile.errorServer': 'Brak połączenia z serwerem',
+
+    // ── ProfilePopup ──────────────────────────────────────────────────────────
+    'profilePopup.about': 'O mnie',
+    'profilePopup.details': 'Szczegóły',
+    'profilePopup.joinedAt': 'Dołączył {date}',
+    'profilePopup.mutuals': 'Wspólni znajomi — {count}',
+    'profilePopup.noMutuals': 'Brak wspólnych znajomych',
+    'profilePopup.sendMessage': 'Wyślij wiadomość',
+    'profilePopup.addFriend': 'Dodaj do znajomych',
+    'profilePopup.pendingSent': '⏳ Zaproszenie wysłane',
+    'profilePopup.alreadyFriend': '✓ Znajomy',
+    'profilePopup.loadError': 'Nie można załadować profilu',
+
+    // ── UserProfile (profil innego użytkownika) ──────────────────────────────
+    'userProfile.loading': 'Ładowanie...',
+    'userProfile.notFound': 'Nie znaleziono użytkownika',
+    'userProfile.friends': 'Znajomi ({count})',
+    'userProfile.writeMessage': '💬 Napisz wiadomość',
+    'userProfile.addFriend': '+ Dodaj do znajomych',
+    'userProfile.pendingSent': '⏳ Zaproszenie wysłane',
+    'userProfile.pendingReceived':
+      '📩 Chce zostać Twoim znajomym — akceptuj w profilu',
+    'userProfile.back': '← Wróć',
+    'userProfile.errorAdd': 'Błąd dodawania znajomego',
+    'userProfile.errorMessage': 'Błąd tworzenia czatu',
 
     // ── Wspólne ──────────────────────────────────────────────────────────────
     'common.loading': 'Ładowanie...',
@@ -190,6 +294,75 @@ export const translations = {
     'register.goToLogin': 'go to',
     'register.goToLoginLink': 'login',
     'register.errorServer': 'Cannot connect to server',
+    'register.errorEmailRequired': 'E-mail is required',
+    'register.errorEmailInvalid': 'Invalid e-mail format',
+    'register.errorUsernameRequired': 'Username is required',
+    'register.errorUsernameShort': 'Username must be at least 3 characters',
+    'register.errorUsernameLong': 'Username can be at most 32 characters',
+    'register.errorUsernameChars':
+      'Only letters, digits and underscores are allowed',
+    'register.errorPasswordRequired': 'Password is required',
+    'register.errorPasswordShort': 'Password must be at least 8 characters',
+    'register.errorPasswordUppercase':
+      'Password must contain at least one uppercase letter',
+    'register.errorPasswordDigit': 'Password must contain at least one digit',
+    'register.errorPasswordConfirmRequired': 'Please repeat your password',
+    'register.errorPasswordConfirmMatch': 'Passwords do not match',
+    'register.errorEmailExists': 'An account with this e-mail already exists',
+    'register.errorUsernameExists':
+      'An account with this username already exists',
+
+    // ── Forgot Password ───────────────────────────────────────────────────────
+    'forgotPassword.title': 'forgot password',
+    'forgotPassword.email': 'E-mail',
+    'forgotPassword.submit': 'Send reset link',
+    'forgotPassword.submitting': 'Sending...',
+    'forgotPassword.rememberedIt': 'Remembered it?',
+    'forgotPassword.backToLogin': 'Sign in',
+    'forgotPassword.doneTitle': 'check your inbox',
+    'forgotPassword.doneText':
+      'If that address is registered, we sent a reset link. The link expires in 1 hour.',
+    'forgotPassword.backTo': 'back to',
+    'forgotPassword.backToLoginLink': 'login',
+    'forgotPassword.errorEmailRequired': 'E-mail is required',
+    'forgotPassword.errorEmailInvalid': 'Invalid e-mail format',
+
+    // ── Reset Password ────────────────────────────────────────────────────────
+    'resetPassword.title': 'new password',
+    'resetPassword.newPassword': 'New password',
+    'resetPassword.confirmPassword': 'Repeat password',
+    'resetPassword.submit': 'Set new password',
+    'resetPassword.submitting': 'Saving...',
+    'resetPassword.doneTitle': 'password updated',
+    'resetPassword.doneText':
+      'Your password has been changed. You can now log in.',
+    'resetPassword.goTo': 'go to',
+    'resetPassword.goToLoginLink': 'login',
+    'resetPassword.invalidLinkTitle': 'invalid link',
+    'resetPassword.invalidLinkText':
+      'This reset link is missing a token. Please request a new one.',
+    'resetPassword.requestNew': 'request new link',
+    'resetPassword.errorPasswordRequired': 'Password is required',
+    'resetPassword.errorPasswordShort':
+      'Password must be at least 8 characters',
+    'resetPassword.errorPasswordUppercase':
+      'Password must contain at least one uppercase letter',
+    'resetPassword.errorPasswordDigit':
+      'Password must contain at least one digit',
+    'resetPassword.errorPasswordMatch': 'Passwords do not match',
+    'resetPassword.errorConfirmRequired': 'Please repeat your password',
+    'resetPassword.errorServer': 'A network error occurred. Please try again.',
+
+    // ── Verify Email ──────────────────────────────────────────────────────────
+    'verifyEmail.titleLoading': 'verifying…',
+    'verifyEmail.titleDone': 'verified ✓',
+    'verifyEmail.titleError': 'oops',
+    'verifyEmail.messageDone':
+      'Your email has been verified. You can now log in.',
+    'verifyEmail.messageNoToken':
+      'No verification token found in the link. Check your e-mail and try again.',
+    'verifyEmail.goTo': 'go to',
+    'verifyEmail.goToLoginLink': 'login',
 
     // ── Chats ────────────────────────────────────────────────────────────────
     'chat.loading': 'Loading...',
@@ -240,6 +413,7 @@ export const translations = {
     'profile.notifDesktop': 'Desktop notifications',
     'profile.account': 'Account',
     'profile.logout': 'Log out',
+    'profile.logoutConfirm': 'Are you sure you want to log out?',
     'profile.saved': 'Saved ✓',
     'profile.friends': 'Friends',
     'profile.noFriends': 'No friends yet',
@@ -252,12 +426,45 @@ export const translations = {
     'profile.cancel': '✕ Cancel',
     'profile.message': 'Message',
     'profile.remove': 'Remove',
+    'profile.passwordLabel': 'Password:',
     'profile.changePassword': 'Change password',
     'profile.cancelChange': 'Cancel',
     'profile.savePassword': 'Save',
     'profile.newPasswordPlaceholder': 'New password (min. 8 chars)',
     'profile.passwordChanged': 'Password changed successfully!',
     'profile.changeAvatar': 'Change photo',
+    'profile.changePasswordRedirect': 'Change password via e-mail',
+    'profile.errorPasswordRequired': 'Password is required',
+    'profile.errorPasswordShort': 'Password must be at least 8 characters',
+    'profile.errorPasswordUppercase':
+      'Password must contain at least one uppercase letter',
+    'profile.errorPasswordDigit': 'Password must contain at least one digit',
+    'profile.errorServer': 'Cannot connect to server',
+
+    // ── ProfilePopup ──────────────────────────────────────────────────────────
+    'profilePopup.about': 'About',
+    'profilePopup.details': 'Details',
+    'profilePopup.joinedAt': 'Joined {date}',
+    'profilePopup.mutuals': 'Mutual friends — {count}',
+    'profilePopup.noMutuals': 'No mutual friends',
+    'profilePopup.sendMessage': 'Send message',
+    'profilePopup.addFriend': 'Add friend',
+    'profilePopup.pendingSent': '⏳ Request sent',
+    'profilePopup.alreadyFriend': '✓ Friends',
+    'profilePopup.loadError': 'Could not load profile',
+
+    // ── UserProfile (other user's profile) ───────────────────────────────────
+    'userProfile.loading': 'Loading...',
+    'userProfile.notFound': 'User not found',
+    'userProfile.friends': 'Friends ({count})',
+    'userProfile.writeMessage': '💬 Send message',
+    'userProfile.addFriend': '+ Add friend',
+    'userProfile.pendingSent': '⏳ Request sent',
+    'userProfile.pendingReceived':
+      '📩 Wants to be your friend — accept in your profile',
+    'userProfile.back': '← Back',
+    'userProfile.errorAdd': 'Failed to add friend',
+    'userProfile.errorMessage': 'Failed to create chat',
 
     // ── Common ───────────────────────────────────────────────────────────────
     'common.loading': 'Loading...',

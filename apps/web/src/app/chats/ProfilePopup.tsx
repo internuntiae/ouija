@@ -2,17 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import styles from './ProfilePopup.module.scss'
+import { useTranslation } from '@/i18n/translations'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
 type UserStatus = 'ONLINE' | 'OFFLINE' | 'AWAY' | 'BUSY'
-
-const STATUS_LABEL: Record<UserStatus, string> = {
-  ONLINE: 'Aktywny',
-  AWAY: 'Zaraz wracam',
-  BUSY: 'Nie przeszkadzać',
-  OFFLINE: 'Offline'
-}
 
 const STATUS_COLOR: Record<UserStatus, string> = {
   ONLINE: '#2ecc71',
@@ -62,6 +56,7 @@ export default function ProfilePopup({
   >('NONE')
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
+  const { t, tWith } = useTranslation()
 
   const isSelf = userId === viewerId
 
@@ -226,7 +221,7 @@ export default function ProfilePopup({
                   style={{ background: STATUS_COLOR[user.status] }}
                 />
                 <span style={{ color: STATUS_COLOR[user.status] }}>
-                  {STATUS_LABEL[user.status]}
+                  {t(`status.${user.status}` as Parameters<typeof t>[0])}
                 </span>
               </div>
 
@@ -234,7 +229,9 @@ export default function ProfilePopup({
                 <>
                   <div className={styles.Divider} />
                   <div className={styles.Section}>
-                    <div className={styles.SectionLabel}>O mnie</div>
+                    <div className={styles.SectionLabel}>
+                      {t('profilePopup.about')}
+                    </div>
                     <div className={styles.MetaItem}>
                       <svg
                         viewBox="0 0 16 16"
@@ -258,7 +255,9 @@ export default function ProfilePopup({
                 <>
                   <div className={styles.Divider} />
                   <div className={styles.Section}>
-                    <div className={styles.SectionLabel}>Szczegóły</div>
+                    <div className={styles.SectionLabel}>
+                      {t('profilePopup.details')}
+                    </div>
                     <div className={styles.MetaItem}>
                       <svg
                         width="14"
@@ -282,11 +281,8 @@ export default function ProfilePopup({
                           strokeLinecap="round"
                         />
                       </svg>
-                      Dołączył{' '}
-                      {new Date(user.joinedAt).toLocaleDateString('pl-PL', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
+                      {tWith('profilePopup.joinedAt', {
+                        date: new Date(user.joinedAt).toLocaleDateString()
                       })}
                     </div>
                   </div>
@@ -298,7 +294,7 @@ export default function ProfilePopup({
                   <div className={styles.Divider} />
                   <div className={styles.Section}>
                     <div className={styles.SectionLabel}>
-                      Wspólni znajomi — {mutuals.length}
+                      {tWith('profilePopup.mutuals', { count: mutuals.length })}
                     </div>
                     {mutuals.length > 0 ? (
                       <div className={styles.MutualsList}>
@@ -325,7 +321,7 @@ export default function ProfilePopup({
                       </div>
                     ) : (
                       <p className={styles.MutualsEmpty}>
-                        Brak wspólnych znajomych
+                        {t('profilePopup.noMutuals')}
                       </p>
                     )}
                   </div>
@@ -357,7 +353,7 @@ export default function ProfilePopup({
                           strokeLinejoin="round"
                         />
                       </svg>
-                      Wyślij wiadomość
+                      {t('profilePopup.sendMessage')}
                     </button>
 
                     {friendStatus === 'NONE' && (
@@ -392,7 +388,7 @@ export default function ProfilePopup({
                             strokeLinecap="round"
                           />
                         </svg>
-                        Dodaj do znajomych
+                        {t('profilePopup.addFriend')}
                       </button>
                     )}
 
@@ -401,7 +397,7 @@ export default function ProfilePopup({
                         className={`${styles.ActionBtn} ${styles.ActionBtnSecondary} ${styles.ActionBtnDisabled}`}
                         disabled
                       >
-                        ⏳ Zaproszenie wysłane
+                        {t('profilePopup.pendingSent')}
                       </button>
                     )}
 
@@ -410,7 +406,7 @@ export default function ProfilePopup({
                         className={`${styles.ActionBtn} ${styles.ActionBtnSecondary} ${styles.ActionBtnFriends}`}
                         disabled
                       >
-                        ✓ Znajomy
+                        {t('profilePopup.alreadyFriend')}
                       </button>
                     )}
                   </div>
@@ -418,7 +414,7 @@ export default function ProfilePopup({
               )}
             </>
           ) : (
-            <p className={styles.ErrorText}>Nie można załadować profilu</p>
+            <p className={styles.ErrorText}>{t('profilePopup.loadError')}</p>
           )}
         </div>
       </div>

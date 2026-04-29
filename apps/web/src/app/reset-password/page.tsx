@@ -1,26 +1,54 @@
 'use client'
 
-import { useState, Suspense } from 'react' // 1. Added Suspense
+import { useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import styles from '../login/Login.module.scss'
+import { useTranslation } from '@/i18n/translations'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
-// Move your existing logic here
+interface FormErrors {
+  password?: string
+  confirm?: string
+}
+
+type TFunction = ReturnType<typeof useTranslation>['t']
+
+function validatePassword(password: string, t: TFunction): string | undefined {
+  if (!password) return t('resetPassword.errorPasswordRequired')
+  if (password.length < 8) return t('resetPassword.errorPasswordShort')
+  if (!/[A-Z]/.test(password)) return t('resetPassword.errorPasswordUppercase')
+  if (!/[0-9]/.test(password)) return t('resetPassword.errorPasswordDigit')
+}
+
+function validateConfirm(
+  password: string,
+  confirm: string,
+  t: TFunction
+): string | undefined {
+  if (!confirm) return t('resetPassword.errorConfirmRequired')
+  if (password !== confirm) return t('resetPassword.errorPasswordMatch')
+}
+
 function ResetPasswordContent() {
   const params = useSearchParams()
   const token = params.get('token')
+  const { t } = useTranslation()
 
   const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>(
     'idle'
   )
-  const [error, setError] = useState('')
+  const [serverError, setServerError] = useState('')
+  const [errors, setErrors] = useState<FormErrors>({})
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
 
   if (!token) {
     return (
       <div className={styles.Form}>
-        <label className={styles.FormLabel}>invalid link</label>
+        <label className={styles.FormLabel}>
+          {t('resetPassword.invalidLinkTitle')}
+        </label>
         <p
           style={{
             color: '#ff6b6b',
@@ -29,11 +57,13 @@ function ResetPasswordContent() {
             margin: '1rem 0'
           }}
         >
-          This reset link is missing a token. Please request a new one.
+          {t('resetPassword.invalidLinkText')}
         </p>
         <Link href={'/forgot-password'} className={styles.Link}>
           <p>
-            <span className={styles.Underline}>request new link</span>
+            <span className={styles.Underline}>
+              {t('resetPassword.requestNew')}
+            </span>
           </p>
         </Link>
       </div>
@@ -42,8 +72,7 @@ function ResetPasswordContent() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setStatus('loading')
-    setError('')
+    setServerError('')
 
     const form = e.currentTarget
     const newPassword = (
@@ -53,11 +82,15 @@ function ResetPasswordContent() {
       form.elements.namedItem('password-confirm') as HTMLInputElement
     ).value
 
-    if (newPassword !== confirm) {
-      setError('Passwords do not match.')
-      setStatus('error')
-      return
+    const newErrors: FormErrors = {
+      password: validatePassword(newPassword, t),
+      confirm: validateConfirm(newPassword, confirm, t)
     }
+    setTouched({ password: true, confirm: true })
+    setErrors(newErrors)
+    if (Object.values(newErrors).some(Boolean)) return
+
+    setStatus('loading')
 
     try {
       const res = await fetch(`${API_URL}/api/auth/reset-password`, {
@@ -69,14 +102,14 @@ function ResetPasswordContent() {
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.error || 'Reset failed.')
+        setServerError(data.error || t('resetPassword.errorServer'))
         setStatus('error')
         return
       }
 
       setStatus('done')
     } catch {
-      setError('A network error occurred. Please try again.')
+      setServerError(t('resetPassword.errorServer'))
       setStatus('error')
     }
   }
@@ -84,20 +117,25 @@ function ResetPasswordContent() {
   if (status === 'done') {
     return (
       <div className={styles.Form}>
-        <label className={styles.FormLabel}>password updated</label>
+        <label className={styles.FormLabel}>
+          {t('resetPassword.doneTitle')}
+        </label>
         <p
           style={{
-            color: '#f3f3f4',
+            color: 'var(--text-primary)',
             fontSize: '1.5rem',
             fontWeight: 200,
             margin: '1rem 0'
           }}
         >
-          Your password has been changed. You can now log in.
+          {t('resetPassword.doneText')}
         </p>
         <Link href={'/login'} className={styles.Link}>
           <p>
-            go to <span className={styles.Underline}>login</span>
+            {t('resetPassword.goTo')}{' '}
+            <span className={styles.Underline}>
+              {t('resetPassword.goToLoginLink')}
+            </span>
           </p>
         </Link>
       </div>
@@ -105,39 +143,76 @@ function ResetPasswordContent() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className={styles.Form}>
+    <form onSubmit={handleSubmit} className={styles.Form} noValidate>
       <label htmlFor={'password'} className={styles.FormLabel}>
-        new password
+        {t('resetPassword.title')}
       </label>
+
       <input
         type={'password'}
-        placeholder={'new password'}
+        placeholder={t('resetPassword.newPassword')}
         name="password"
-        required
-        minLength={6}
+        id="password"
         className={styles.FormInput}
+        onBlur={(e) => {
+          setTouched((prev) => ({ ...prev, password: true }))
+          setErrors((prev) => ({
+            ...prev,
+            password: validatePassword(e.target.value, t)
+          }))
+        }}
+        aria-invalid={touched.password && !!errors.password}
       />
+      {touched.password && errors.password && (
+        <p
+          style={{ color: '#ff6b6b', fontSize: '1.3rem', margin: '0.3rem 0 0' }}
+        >
+          {errors.password}
+        </p>
+      )}
 
       <label htmlFor={'password-confirm'} className={styles.FormLabel}>
-        repeat password
+        {t('resetPassword.confirmPassword')}
       </label>
       <input
         type={'password'}
-        placeholder={'repeat password'}
+        placeholder={t('resetPassword.confirmPassword')}
         name="password-confirm"
-        required
+        id="password-confirm"
         className={styles.FormInput}
+        onBlur={(e) => {
+          const pwField = e.target.form?.elements.namedItem(
+            'password'
+          ) as HTMLInputElement
+          setTouched((prev) => ({ ...prev, confirm: true }))
+          setErrors((prev) => ({
+            ...prev,
+            confirm: validateConfirm(pwField?.value ?? '', e.target.value, t)
+          }))
+        }}
+        aria-invalid={touched.confirm && !!errors.confirm}
       />
+      {touched.confirm && errors.confirm && (
+        <p
+          style={{ color: '#ff6b6b', fontSize: '1.3rem', margin: '0.3rem 0 0' }}
+        >
+          {errors.confirm}
+        </p>
+      )}
 
-      {status === 'error' && (
+      {(status === 'error' || serverError) && (
         <p style={{ color: '#ff6b6b', fontSize: '1.4rem', margin: '0.5rem 0' }}>
-          {error}
+          {serverError}
         </p>
       )}
 
       <input
         type={'submit'}
-        value={status === 'loading' ? 'saving…' : 'set new password'}
+        value={
+          status === 'loading'
+            ? t('resetPassword.submitting')
+            : t('resetPassword.submit')
+        }
         disabled={status === 'loading'}
         className={styles.FormSubmit}
       />
@@ -145,7 +220,6 @@ function ResetPasswordContent() {
   )
 }
 
-// 2. Wrap the component in Suspense for the actual export
 export default function ResetPassword() {
   return (
     <Suspense fallback={<div>Loading reset form...</div>}>
