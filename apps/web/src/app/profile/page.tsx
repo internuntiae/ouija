@@ -11,6 +11,7 @@ import {
   type FontSize
 } from '@/context/SettingsContext'
 import { useTranslation } from '@/i18n/translations'
+import ProfilePopup from '@/app/components/ProfilePopup/ProfilePopup'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -214,6 +215,11 @@ export default function Profile() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // ── NEW: controls which user's ProfilePopup is open ──
+  const [profilePopupUserId, setProfilePopupUserId] = useState<string | null>(
+    null
+  )
+
   const [settingsSaved, setSettingsSaved] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
 
@@ -349,6 +355,11 @@ export default function Profile() {
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Błąd')
     }
+  }
+
+  // ── NEW: called from ProfilePopup's onMessageUser prop ──
+  async function handleMessageFromProfile(friendId: string) {
+    await handleMessageFriend(friendId)
   }
 
   async function handleAcceptInvite(inviterId: string) {
@@ -584,6 +595,16 @@ export default function Profile() {
         </div>
       )}
 
+      {/* ── ProfilePopup ── */}
+      {profilePopupUserId && (
+        <ProfilePopup
+          userId={profilePopupUserId}
+          viewerId={userId}
+          onClose={() => setProfilePopupUserId(null)}
+          onMessageUser={handleMessageFromProfile}
+        />
+      )}
+
       {/* ── Znajomi ── */}
       <div className={styles.Section}>
         <h2 className={styles.SectionHeading}>{t('profile.friends')}</h2>
@@ -597,10 +618,11 @@ export default function Profile() {
               key={`${friendship.userId}-${friendship.friendId}`}
               className={styles.SectionFriend}
             >
+              {/* ── CHANGED: onClick now opens ProfilePopup instead of navigating ── */}
               <div
                 className={styles.AvatarWrap}
                 style={{ cursor: 'pointer' }}
-                onClick={() => router.push(`/profile/${friend.id}`)}
+                onClick={() => setProfilePopupUserId(friend.id)}
               >
                 <img
                   className={styles.SectionFriendAvatar}

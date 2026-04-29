@@ -1,7 +1,7 @@
 'use client'
 
 import styles from './Chats.module.scss'
-import ProfilePopup from './ProfilePopup'
+import ProfilePopup from '../components/ProfilePopup/ProfilePopup'
 import {
   useState,
   useEffect,
