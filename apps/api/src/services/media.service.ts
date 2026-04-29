@@ -9,17 +9,33 @@ import { MediaPurpose } from '@prisma/client'
 // In production set the CDN_BASE_URL env variable to the public hostname.
 const BASE_URL = process.env.CDN_BASE_URL ?? 'http://localhost:3001'
 
-/** The path stored in the DB — no host, no origin. */
-const buildPath = (storedName: string) => `/api/media/${storedName}`
-
 /** Full URL used in API responses so clients can fetch the file directly. */
-const buildUrl = (storedName: string) => `${BASE_URL}${buildPath(storedName)}`
+const buildUrl = (storedName: string) => `${BASE_URL}/${storedName}`
 
-/** Rehydrate a DB record's stored path into a full URL for API responses. */
+/** Rehydrate a DB record — url column stores just the storedName. */
 function withFullUrl<T extends { url: string; storedName: string }>(
   record: T
 ): T {
   return { ...record, url: buildUrl(record.storedName) }
+}
+
+/**
+ * Rehydrate a user record's avatarUrl from a bare storedName to a full URL.
+ * Safe to call with any user-shaped object — if avatarUrl is null or already
+ * absolute it is returned unchanged.
+ */
+export function rehydrateUser<T extends { avatarUrl?: string | null }>(
+  user: T
+): T {
+  if (!user.avatarUrl) return user
+  if (
+    user.avatarUrl.startsWith('http://') ||
+    user.avatarUrl.startsWith('https://')
+  )
+    return user
+  // Strip any legacy path prefix so we always work from the bare storedName
+  const storedName = user.avatarUrl.split('/').pop()!
+  return { ...user, avatarUrl: buildUrl(storedName) }
 }
 
 // ─── Upload a file ─────────────────────────────────────────────────────────────
@@ -34,7 +50,6 @@ export const uploadFile = async (
   if (!owner) throw new Error('user does not exist')
 
   const storedName = path.basename(file.path)
-  const urlPath = buildPath(storedName) // only the path goes into the DB
 
   const record = await mediaRepo.createMediaFile({
     ownerId,
@@ -43,7 +58,7 @@ export const uploadFile = async (
     mimeType: file.mimetype,
     size: file.size,
     purpose,
-    url: urlPath
+    url: storedName // store just the filename — rehydrated to full URL on read
   })
 
   return withFullUrl(record)
@@ -57,9 +72,8 @@ export const uploadAvatar = async (
   // Create the DB record (url stored as path)
   const media = await uploadFile(userId, file, MediaPurpose.AVATAR)
 
-  // Store only the path on the user row as well
-  const urlPath = buildPath(media.storedName)
-  const user = await mediaRepo.setUserAvatar(userId, urlPath)
+  // Store just the storedName on the user row — rehydrated to full URL on read
+  const user = await mediaRepo.setUserAvatar(userId, media.storedName)
 
   return { media, user }
 }
@@ -71,7 +85,7 @@ export const removeAvatar = async (userId: string) => {
 
   if (!owner.avatarUrl) throw new Error('user has no avatar')
 
-  // avatarUrl is now a path like /api/media/<storedName>
+  // avatarUrl now stores just the storedName (e.g. "abc123.jpg")
   const storedName = owner.avatarUrl.split('/').pop()!
   const mediaFile = await mediaRepo.getMediaFileByStoredName(storedName)
 

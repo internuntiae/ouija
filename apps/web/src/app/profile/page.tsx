@@ -23,7 +23,7 @@ const STATUS_COLOR: Record<string, string> = {
 }
 
 function avatarSrc(url?: string | null) {
-  return url ?? '/ouija_white.png'
+  return url ?? '/ouija_white_logo_square.png'
 }
 
 function SettingRow({
@@ -118,12 +118,11 @@ export default function Profile() {
         return
       }
       const [media] = await uploadRes.json()
-      // media.url is a full URL for display; derive the stored path for the DB
-      const avatarPath = `/api/media/${media.storedName}`
+      // Store just the storedName in the DB — the API rehydrates it to a full URL
       const updateRes = await fetch(`${API_URL}/api/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ avatarUrl: avatarPath })
+        body: JSON.stringify({ avatarUrl: media.storedName })
       })
       if (!updateRes.ok) {
         alert('Błąd zapisu avatara')

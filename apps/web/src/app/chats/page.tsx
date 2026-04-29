@@ -551,7 +551,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
       'Notification' in window &&
       Notification.permission === 'granted'
     ) {
-      new Notification(title, { body, icon: '/ouija_white.png' })
+      new Notification(title, { body, icon: '/ouija_white_logo_square.png' })
     }
   }
 

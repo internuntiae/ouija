@@ -1,28 +1,34 @@
 import * as userRepo from '@repositories/user.repository'
 import { UserStatus } from '@prisma/client'
+import { rehydrateUser } from '@services/media.service'
 
 export const getUserById = async (id: string) => {
   if (!id) throw new Error('id is required')
-  return userRepo.getUserById(id)
+  const user = await userRepo.getUserById(id)
+  return user ? rehydrateUser(user) : user
 }
 
 export const getUserByEmail = async (email: string) => {
   if (!email) throw new Error('email is required')
-  return userRepo.getUserByEmail(email)
+  const user = await userRepo.getUserByEmail(email)
+  return user ? rehydrateUser(user) : user
 }
 
 export const getUserByNickname = async (nickname: string) => {
   if (!nickname) throw new Error('nickname is required')
-  return userRepo.getUserByNickname(nickname)
+  const user = await userRepo.getUserByNickname(nickname)
+  return user ? rehydrateUser(user) : user
 }
 
 export const getUsers = async () => {
-  return userRepo.getUsers()
+  const users = await userRepo.getUsers()
+  return users.map(rehydrateUser)
 }
 
 export const searchUsers = async (query: string) => {
   if (!query || query.trim().length < 1) throw new Error('query is required')
-  return userRepo.searchUsers(query.trim())
+  const users = await userRepo.searchUsers(query.trim())
+  return users.map(rehydrateUser)
 }
 
 export const createUser = async (data: {
@@ -35,18 +41,25 @@ export const createUser = async (data: {
   if ((await userRepo.getUserByEmail(data.email)) !== null) {
     throw new Error('user already exists')
   }
-  return userRepo.createUser(data)
+  const user = await userRepo.createUser(data)
+  return rehydrateUser(user)
 }
 
 export const updateUser = async (
   id: string,
-  data: Partial<{ nickname: string; password: string; status: UserStatus }>
+  data: Partial<{
+    nickname: string
+    password: string
+    status: UserStatus
+    avatarUrl: string | null
+  }>
 ) => {
   if (Object.keys(data).length === 0) throw new Error('data is incomplete')
   if ((await userRepo.getUserById(id)) === null) {
     throw new Error('user does not exist')
   }
-  return userRepo.updateUser(id, data)
+  const user = await userRepo.updateUser(id, data)
+  return rehydrateUser(user)
 }
 
 export const deleteUser = async (id: string) => {

@@ -1,18 +1,30 @@
 import * as chatRepo from '@repositories/chat.repository'
 import * as userRepo from '@repositories/user.repository'
 import { ChatType, ChatRole } from '@prisma/client'
+import { rehydrateUser } from '@services/media.service'
+
+type ChatWithUsers = Awaited<ReturnType<typeof chatRepo.getChatById>>
+
+function rehydrateChat(chat: ChatWithUsers) {
+  if (!chat) return chat
+  return {
+    ...chat,
+    users: chat.users.map((cu) => ({ ...cu, user: rehydrateUser(cu.user) }))
+  }
+}
 
 export const getChatById = async (chatId: string) => {
   if (!chatId) throw new Error('chatId is required')
   const chat = await chatRepo.getChatById(chatId)
   if (!chat) throw new Error('Chat not found')
-  return chat
+  return rehydrateChat(chat)
 }
 
 export const getChatsByUserId = async (userId: string) => {
   if (!userId) throw new Error('userId is required')
   if (!(await userRepo.getUserById(userId))) throw new Error('User not found')
-  return chatRepo.getChatsByUserId(userId)
+  const chats = await chatRepo.getChatsByUserId(userId)
+  return chats.map(rehydrateChat)
 }
 
 export const createChat = async (
@@ -21,8 +33,10 @@ export const createChat = async (
   userIds: string[]
 ) => {
   if (!type) throw new Error('type is required')
-  if (!userIds || userIds.length < 2) throw new Error('At least two users are required')
-  if (type === ChatType.GROUP && !name) throw new Error('Group chats require a name')
+  if (!userIds || userIds.length < 2)
+    throw new Error('At least two users are required')
+  if (type === ChatType.GROUP && !name)
+    throw new Error('Group chats require a name')
   for (const uid of userIds) {
     if (!(await userRepo.getUserById(uid)))
       throw new Error(`User ${uid} not found`)

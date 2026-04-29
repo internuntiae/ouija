@@ -40,7 +40,7 @@ interface ProfilePopupProps {
 }
 
 function avatarSrc(url?: string | null) {
-  return url ?? '/ouija_white.svg'
+  return url ?? '/ouija_white_logo_square.png'
 }
 
 export default function ProfilePopup({

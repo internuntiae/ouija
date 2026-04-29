@@ -101,11 +101,7 @@ export const STATUS_COLOR: Record<UserStatus, string> = {
 export const PAGE_SIZE = 20
 
 export function avatarSrc(url?: string | null) {
-  if (!url) return '/ouija_white.svg'
-  // If it's already an absolute URL, return as-is
-  if (url.startsWith('http://') || url.startsWith('https://')) return url
-  // Path stored in DB — prepend the API origin
-  return `${API_URL}${url}`
+  return url ?? '/ouija_white_logo_square.png'
 }
 
 // ─── Ustawienia powiadomień ────────────────────────────────────────────────────

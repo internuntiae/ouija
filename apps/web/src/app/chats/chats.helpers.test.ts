@@ -59,7 +59,7 @@ function getOtherUser(chat: Chat, userId: string) {
 }
 
 function avatarSrc(url?: string | null): string {
-  return url ?? '/ouija_white.svg'
+  return url ?? '/ouija_white_logo_square.png'
 }
 
 // Logika liczenia reakcji (wydzielona z MessageBubble)
@@ -220,11 +220,11 @@ describe('avatarSrc', () => {
   })
 
   it('zwraca domyślny avatar dla null', () => {
-    expect(avatarSrc(null)).toBe('/ouija_white.svg')
+    expect(avatarSrc(null)).toBe('/ouija_white_logo_square.png')
   })
 
   it('zwraca domyślny avatar gdy argument pominięty', () => {
-    expect(avatarSrc()).toBe('/ouija_white.svg')
+    expect(avatarSrc()).toBe('/ouija_white_logo_square.png')
   })
 })
 

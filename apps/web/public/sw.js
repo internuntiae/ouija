@@ -121,7 +121,7 @@ function showDesktopNotification(title, body) {
 
   self.registration.showNotification(title, {
     body,
-    icon: '/ouija_white.png',
+    icon: '/ouija_white_logo_square.png',
     badge: '/ouija_white_logo.png',
     tag: 'ouija-message', // replace rather than stack
     renotify: true
