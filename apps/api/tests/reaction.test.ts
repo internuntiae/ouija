@@ -1,6 +1,6 @@
 import request from 'supertest'
-import { app } from '../src/app'
-import { prisma } from '../src/lib'
+import { app } from '@/app'
+import { prisma } from '@/lib'
 import { mockReaction1, mockReaction2 } from './fixtures'
 import { ReactionType, PrismaClient } from '@prisma/client'
 import { Mocked } from 'jest-mock'

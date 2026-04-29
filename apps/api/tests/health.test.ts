@@ -1,7 +1,7 @@
 import request from 'supertest'
-import { app } from '../src/app'
-import { prisma } from '../src/lib'
-import { redis } from '../src/lib'
+import { app } from '@/app'
+import { prisma } from '@/lib'
+import { redis } from '@/lib'
 
 const prismaMock = prisma as jest.Mocked<typeof prisma>
 const redisMock = redis as jest.Mocked<typeof redis>
