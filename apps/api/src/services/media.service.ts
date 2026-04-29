@@ -9,7 +9,18 @@ import { MediaPurpose } from '@prisma/client'
 // In production set the CDN_BASE_URL env variable to the public hostname.
 const BASE_URL = process.env.CDN_BASE_URL ?? 'http://localhost:3001'
 
-const buildUrl = (storedName: string) => `${BASE_URL}/api/media/${storedName}`
+/** The path stored in the DB — no host, no origin. */
+const buildPath = (storedName: string) => `/api/media/${storedName}`
+
+/** Full URL used in API responses so clients can fetch the file directly. */
+const buildUrl = (storedName: string) => `${BASE_URL}${buildPath(storedName)}`
+
+/** Rehydrate a DB record's stored path into a full URL for API responses. */
+function withFullUrl<T extends { url: string; storedName: string }>(
+  record: T
+): T {
+  return { ...record, url: buildUrl(record.storedName) }
+}
 
 // ─── Upload a file ─────────────────────────────────────────────────────────────
 export const uploadFile = async (
@@ -23,17 +34,19 @@ export const uploadFile = async (
   if (!owner) throw new Error('user does not exist')
 
   const storedName = path.basename(file.path)
-  const url = buildUrl(storedName)
+  const urlPath = buildPath(storedName) // only the path goes into the DB
 
-  return mediaRepo.createMediaFile({
+  const record = await mediaRepo.createMediaFile({
     ownerId,
     filename: file.originalname,
     storedName,
     mimeType: file.mimetype,
     size: file.size,
     purpose,
-    url
+    url: urlPath
   })
+
+  return withFullUrl(record)
 }
 
 // ─── Upload avatar + update User.avatarUrl ─────────────────────────────────────
@@ -41,11 +54,12 @@ export const uploadAvatar = async (
   userId: string,
   file: Express.Multer.File
 ) => {
-  // Create the DB record
+  // Create the DB record (url stored as path)
   const media = await uploadFile(userId, file, MediaPurpose.AVATAR)
 
-  // Point the user row at the new avatar
-  const user = await mediaRepo.setUserAvatar(userId, media.url)
+  // Store only the path on the user row as well
+  const urlPath = buildPath(media.storedName)
+  const user = await mediaRepo.setUserAvatar(userId, urlPath)
 
   return { media, user }
 }
@@ -57,7 +71,7 @@ export const removeAvatar = async (userId: string) => {
 
   if (!owner.avatarUrl) throw new Error('user has no avatar')
 
-  // Find the stored file record by URL suffix
+  // avatarUrl is now a path like /api/media/<storedName>
   const storedName = owner.avatarUrl.split('/').pop()!
   const mediaFile = await mediaRepo.getMediaFileByStoredName(storedName)
 
@@ -78,7 +92,8 @@ export const getFilesByUser = async (
   const owner = await userRepo.getUserById(ownerId)
   if (!owner) throw new Error('user does not exist')
 
-  return mediaRepo.getMediaFilesByOwner(ownerId, purpose)
+  const files = await mediaRepo.getMediaFilesByOwner(ownerId, purpose)
+  return files.map(withFullUrl)
 }
 
 // ─── Get single file metadata ──────────────────────────────────────────────────
@@ -86,7 +101,7 @@ export const getFileById = async (id: string) => {
   if (!id) throw new Error('id is required')
   const file = await mediaRepo.getMediaFileById(id)
   if (!file) throw new Error('file not found')
-  return file
+  return withFullUrl(file)
 }
 
 // ─── Delete a media file ───────────────────────────────────────────────────────

@@ -118,10 +118,12 @@ export default function Profile() {
         return
       }
       const [media] = await uploadRes.json()
+      // media.url is a full URL for display; derive the stored path for the DB
+      const avatarPath = `/api/media/${media.storedName}`
       const updateRes = await fetch(`${API_URL}/api/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ avatarUrl: media.url })
+        body: JSON.stringify({ avatarUrl: avatarPath })
       })
       if (!updateRes.ok) {
         alert('Błąd zapisu avatara')
