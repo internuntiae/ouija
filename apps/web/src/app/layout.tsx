@@ -4,6 +4,7 @@ import { Kumbh_Sans, Plus_Jakarta_Sans } from 'next/font/google'
 import './main-layout.scss'
 import Header from '@/app/components/Header/Header'
 import React from 'react'
+import { SettingsProvider } from '@/context/SettingsContext'
 
 const kumbhSans = Kumbh_Sans({
   variable: '--font-kumbh-sans',
@@ -23,16 +24,18 @@ export const metadata: Metadata = {
 }
 
 export default function RootLayout({
-                                     children
-                                   }: Readonly<{
+  children
+}: Readonly<{
   children: React.ReactNode
 }>) {
   return (
     <html lang="en">
-    <body className={`${kumbhSans.variable} ${plusJakartaSans.variable}`}>
-    <Header />
-    <div className="container">{children}</div>
-    </body>
+      <body className={`${kumbhSans.variable} ${plusJakartaSans.variable}`}>
+        <SettingsProvider>
+          <Header />
+          <div className="container">{children}</div>
+        </SettingsProvider>
+      </body>
     </html>
   )
 }

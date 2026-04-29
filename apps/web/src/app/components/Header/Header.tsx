@@ -5,24 +5,34 @@ import styles from './Header.module.scss'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { useSettings } from '@/context/SettingsContext'
+import { useTranslation } from '@/i18n/translations'
 
 export default function Header() {
   const pathname = usePathname()
   const router = useRouter()
   const [loggedIn, setLoggedIn] = useState(false)
   const [nickname, setNickname] = useState<string | null>(null)
+  const { settings } = useSettings()
+  const { t } = useTranslation()
 
   const isAuth =
     pathname.startsWith('/login') || pathname.startsWith('/register')
   const isLogin = pathname.startsWith('/login')
   const isRegister = pathname.startsWith('/register')
 
+  // Wybór logo zależny od motywu:
+  // ciemny motyw → biały/jasny obrazek (ouija_white.png)
+  // jasny motyw  → ciemny obrazek     (ouija_dark.png)
+  const logoSrc =
+    settings.theme === 'light' ? '/ouija_dark.png' : '/ouija_white.png'
+
   useEffect(() => {
     const userId = localStorage.getItem('userId')
     const userNickname = localStorage.getItem('userNickname')
     setLoggedIn(!!userId)
     setNickname(userNickname)
-  }, [pathname]) // odświeżaj przy zmianie strony
+  }, [pathname])
 
   function handleLogout() {
     localStorage.removeItem('userId')
@@ -36,12 +46,13 @@ export default function Header() {
     <header className={styles.Header}>
       <Link href="/">
         <Image
-          src={'/ouija_white.png'}
+          src={logoSrc}
           alt={'logo'}
           width={1275}
           height={690}
           className={styles.HeaderLogo}
           style={{ width: 'auto', height: '8vh' }}
+          priority
         />
       </Link>
 
@@ -55,7 +66,7 @@ export default function Header() {
                 : [styles.HeaderText, styles.Invisible].join(' ')
             }
           >
-            login
+            {t('nav.login')}
           </p>
           <p
             className={
@@ -64,7 +75,7 @@ export default function Header() {
                 : [styles.HeaderText, styles.Invisible].join(' ')
             }
           >
-            register
+            {t('nav.register')}
           </p>
         </div>
       )}
@@ -73,10 +84,10 @@ export default function Header() {
       {!isAuth && !loggedIn && (
         <div className={styles.HeaderRight}>
           <Link href="/login" className={styles.HeaderLink}>
-            login
+            {t('nav.login')}
           </Link>
           <Link href="/register" className={styles.HeaderLink}>
-            register
+            {t('nav.register')}
           </Link>
         </div>
       )}
@@ -85,13 +96,13 @@ export default function Header() {
       {!isAuth && loggedIn && (
         <div className={styles.HeaderRight}>
           <Link href="/chats" className={styles.HeaderLink}>
-            chats
+            {t('nav.chats')}
           </Link>
           <Link href="/profile" className={styles.HeaderLink}>
             {nickname ?? 'profile'}
           </Link>
           <button className={styles.HeaderLogout} onClick={handleLogout}>
-            logout
+            {t('nav.logout')}
           </button>
         </div>
       )}

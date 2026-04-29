@@ -1,53 +1,24 @@
 // ── Login page ─────────────────────────────────────────────────────────────────
 // Strona logowania wyrenderowana wewnątrz .container (flex column, justify-center)
-// Sam formularz nie potrzebuje min-height ani centralnego alignmentu — container to robi.
-// Poprawka: formularz nie jest "zgnieciony" — dodajemy sensowne spacje między polami.
+// Poprawka: formularz używa var(--bg-card) zamiast hardcoded rgba(18,18,18,0.85)
+// dzięki czemu motyw jasny/ciemny działa poprawnie.
 
 .Form {
   width: min(46rem, 90vw);
   padding: 4rem 3.6rem;
-  background-color: rgba(18, 18, 18, 0.85);
+  // WAŻNE: var(--bg-card) zamiast rgba(18,18,18,0.85) — reaguje na motyw
+  background-color: var(--bg-card);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: 0 2.4rem 5rem rgba(0, 0, 0, 0.55);
+  box-shadow: 0 2.4rem 5rem rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
-  // Celowo brak height: 70% — karta dopasowuje się do treści
+  transition:
+    background-color var(--transition),
+    border-color var(--transition);
 
-  &Label {
-    // Tytuł formularza (wielki napis)
-    font-size: 2.6rem;
-    font-weight: 500;
-    color: var(--text-primary);
-    letter-spacing: -0.03em;
-    line-height: 1.2;
-    text-align: center;
-    margin-bottom: 2.8rem;
-  }
-
-  // ── Pole: label nad inputem ──────────────────────────────────────────────────
-
-  // Używane jako label dla pola (font-size mniejszy od &Label)
-  // W TSX: <label className={styles.FormLabel}> — jeden className dla obu ról.
-  // Kiedy label jest nad inputem (nie jest tytułem), nadpisujemy przez kontekst sąsiada.
-  // Trick: jeśli po FormLabel idzie FormInput, to label jest field-label → mały styl.
-  // Nie możemy zmienić TSX, więc korzystamy z :has() lub po prostu nadajemy Labelowi
-  // jeden spójny styl i traktujemy go jako field-label — tytuł jest napisany dużo.
-  // Rozwiązanie: robimy FormLabel dwuwariantowy poprzez specificity:
-  // — jako pierwszy element w .Form: duże (tytuł)
-  // — kolejne label po input/p: małe
-
-  // Ponieważ CSS nie ma "nth-of-type label", a TSX używa tej samej klasy,
-  // stosujemy kompromis: FormLabel zawsze jako field label (małe), a wielki napis
-  // ustawiamy przez :first-child.
-
-  // Tak naprawdę: w login/page.tsx FormLabel to: "username" / "password" — field labels.
-  // Dlatego styl pola:
-
-  // Nadpisanie — FormLabel jako field label:
-  // & > label.#{&Label},     // jeśli SCSS przetworzy
   &Label {
     font-size: 1.3rem;
     font-weight: 500;
@@ -60,16 +31,19 @@
 
   &Input {
     width: 100%;
-    background: rgba(255, 255, 255, 0.05);
+    // Tło inputa — jasne w light mode, ciemne w dark mode
+    background: var(--bg-elevated);
     color: var(--text-primary);
-    border: 1px solid transparent;
+    border: 1px solid var(--border);
     border-radius: var(--radius-md);
     padding: 1.2rem 1.4rem;
     font-size: 1.5rem;
     font-family: var(--font-sans);
     margin-bottom: 0.5rem;
     margin-top: 0;
-    transition: background var(--transition), border-color var(--transition);
+    transition:
+      background var(--transition),
+      border-color var(--transition);
 
     &::placeholder {
       color: var(--text-muted);
@@ -77,8 +51,8 @@
 
     &:focus {
       outline: none;
-      background: rgba(255, 255, 255, 0.08);
-      border-color: rgba(255, 255, 255, 0.2);
+      background: var(--bg-hover);
+      border-color: var(--border-mid);
     }
 
     &[aria-invalid='true'] {
@@ -107,10 +81,12 @@
     font-family: var(--font-sans);
     cursor: pointer;
     letter-spacing: 0.01em;
-    transition: background var(--transition), transform 0.1s ease;
+    transition:
+      opacity var(--transition),
+      transform 0.1s ease;
 
     &:hover {
-      background: #e4e4e7;
+      opacity: 0.85;
     }
 
     &:active {
@@ -124,11 +100,7 @@
     }
   }
 
-  // Wrapper dla pola — dodatkowy spacing między polami
-  // W TSX nie ma wrappera, więc spacing między label a następnym label
-  // realizujemy przez margin-top na label:
-  // Każdy label (prócz pierwszego) dostaje odstęp od poprzedniego inputa.
-  // Trick: label + label (field to field gap)
+  // Spacing między polami
   & > label + input + label,
   & > label + input + p + label {
     margin-top: 0.8rem;

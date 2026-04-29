@@ -3,30 +3,16 @@
 import styles from './Profile.module.scss'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import {
+  useSettings,
+  type AppSettings,
+  type Theme,
+  type Language,
+  type FontSize
+} from '@/context/SettingsContext'
+import { useTranslation } from '@/i18n/translations'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
-
-type Theme = 'dark' | 'light'
-type Language = 'pl' | 'en'
-type FontSize = 'small' | 'medium' | 'large'
-
-interface AppSettings {
-  theme: Theme
-  language: Language
-  fontSize: FontSize
-  notificationsEnabled: boolean
-  notificationSound: boolean
-  notificationDesktop: boolean
-}
-
-const DEFAULT_SETTINGS: AppSettings = {
-  theme: 'dark',
-  language: 'pl',
-  fontSize: 'medium',
-  notificationsEnabled: true,
-  notificationSound: true,
-  notificationDesktop: false
-}
 
 const MOCK_USER = {
   id: 'mock-user-1',
@@ -156,13 +142,6 @@ const STATUS_COLOR: Record<string, string> = {
   OFFLINE: '#7f8c8d'
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  ONLINE: 'Aktywny',
-  AWAY: 'Zaraz wracam',
-  BUSY: 'Nie przeszkadzać',
-  OFFLINE: 'Offline'
-}
-
 function avatarSrc(url?: string | null) {
   return url ?? '/ouija_white.png'
 }
@@ -220,6 +199,9 @@ type InviteEntry = FriendEntry
 
 export default function Profile() {
   const router = useRouter()
+  const { settings, updateSetting } = useSettings()
+  const { t } = useTranslation()
+
   const userId =
     typeof window !== 'undefined'
       ? (localStorage.getItem('userId') ?? MOCK_USER.id)
@@ -232,11 +214,6 @@ export default function Profile() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [showPasswordForm, setShowPasswordForm] = useState(false)
-  const [newPassword, setNewPassword] = useState('')
-  const [passwordMsg, setPasswordMsg] = useState<string | null>(null)
-
-  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS)
   const [settingsSaved, setSettingsSaved] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
 
@@ -274,13 +251,6 @@ export default function Profile() {
   }
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('appSettings')
-      if (stored) setSettings(JSON.parse(stored))
-    } catch {
-      /* ignoruj */
-    }
-
     if (USE_MOCK) {
       setUser(MOCK_USER)
       setFriends(MOCK_FRIENDS)
@@ -312,7 +282,7 @@ export default function Profile() {
           pendingData.filter((f: InviteEntry) => f.userId === userId)
         )
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Błąd wczytywania')
+        setError(err instanceof Error ? err.message : t('common.error'))
       } finally {
         setLoading(false)
       }
@@ -320,56 +290,13 @@ export default function Profile() {
     fetchData()
   }, [userId])
 
-  useEffect(() => {
-    const root = document.documentElement
-    root.setAttribute('data-theme', settings.theme)
-    const sizes: Record<FontSize, string> = {
-      small: '8px',
-      medium: '10px',
-      large: '12px'
-    }
-    root.style.fontSize = sizes[settings.fontSize]
-    root.setAttribute('lang', settings.language)
-  }, [settings])
-
   function handleSaveSetting<K extends keyof AppSettings>(
     key: K,
     value: AppSettings[K]
   ) {
-    setSettings((prev) => {
-      const next = { ...prev, [key]: value }
-      localStorage.setItem('appSettings', JSON.stringify(next))
-      return next
-    })
+    updateSetting(key, value)
     setSettingsSaved(true)
     setTimeout(() => setSettingsSaved(false), 2000)
-  }
-
-  async function handleChangePassword(e: React.FormEvent) {
-    e.preventDefault()
-    setPasswordMsg(null)
-    if (USE_MOCK) {
-      setPasswordMsg('Hasło zmienione! (mock)')
-      setShowPasswordForm(false)
-      setNewPassword('')
-      return
-    }
-    try {
-      const res = await fetch(`${API_URL}/api/${userId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: newPassword })
-      })
-      if (!res.ok) {
-        const d = await res.json()
-        throw new Error(d?.error ?? 'Błąd')
-      }
-      setPasswordMsg('Hasło zmienione pomyślnie!')
-      setShowPasswordForm(false)
-      setNewPassword('')
-    } catch (err) {
-      setPasswordMsg(err instanceof Error ? err.message : 'Błąd zmiany hasła')
-    }
   }
 
   async function handleRemoveFriend(friendId: string) {
@@ -507,7 +434,8 @@ export default function Profile() {
     return f.userId === userId ? f.friend : f.user
   }
 
-  if (loading) return <p className={styles.LoadingText}>Ładowanie...</p>
+  if (loading)
+    return <p className={styles.LoadingText}>{t('common.loading')}</p>
   if (error) return <p className={styles.ErrorText}>{error}</p>
   if (!user) return null
 
@@ -523,7 +451,10 @@ export default function Profile() {
             width={120}
             height={120}
           />
-          <label className={styles.AvatarEditBtn} title="Zmień zdjęcie">
+          <label
+            className={styles.AvatarEditBtn}
+            title={t('profile.changeAvatar')}
+          >
             {avatarUploading ? '...' : '📷'}
             <input
               type="file"
@@ -537,43 +468,21 @@ export default function Profile() {
         <h2 className={styles.SectionHeading}>{user.nickname}</h2>
         <p className={styles.SectionText}>Email: {user.email}</p>
         <p className={styles.SectionText}>
-          Hasło:{' '}
-          <a onClick={() => setShowPasswordForm((v) => !v)}>
-            {showPasswordForm ? 'Anuluj' : 'Zmień hasło'}
+          {t('profile.passwordLabel')}{' '}
+          <a
+            style={{ cursor: 'pointer' }}
+            onClick={() => router.push('/forgot-password')}
+          >
+            {t('profile.changePasswordRedirect')}
           </a>
         </p>
-        {showPasswordForm && (
-          <form onSubmit={handleChangePassword} className={styles.PasswordForm}>
-            <input
-              type="password"
-              placeholder="Nowe hasło (min. 8 znaków)"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              minLength={8}
-              required
-              className={styles.PasswordInput}
-            />
-            <button type="submit" className={styles.SaveBtn}>
-              Zapisz
-            </button>
-          </form>
-        )}
-        {passwordMsg && (
-          <p
-            className={
-              passwordMsg.includes('!') ? styles.SuccessMsg : styles.ErrorMsg
-            }
-          >
-            {passwordMsg}
-          </p>
-        )}
       </div>
 
       {/* ── Zaproszenia przychodzące ── */}
       {pendingInvites.length > 0 && (
         <div className={styles.Section}>
           <h2 className={styles.SectionHeading}>
-            Zaproszenia do znajomych
+            {t('profile.pendingInvites')}
             <span className={styles.Badge}>{pendingInvites.length}</span>
           </h2>
           {pendingInvites.map((invite) => (
@@ -603,20 +512,20 @@ export default function Profile() {
                   {invite.user.nickname}
                 </h3>
                 <span className={styles.FriendStatusText}>
-                  chce zostać Twoim znajomym
+                  {t('profile.wantsToBeYourFriend')}
                 </span>
               </div>
               <button
                 className={styles.AcceptBtn}
                 onClick={() => handleAcceptInvite(invite.userId)}
               >
-                ✓ Akceptuj
+                {t('profile.accept')}
               </button>
               <button
                 className={styles.RejectBtn}
                 onClick={() => handleRejectInvite(invite.userId)}
               >
-                ✕ Odrzuć
+                {t('profile.reject')}
               </button>
             </div>
           ))}
@@ -627,7 +536,7 @@ export default function Profile() {
       {sentInvites.length > 0 && (
         <div className={styles.Section}>
           <h2 className={styles.SectionHeading}>
-            Wysłane zaproszenia
+            {t('profile.sentInvites')}
             <span className={styles.Badge}>{sentInvites.length}</span>
           </h2>
           {sentInvites.map((invite) => (
@@ -657,15 +566,18 @@ export default function Profile() {
                   {invite.friend.nickname}
                 </h3>
                 <span className={styles.FriendStatusText}>
-                  {STATUS_LABEL[invite.friend.status] ?? invite.friend.status} ·
-                  oczekuje na odpowiedź
+                  {t(
+                    `status.${invite.friend.status}` as `status.${string}` &
+                      Parameters<typeof t>[0]
+                  ) ?? invite.friend.status}{' '}
+                  · {t('profile.awaitingResponse')}
                 </span>
               </div>
               <button
                 className={styles.RejectBtn}
                 onClick={() => handleCancelInvite(invite.friendId)}
               >
-                ✕ Cofnij
+                {t('profile.cancel')}
               </button>
             </div>
           ))}
@@ -674,9 +586,9 @@ export default function Profile() {
 
       {/* ── Znajomi ── */}
       <div className={styles.Section}>
-        <h2 className={styles.SectionHeading}>Znajomi</h2>
+        <h2 className={styles.SectionHeading}>{t('profile.friends')}</h2>
         {friends.length === 0 && (
-          <p className={styles.SectionText}>Brak znajomych</p>
+          <p className={styles.SectionText}>{t('profile.noFriends')}</p>
         )}
         {friends.map((friendship) => {
           const friend = getFriendUser(friendship)
@@ -708,20 +620,23 @@ export default function Profile() {
                   className={styles.FriendStatusText}
                   style={{ color: STATUS_COLOR[friend.status] }}
                 >
-                  {STATUS_LABEL[friend.status] ?? friend.status}
+                  {t(
+                    `status.${friend.status}` as `status.${string}` &
+                      Parameters<typeof t>[0]
+                  ) ?? friend.status}
                 </span>
               </div>
               <button
                 className={styles.SectionFriendMessageButton}
                 onClick={() => handleMessageFriend(friend.id)}
               >
-                Wiadomość
+                {t('profile.message')}
               </button>
               <button
                 className={styles.SectionFriendDeleteButton}
                 onClick={() => handleRemoveFriend(friend.id)}
               >
-                Usuń
+                {t('profile.remove')}
               </button>
             </div>
           )
@@ -730,31 +645,37 @@ export default function Profile() {
 
       {/* ── Ustawienia ── */}
       <div className={styles.Section}>
-        <h2 className={styles.SectionHeading}>Ustawienia strony</h2>
-        {settingsSaved && <p className={styles.SuccessMsg}>Zapisano ✓</p>}
+        <h2 className={styles.SectionHeading}>{t('profile.settings')}</h2>
+        {settingsSaved && (
+          <p className={styles.SuccessMsg}>{t('profile.saved')}</p>
+        )}
 
         <div className={styles.SettingsGroup}>
-          <h3 className={styles.SettingsGroupTitle}>Wygląd</h3>
-          <SettingRow label="Motyw">
+          <h3 className={styles.SettingsGroupTitle}>
+            {t('profile.appearance')}
+          </h3>
+          <SettingRow label={t('profile.theme')}>
             <div className={styles.SegmentedControl}>
-              {(['dark', 'light'] as Theme[]).map((t) => (
+              {(['dark', 'light'] as Theme[]).map((th) => (
                 <button
-                  key={t}
-                  className={`${styles.SegmentBtn} ${settings.theme === t ? styles.SegmentBtnActive : ''}`}
-                  onClick={() => handleSaveSetting('theme', t)}
+                  key={th}
+                  className={`${styles.SegmentBtn} ${settings.theme === th ? styles.SegmentBtnActive : ''}`}
+                  onClick={() => handleSaveSetting('theme', th)}
                 >
-                  {t === 'dark' ? '🌙 Ciemny' : '☀️ Jasny'}
+                  {th === 'dark'
+                    ? t('profile.themeDark')
+                    : t('profile.themeLight')}
                 </button>
               ))}
             </div>
           </SettingRow>
-          <SettingRow label="Rozmiar czcionki">
+          <SettingRow label={t('profile.fontSize')}>
             <div className={styles.SegmentedControl}>
               {(
                 [
-                  ['small', 'Mały'],
-                  ['medium', 'Średni'],
-                  ['large', 'Duży']
+                  ['small', t('profile.fontSmall')],
+                  ['medium', t('profile.fontMedium')],
+                  ['large', t('profile.fontLarge')]
                 ] as [FontSize, string][]
               ).map(([val, label]) => (
                 <button
@@ -770,13 +691,13 @@ export default function Profile() {
         </div>
 
         <div className={styles.SettingsGroup}>
-          <h3 className={styles.SettingsGroupTitle}>Język</h3>
-          <SettingRow label="Język interfejsu">
+          <h3 className={styles.SettingsGroupTitle}>{t('profile.language')}</h3>
+          <SettingRow label={t('profile.language')}>
             <div className={styles.SegmentedControl}>
               {(
                 [
-                  ['pl', '🇵🇱 Polski'],
-                  ['en', '🇬🇧 English']
+                  ['pl', t('profile.langPl')],
+                  ['en', t('profile.langEn')]
                 ] as [Language, string][]
               ).map(([val, label]) => (
                 <button
@@ -792,20 +713,22 @@ export default function Profile() {
         </div>
 
         <div className={styles.SettingsGroup}>
-          <h3 className={styles.SettingsGroupTitle}>Powiadomienia</h3>
-          <SettingRow label="Powiadomienia">
+          <h3 className={styles.SettingsGroupTitle}>
+            {t('profile.notifications')}
+          </h3>
+          <SettingRow label={t('profile.notifications')}>
             <Toggle
               checked={settings.notificationsEnabled}
               onChange={(v) => handleSaveSetting('notificationsEnabled', v)}
             />
           </SettingRow>
-          <SettingRow label="Dźwięk">
+          <SettingRow label={t('profile.notifSound')}>
             <Toggle
               checked={settings.notificationSound}
               onChange={(v) => handleSaveSetting('notificationSound', v)}
             />
           </SettingRow>
-          <SettingRow label="Powiadomienia systemowe">
+          <SettingRow label={t('profile.notifDesktop')}>
             <Toggle
               checked={settings.notificationDesktop}
               onChange={(v) => {
@@ -826,18 +749,18 @@ export default function Profile() {
         </div>
 
         <div className={styles.SettingsGroup}>
-          <h3 className={styles.SettingsGroupTitle}>Konto</h3>
+          <h3 className={styles.SettingsGroupTitle}>{t('profile.account')}</h3>
           <button
             className={styles.DangerBtn}
             onClick={() => {
-              if (confirm('Na pewno chcesz się wylogować?')) {
+              if (confirm(t('profile.logoutConfirm'))) {
                 localStorage.removeItem('userId')
                 localStorage.removeItem('userNickname')
                 router.push('/login')
               }
             }}
           >
-            Wyloguj się
+            {t('profile.logout')}
           </button>
         </div>
       </div>

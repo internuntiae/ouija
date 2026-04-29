@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import styles from './UserProfile.module.scss'
+import { useTranslation } from '@/i18n/translations'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -11,12 +12,6 @@ const STATUS_COLOR: Record<string, string> = {
   AWAY: '#f39c12',
   BUSY: '#e74c3c',
   OFFLINE: '#7f8c8d'
-}
-const STATUS_LABEL: Record<string, string> = {
-  ONLINE: 'Aktywny',
-  AWAY: 'Zaraz wracam',
-  BUSY: 'Nie przeszkadzać',
-  OFFLINE: 'Offline'
 }
 
 interface PublicUser {
@@ -36,6 +31,7 @@ interface FriendUser {
 export default function UserProfilePage() {
   const { userId: targetId } = useParams<{ userId: string }>()
   const router = useRouter()
+  const { t, tWith } = useTranslation()
   const myId =
     typeof window !== 'undefined' ? (localStorage.getItem('userId') ?? '') : ''
 
@@ -64,7 +60,7 @@ export default function UserProfilePage() {
           fetch(`${API_URL}/api/users/${targetId}/friends?status=ACCEPTED`)
         ])
 
-        if (!userRes.ok) throw new Error('Nie znaleziono użytkownika')
+        if (!userRes.ok) throw new Error('not found')
         const userData = await userRes.json()
         setUser(userData)
 
@@ -116,10 +112,10 @@ export default function UserProfilePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ friendId: targetId })
       })
-      if (!res.ok) throw new Error('Błąd')
+      if (!res.ok) throw new Error(t('userProfile.errorAdd'))
       setFriendStatus('PENDING_SENT')
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Błąd')
+      alert(err instanceof Error ? err.message : t('userProfile.errorAdd'))
     } finally {
       setActionLoading(false)
     }
@@ -128,7 +124,6 @@ export default function UserProfilePage() {
   async function handleMessage() {
     setActionLoading(true)
     try {
-      // Sprawdź czy czat już istnieje
       const chatsRes = await fetch(`${API_URL}/api/users/${myId}/chats`)
       if (chatsRes.ok) {
         const chats = await chatsRes.json()
@@ -137,29 +132,28 @@ export default function UserProfilePage() {
             c.type === 'PRIVATE' && c.users.some((u) => u.userId === targetId)
         )
         if (existing) {
-          console.log('existing chat:', existing)
           router.push(`/chats?chatId=${existing.id}`)
           return
         }
       }
-      // Utwórz nowy czat
       const res = await fetch(`${API_URL}/api/chats`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'PRIVATE', userIds: [myId, targetId] })
       })
-      if (!res.ok) throw new Error('Błąd')
+      if (!res.ok) throw new Error(t('userProfile.errorMessage'))
       const chat = await res.json()
       router.push(`/chats?chatId=${chat.id}`)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Błąd')
+      alert(err instanceof Error ? err.message : t('userProfile.errorMessage'))
     } finally {
       setActionLoading(false)
     }
   }
 
-  if (loading) return <p className={styles.Loading}>Ładowanie...</p>
-  if (!user) return <p className={styles.Error}>Nie znaleziono użytkownika</p>
+  if (loading)
+    return <p className={styles.Loading}>{t('userProfile.loading')}</p>
+  if (!user) return <p className={styles.Error}>{t('userProfile.notFound')}</p>
 
   return (
     <div className={styles.Wrapper}>
@@ -183,7 +177,10 @@ export default function UserProfilePage() {
           className={styles.Status}
           style={{ color: STATUS_COLOR[user.status] ?? '#7f8c8d' }}
         >
-          {STATUS_LABEL[user.status] ?? user.status}
+          {t(
+            `status.${user.status}` as `status.${string}` &
+              Parameters<typeof t>[0]
+          ) ?? user.status}
         </p>
 
         <div className={styles.Actions}>
@@ -193,7 +190,7 @@ export default function UserProfilePage() {
               onClick={handleMessage}
               disabled={actionLoading}
             >
-              💬 Napisz wiadomość
+              {t('userProfile.writeMessage')}
             </button>
           )}
           {friendStatus === 'NONE' && (
@@ -202,15 +199,15 @@ export default function UserProfilePage() {
               onClick={handleAddFriend}
               disabled={actionLoading}
             >
-              + Dodaj do znajomych
+              {t('userProfile.addFriend')}
             </button>
           )}
           {friendStatus === 'PENDING_SENT' && (
-            <p className={styles.PendingText}>⏳ Zaproszenie wysłane</p>
+            <p className={styles.PendingText}>{t('userProfile.pendingSent')}</p>
           )}
           {friendStatus === 'PENDING_RECEIVED' && (
             <p className={styles.PendingText}>
-              📩 Chce zostać Twoim znajomym — akceptuj w profilu
+              {t('userProfile.pendingReceived')}
             </p>
           )}
         </div>
@@ -218,7 +215,7 @@ export default function UserProfilePage() {
         {!loadingFriends && friends.length > 0 && (
           <div className={styles.FriendsSection}>
             <h3 className={styles.FriendsSectionTitle}>
-              Znajomi ({friends.length})
+              {tWith('userProfile.friends', { count: friends.length })}
             </h3>
             <div className={styles.FriendsList}>
               {friends.map((friend) => (
@@ -251,7 +248,7 @@ export default function UserProfilePage() {
         )}
 
         <button className={styles.BackBtn} onClick={() => router.back()}>
-          ← Wróć
+          {t('userProfile.back')}
         </button>
       </div>
     </div>

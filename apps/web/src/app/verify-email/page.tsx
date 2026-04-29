@@ -1,23 +1,24 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react' // 1. Import Suspense
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import styles from '../login/Login.module.scss'
+import { useTranslation } from '@/i18n/translations'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
-// Move your logic into a sub-component
 function VerifyEmailContent() {
   const params = useSearchParams()
   const token = params.get('token')
+  const { t } = useTranslation()
   const [status, setStatus] = useState<'loading' | 'done' | 'error'>('loading')
   const [message, setMessage] = useState('')
 
   useEffect(() => {
     if (!token) {
       setStatus('error')
-      setMessage('No verification token found in the link.')
+      setMessage(t('verifyEmail.messageNoToken'))
       return
     }
 
@@ -26,7 +27,7 @@ function VerifyEmailContent() {
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || 'Verification failed.')
         setStatus('done')
-        setMessage('Your email has been verified. You can now log in.')
+        setMessage(t('verifyEmail.messageDone'))
       })
       .catch((err) => {
         setStatus('error')
@@ -34,17 +35,20 @@ function VerifyEmailContent() {
       })
   }, [token])
 
+  const titleKey =
+    status === 'loading'
+      ? 'verifyEmail.titleLoading'
+      : status === 'done'
+        ? 'verifyEmail.titleDone'
+        : 'verifyEmail.titleError'
+
   return (
     <div className={styles.Form}>
-      <label className={styles.FormLabel}>
-        {status === 'loading' && 'verifying…'}
-        {status === 'done' && 'verified ✓'}
-        {status === 'error' && 'oops'}
-      </label>
+      <label className={styles.FormLabel}>{t(titleKey)}</label>
 
       <p
         style={{
-          color: status === 'error' ? '#ff6b6b' : '#f3f3f4',
+          color: status === 'error' ? '#ff6b6b' : 'var(--text-primary)',
           fontSize: '1.5rem',
           fontWeight: 200,
           margin: '1rem 0'
@@ -56,7 +60,10 @@ function VerifyEmailContent() {
       {status !== 'loading' && (
         <Link href={'/login'} className={styles.Link}>
           <p>
-            go to <span className={styles.Underline}>login</span>
+            {t('verifyEmail.goTo')}{' '}
+            <span className={styles.Underline}>
+              {t('verifyEmail.goToLoginLink')}
+            </span>
           </p>
         </Link>
       )}

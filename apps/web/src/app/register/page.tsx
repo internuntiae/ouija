@@ -3,6 +3,7 @@
 import styles from './Register.module.scss'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
+import { useTranslation } from '@/i18n/translations'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -14,40 +15,8 @@ interface FormErrors {
   submit?: string
 }
 
-function validateEmail(email: string): string | undefined {
-  if (!email) return 'E-mail jest wymagany'
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-    return 'Nieprawidłowy format e-mail'
-}
-
-function validateUsername(username: string): string | undefined {
-  if (!username) return 'Nazwa użytkownika jest wymagana'
-  if (username.length < 3)
-    return 'Nazwa użytkownika musi mieć co najmniej 3 znaki'
-  if (username.length > 32)
-    return 'Nazwa użytkownika może mieć maksymalnie 32 znaki'
-  if (!/^[a-zA-Z0-9_]+$/.test(username))
-    return 'Dozwolone znaki: litery, cyfry, podkreślnik'
-}
-
-function validatePassword(password: string): string | undefined {
-  if (!password) return 'Hasło jest wymagane'
-  if (password.length < 8) return 'Hasło musi mieć co najmniej 8 znaków'
-  if (!/[A-Z]/.test(password))
-    return 'Hasło musi zawierać co najmniej jedną wielką literę'
-  if (!/[0-9]/.test(password))
-    return 'Hasło musi zawierać co najmniej jedną cyfrę'
-}
-
-function validatePasswordConfirm(
-  password: string,
-  confirm: string
-): string | undefined {
-  if (!confirm) return 'Powtórzenie hasła jest wymagane'
-  if (password !== confirm) return 'Hasła nie są identyczne'
-}
-
 export default function Register() {
+  const { t } = useTranslation()
   const [errors, setErrors] = useState<FormErrors>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
   const [requiresVerification, setRequiresVerification] = useState(false)
@@ -55,6 +24,35 @@ export default function Register() {
     'idle'
   )
   const [error, setError] = useState('')
+
+  function validateEmail(email: string): string | undefined {
+    if (!email) return t('register.errorEmailRequired')
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      return t('register.errorEmailInvalid')
+  }
+
+  function validateUsername(username: string): string | undefined {
+    if (!username) return t('register.errorUsernameRequired')
+    if (username.length < 3) return t('register.errorUsernameShort')
+    if (username.length > 32) return t('register.errorUsernameLong')
+    if (!/^[a-zA-Z0-9_]+$/.test(username))
+      return t('register.errorUsernameChars')
+  }
+
+  function validatePassword(password: string): string | undefined {
+    if (!password) return t('register.errorPasswordRequired')
+    if (password.length < 8) return t('register.errorPasswordShort')
+    if (!/[A-Z]/.test(password)) return t('register.errorPasswordUppercase')
+    if (!/[0-9]/.test(password)) return t('register.errorPasswordDigit')
+  }
+
+  function validatePasswordConfirm(
+    password: string,
+    confirm: string
+  ): string | undefined {
+    if (!confirm) return t('register.errorPasswordConfirmRequired')
+    if (password !== confirm) return t('register.errorPasswordConfirmMatch')
+  }
 
   useEffect(() => {
     fetch(`${API_URL}/api/auth/config`)
@@ -67,15 +65,15 @@ export default function Register() {
 
   function handleBlur(field: string, value: string, extraValue?: string) {
     setTouched((prev) => ({ ...prev, [field]: true }))
-    let error: string | undefined
+    let err: string | undefined
 
-    if (field === 'email') error = validateEmail(value)
-    if (field === 'username') error = validateUsername(value)
-    if (field === 'password') error = validatePassword(value)
+    if (field === 'email') err = validateEmail(value)
+    if (field === 'username') err = validateUsername(value)
+    if (field === 'password') err = validatePassword(value)
     if (field === 'passwordConfirm')
-      error = validatePasswordConfirm(extraValue ?? '', value)
+      err = validatePasswordConfirm(extraValue ?? '', value)
 
-    setErrors((prev) => ({ ...prev, [field]: error }))
+    setErrors((prev) => ({ ...prev, [field]: err }))
   }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -97,7 +95,6 @@ export default function Register() {
       form.elements.namedItem('password-confirm') as HTMLInputElement
     ).value.trim()
 
-    // 1. Validation Logic
     const newErrors: FormErrors = {
       email: validateEmail(email),
       username: validateUsername(nickname),
@@ -114,7 +111,7 @@ export default function Register() {
     setErrors(newErrors)
 
     if (Object.values(newErrors).some(Boolean)) {
-      setStatus('idle') // Reset status if validation fails
+      setStatus('idle')
       return
     }
 
@@ -128,7 +125,6 @@ export default function Register() {
       const data = await res.json()
 
       if (!res.ok) {
-        // Handle server-side validation errors
         const msg: string = data?.error ?? 'Błąd rejestracji'
         if (
           msg.includes('email already exists') ||
@@ -136,7 +132,7 @@ export default function Register() {
         ) {
           setErrors((prev) => ({
             ...prev,
-            email: 'Konto z tym e-mailem już istnieje'
+            email: t('register.errorEmailExists')
           }))
         } else if (
           msg.includes('already exists') ||
@@ -144,7 +140,7 @@ export default function Register() {
         ) {
           setErrors((prev) => ({
             ...prev,
-            username: "Konto z tym username'm już istnieje"
+            username: t('register.errorUsernameExists')
           }))
         } else {
           setError(msg)
@@ -156,7 +152,7 @@ export default function Register() {
       setRequiresVerification(data.requiresVerification ?? false)
       setStatus('done')
     } catch {
-      setErrors((prev) => ({ ...prev, submit: 'Brak połączenia z serwerem' }))
+      setErrors((prev) => ({ ...prev, submit: t('register.errorServer') }))
       setStatus('error')
     }
   }
@@ -165,23 +161,28 @@ export default function Register() {
     return (
       <div className={styles.Form}>
         <label className={styles.FormLabel}>
-          {requiresVerification ? 'check your inbox' : 'welcome!'}
+          {requiresVerification
+            ? t('register.successVerifyTitle')
+            : t('register.successTitle')}
         </label>
         <p
           style={{
-            color: '#f3f3f4',
+            color: 'var(--text-primary)',
             fontSize: '1.5rem',
             fontWeight: 200,
             margin: '1rem 0'
           }}
         >
           {requiresVerification
-            ? 'We sent a verification link to your email address. Click it to activate your account.'
-            : 'Your account is ready. You can now log in.'}
+            ? t('register.successVerify')
+            : t('register.successReady')}
         </p>
         <Link href={'/login'} className={styles.Link}>
           <p>
-            go to <span className={styles.Underline}>login</span>
+            {t('register.goToLogin')}{' '}
+            <span className={styles.Underline}>
+              {t('register.goToLoginLink')}
+            </span>
           </p>
         </Link>
       </div>
@@ -192,11 +193,11 @@ export default function Register() {
     <>
       <form onSubmit={handleSubmit} className={styles.Form} noValidate>
         <label htmlFor="email" className={styles.FormLabel}>
-          e-mail
+          {t('register.email')}
         </label>
         <input
           type="email"
-          placeholder="e-mail"
+          placeholder={t('register.email')}
           name="email"
           id="email"
           className={styles.FormInput}
@@ -208,11 +209,11 @@ export default function Register() {
         )}
 
         <label htmlFor={'username'} className={styles.FormLabel}>
-          username
+          {t('register.username')}
         </label>
         <input
           type="text"
-          placeholder="username"
+          placeholder={t('register.username')}
           name="username"
           id="username"
           className={styles.FormInput}
@@ -224,11 +225,11 @@ export default function Register() {
         )}
 
         <label htmlFor="password" className={styles.FormLabel}>
-          password
+          {t('register.password')}
         </label>
         <input
           type="password"
-          placeholder="password"
+          placeholder={t('register.password')}
           name="password"
           id="password"
           className={styles.FormInput}
@@ -240,11 +241,11 @@ export default function Register() {
         )}
 
         <label htmlFor="password-confirm" className={styles.FormLabel}>
-          repeat password
+          {t('register.passwordConfirm')}
         </label>
         <input
           type="password"
-          placeholder="password"
+          placeholder={t('register.passwordConfirm')}
           name="password-confirm"
           id="password-confirm"
           className={styles.FormInput}
@@ -260,7 +261,7 @@ export default function Register() {
           <p className={styles.FormError}>{errors.passwordConfirm}</p>
         )}
 
-        {status === 'error' && (
+        {status === 'error' && error && (
           <p
             style={{ color: '#ff6b6b', fontSize: '1.4rem', margin: '0.5rem 0' }}
           >
@@ -271,15 +272,19 @@ export default function Register() {
 
         <input
           type={'submit'}
-          value={status === 'loading' ? 'creating…' : 'create'}
+          value={
+            status === 'loading'
+              ? t('register.submitting')
+              : t('register.submit')
+          }
           disabled={status === 'loading'}
           className={styles.FormSubmit}
         />
 
         <Link href={'/login'} className={styles.Link}>
           <p>
-            already have an account?{' '}
-            <span className={styles.Underline}>login</span>
+            {t('register.hasAccount')}{' '}
+            <span className={styles.Underline}>{t('register.login')}</span>
           </p>
         </Link>
       </form>
