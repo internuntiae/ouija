@@ -18,22 +18,6 @@ interface Reaction {
   userId: string
   type: ReactionType
 }
-interface Attachment {
-  id: string
-  url: string
-  type: 'IMAGE' | 'VIDEO' | 'FILE' | 'AUDIO'
-  name?: string
-}
-interface Message {
-  id: string
-  chatId: string
-  senderId: string
-  content: string | null
-  sentAt: string
-  editedAt: string | null
-  attachments: Attachment[]
-  reactions: Reaction[]
-}
 interface ChatUserEntry {
   userId: string
   chatId: string
@@ -62,7 +46,7 @@ const REACTION_EMOJI: Record<ReactionType, string> = {
   SAD: '😢',
   ANGRY: '😡',
   THUMBS_UP: '👆',
-  THUMBS_DOWN: '👇',
+  THUMBS_DOWN: '👇'
 }
 
 function getChatDisplayName(chat: Chat, userId: string): string {
@@ -107,16 +91,16 @@ describe('getChatDisplayName', () => {
           chatId: 'c1',
           role: 'ADMIN',
           joinedAt: '',
-          user: { id: myId, nickname: 'Ja', status: 'ONLINE' },
+          user: { id: myId, nickname: 'Ja', status: 'ONLINE' }
         },
         {
           userId: 'user-2',
           chatId: 'c1',
           role: 'MEMBER',
           joinedAt: '',
-          user: { id: 'user-2', nickname: 'Ania', status: 'AWAY' },
-        },
-      ],
+          user: { id: 'user-2', nickname: 'Ania', status: 'AWAY' }
+        }
+      ]
     }
     expect(getChatDisplayName(chat, myId)).toBe('Projekt Ouija')
   })
@@ -134,16 +118,16 @@ describe('getChatDisplayName', () => {
           chatId: 'c2',
           role: 'MEMBER',
           joinedAt: '',
-          user: { id: myId, nickname: 'Ja', status: 'ONLINE' },
+          user: { id: myId, nickname: 'Ja', status: 'ONLINE' }
         },
         {
           userId: 'user-3',
           chatId: 'c2',
           role: 'MEMBER',
           joinedAt: '',
-          user: { id: 'user-3', nickname: 'Piotrek', status: 'BUSY' },
-        },
-      ],
+          user: { id: 'user-3', nickname: 'Piotrek', status: 'BUSY' }
+        }
+      ]
     }
     expect(getChatDisplayName(chat, myId)).toBe('Piotrek')
   })
@@ -161,9 +145,9 @@ describe('getChatDisplayName', () => {
           chatId: 'c3',
           role: 'MEMBER',
           joinedAt: '',
-          user: { id: myId, nickname: 'Ja', status: 'ONLINE' },
-        },
-      ],
+          user: { id: myId, nickname: 'Ja', status: 'ONLINE' }
+        }
+      ]
     }
     expect(getChatDisplayName(chat, myId)).toBe('Czat')
   })
@@ -188,16 +172,16 @@ describe('getOtherUser', () => {
           chatId: 'c1',
           role: 'MEMBER',
           joinedAt: '',
-          user: { id: myId, nickname: 'Ja', status: 'ONLINE' },
+          user: { id: myId, nickname: 'Ja', status: 'ONLINE' }
         },
         {
           userId: 'user-2',
           chatId: 'c1',
           role: 'MEMBER',
           joinedAt: '',
-          user: { id: 'user-2', nickname: 'Ania', status: 'AWAY' },
-        },
-      ],
+          user: { id: 'user-2', nickname: 'Ania', status: 'AWAY' }
+        }
+      ]
     }
     const other = getOtherUser(chat, myId)
     expect(other).not.toBeNull()
@@ -217,9 +201,9 @@ describe('getOtherUser', () => {
           chatId: 'c2',
           role: 'ADMIN',
           joinedAt: '',
-          user: { id: myId, nickname: 'Ja', status: 'ONLINE' },
-        },
-      ],
+          user: { id: myId, nickname: 'Ja', status: 'ONLINE' }
+        }
+      ]
     }
     expect(getOtherUser(chat, myId)).toBeNull()
   })
@@ -254,7 +238,7 @@ describe('countReactions', () => {
 
   it('liczy pojedynczą reakcję', () => {
     const reactions: Reaction[] = [
-      { messageId: 'm1', userId: 'u1', type: 'LIKE' },
+      { messageId: 'm1', userId: 'u1', type: 'LIKE' }
     ]
     expect(countReactions(reactions)).toEqual({ LIKE: 1 })
   })
@@ -263,7 +247,7 @@ describe('countReactions', () => {
     const reactions: Reaction[] = [
       { messageId: 'm1', userId: 'u1', type: 'LOVE' },
       { messageId: 'm1', userId: 'u2', type: 'LOVE' },
-      { messageId: 'm1', userId: 'u3', type: 'LIKE' },
+      { messageId: 'm1', userId: 'u3', type: 'LIKE' }
     ]
     const result = countReactions(reactions)
     expect(result.LOVE).toBe(2)
@@ -278,12 +262,12 @@ describe('countReactions', () => {
       'SAD',
       'ANGRY',
       'THUMBS_UP',
-      'THUMBS_DOWN',
+      'THUMBS_DOWN'
     ]
     const reactions: Reaction[] = types.map((type) => ({
       messageId: 'm1',
       userId: `u-${type}`,
-      type,
+      type
     }))
     const result = countReactions(reactions)
     types.forEach((type) => {
@@ -303,7 +287,7 @@ describe('REACTION_EMOJI', () => {
     'SAD',
     'ANGRY',
     'THUMBS_UP',
-    'THUMBS_DOWN',
+    'THUMBS_DOWN'
   ]
 
   it('zawiera emoji dla każdego typu reakcji', () => {
