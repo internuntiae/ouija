@@ -232,10 +232,18 @@ function ChatsWithUser({ userId }: { userId: string }) {
             })
           }
 
-          triggerNotification(
-            'ouija',
-            (newMsg.content ?? 'No message, ouija error! :)').toString()
-          )
+          // Notify — only for messages from others, regardless of
+          // whether the app is focused or which chat is open.
+          if (newMsg.senderId !== userId) {
+            setChats((prev) => {
+              const chat = prev.find((c) => c.id === newMsg.chatId)
+              const senderName =
+                chat?.users.find((u) => u.userId === newMsg.senderId)?.user
+                  .nickname ?? 'Ktoś'
+              triggerNotification(senderName, newMsg.content ?? '📎 Załącznik')
+              return prev // no state change — side-effect only
+            })
+          }
 
           setChats((prev) => {
             const updated = prev.map((c) =>
@@ -661,35 +669,6 @@ function ChatsWithUser({ userId }: { userId: string }) {
   const activeChat = chats.find((c) => c.id === activeChatId) ?? null
   const otherUser =
     activeChat?.users.find((u) => u.userId !== userId)?.user ?? null
-
-  const lastNotifiedMsgId = useRef<string | null>(null)
-
-  // ── Powiadomienia dla nowych wiadomości od innych ──
-  // lastNotifiedMsgId zapobiega powiadomieniu przy pierwszym załadowaniu czatu
-  useEffect(() => {
-    if (!messages.length) {
-      lastNotifiedMsgId.current = null
-      return
-    }
-    const last = messages[messages.length - 1]
-    // Ustaw punkt startowy przy pierwszym załadowaniu — nie powiadamiaj
-    if (lastNotifiedMsgId.current === null) {
-      lastNotifiedMsgId.current = last.id
-      return
-    }
-    // Powiadamiaj tylko o naprawdę nowych wiadomościach (nowe id, nie moje)
-    if (
-      last.id !== lastNotifiedMsgId.current &&
-      last.senderId !== userId &&
-      document.hidden
-    ) {
-      lastNotifiedMsgId.current = last.id
-      const senderName =
-        activeChat?.users.find((u) => u.userId === last.senderId)?.user
-          .nickname ?? 'Ktoś'
-      triggerNotification(senderName, last.content ?? '📎 Załącznik')
-    }
-  }, [messages])
 
   return (
     <div className={styles.container}>
