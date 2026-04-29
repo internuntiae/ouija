@@ -509,18 +509,49 @@ export default function ChatSidebar({
                 }}
                 style={{ cursor: 'pointer' }}
               >
-                <img
-                  src={avatarSrc(other?.avatarUrl)}
-                  alt="avatar"
-                  height={30}
-                  width={30}
-                  className={styles.ContactsChatPreviewProfilePicture}
-                />
-                {other && (
-                  <span
-                    className={styles.StatusDotSmall}
-                    style={{ background: STATUS_COLOR[other.status] }}
-                  />
+                {chat.type === 'GROUP' ? (
+                  <svg
+                    viewBox="0 0 30 30"
+                    width="30"
+                    height="30"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className={styles.ContactsChatPreviewProfilePicture}
+                  >
+                    <circle cx="15" cy="15" r="15" fill="var(--bg-elevated)" />
+                    <circle cx="11" cy="12" r="4" fill="var(--text-muted)" />
+                    <circle
+                      cx="19"
+                      cy="12"
+                      r="4"
+                      fill="var(--text-muted)"
+                      opacity="0.7"
+                    />
+                    <path
+                      d="M3 24 Q3 18 11 18 Q15 18 17 20 Q12 20 12 24 Z"
+                      fill="var(--text-muted)"
+                    />
+                    <path
+                      d="M13 22 Q14 17 19 17 Q25 17 27 22 L27 24 Q24 20 19 20 Q14 20 13 23 Z"
+                      fill="var(--text-muted)"
+                      opacity="0.7"
+                    />
+                  </svg>
+                ) : (
+                  <>
+                    <img
+                      src={avatarSrc(other?.avatarUrl)}
+                      alt="avatar"
+                      height={30}
+                      width={30}
+                      className={styles.ContactsChatPreviewProfilePicture}
+                    />
+                    {other && (
+                      <span
+                        className={styles.StatusDotSmall}
+                        style={{ background: STATUS_COLOR[other.status] }}
+                      />
+                    )}
+                  </>
                 )}
               </div>
 

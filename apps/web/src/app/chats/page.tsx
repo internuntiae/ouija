@@ -296,28 +296,10 @@ function ChatsWithUser({ userId }: { userId: string }) {
                   .nickname ?? 'Ktoś'
 
               if (!isMuted) {
-                // Play sound via the in-page triggerNotification (works when
-                // the tab is open). The SW handles desktop notifications and
-                // also fires when the tab is closed / on another route.
                 triggerNotification(
                   senderName,
                   newMsg.content ?? '📎 Załącznik'
                 )
-
-                // Tell the SW who sent it so it can show a notification when
-                // the page is closed or on a different route.
-                if (
-                  'serviceWorker' in navigator &&
-                  navigator.serviceWorker.controller
-                ) {
-                  navigator.serviceWorker.controller.postMessage({
-                    type: 'SHOW_NOTIFICATION',
-                    payload: {
-                      title: senderName,
-                      body: newMsg.content ?? '📎 Załącznik'
-                    }
-                  })
-                }
               }
 
               return prev // no state change — side-effect only
@@ -399,10 +381,39 @@ function ChatsWithUser({ userId }: { userId: string }) {
         }
 
         if (msg.type === 'chat:created') {
-          const newChat = msg.payload as unknown as Chat
+          const newChat = ((msg.payload as Record<string, unknown>).chat ??
+            msg.payload) as unknown as Chat
+          if (!newChat?.users) return
           setChats((prev) =>
             prev.some((c) => c.id === newChat.id) ? prev : [newChat, ...prev]
           )
+        }
+
+        if (msg.type === 'chat:updated') {
+          const { chatId, chat } = msg.payload as {
+            chatId: string
+            chat?: Chat
+          }
+          if (chat) {
+            setChats((prev) =>
+              prev.map((c) =>
+                c.id === chatId
+                  ? {
+                      ...c,
+                      ...chat,
+                      lastMessage: c.lastMessage,
+                      unreadCount: c.unreadCount
+                    }
+                  : c
+              )
+            )
+          }
+        }
+
+        if (msg.type === 'chat:deleted') {
+          const { chatId } = msg.payload as { chatId: string }
+          setChats((prev) => prev.filter((c) => c.id !== chatId))
+          setActiveChatId((prev) => (prev === chatId ? null : prev))
         }
 
         if (msg.type === 'friendship:requested') {
@@ -846,8 +857,78 @@ function ChatsWithUser({ userId }: { userId: string }) {
       return
     }
     const chat = await res.json()
-    setChats((prev) => [chat, ...prev])
+    // Nie dodajemy czatu ręcznie — serwer wyśle chat:created przez WS do wszystkich członków
     setActiveChatId(chat.id)
+  }
+
+  // ── Zarządzanie grupą ──
+  async function handleRenameGroup(chatId: string, name: string) {
+    const res = await fetch(`${API_URL}/api/chats/${chatId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    })
+    if (!res.ok) {
+      alert('Błąd zmiany nazwy')
+      return
+    }
+    const updated = await res.json()
+    setChats((prev) =>
+      prev.map((c) => (c.id === chatId ? { ...c, name: updated.name } : c))
+    )
+  }
+
+  async function handleDeleteGroup(chatId: string) {
+    if (!confirm('Na pewno usunąć grupę? Tej operacji nie można cofnąć.'))
+      return
+    const res = await fetch(`${API_URL}/api/chats/${chatId}`, {
+      method: 'DELETE'
+    })
+    if (!res.ok) {
+      alert('Błąd usuwania grupy')
+      return
+    }
+    setChats((prev) => prev.filter((c) => c.id !== chatId))
+    if (activeChatId === chatId) setActiveChatId(null)
+  }
+
+  async function handleTransferOwner(chatId: string, newOwnerId: string) {
+    if (!userId) return
+    const res = await fetch(
+      `${API_URL}/api/chats/${chatId}/members/${newOwnerId}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'ADMIN' })
+      }
+    )
+    if (!res.ok) {
+      alert('Błąd przekazania własności')
+      return
+    }
+    // Downgrade current user to MEMBER
+    await fetch(`${API_URL}/api/chats/${chatId}/members/${userId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'MEMBER' })
+    })
+    setChats((prev) =>
+      prev.map((c) => {
+        if (c.id !== chatId) return c
+        return {
+          ...c,
+          users: c.users.map((u) => ({
+            ...u,
+            role:
+              u.userId === newOwnerId
+                ? 'ADMIN'
+                : u.userId === userId
+                  ? 'MEMBER'
+                  : u.role
+          }))
+        }
+      })
+    )
   }
 
   return (
@@ -926,6 +1007,9 @@ function ChatsWithUser({ userId }: { userId: string }) {
         getChatDisplayName={getChatDisplayName}
         onBack={isMobile ? () => setMobileChatOpen(false) : undefined}
         isMobileChatVisible={!isMobile || mobileChatOpen}
+        onRenameGroup={handleRenameGroup}
+        onDeleteGroup={handleDeleteGroup}
+        onTransferOwner={handleTransferOwner}
       />
 
       {profilePopupUserId && (

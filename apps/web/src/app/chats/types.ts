@@ -50,6 +50,7 @@ export interface ChatUserEntry {
 export interface Chat {
   id: string
   name: string | null
+  avatarUrl?: string | null
   type: string
   createdAt: string
   updatedAt: string

@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, RefObject } from 'react'
+import { FormEvent, RefObject, useState } from 'react'
 import styles from './Chats.module.scss'
 import MessageBubble from './MessageBubble'
 import { Chat, Message, ReactionType, STATUS_COLOR, avatarSrc } from './types'
@@ -33,6 +33,10 @@ interface Props {
   getChatDisplayName: (chat: Chat) => string
   onBack?: () => void
   isMobileChatVisible?: boolean
+  onRenameGroup: (chatId: string, name: string) => Promise<void>
+  onDeleteGroup: (chatId: string) => Promise<void>
+  onTransferOwner: (chatId: string, newOwnerId: string) => Promise<void>
+  currentUserId?: string
 }
 
 export default function ChatWindow({
@@ -55,9 +59,18 @@ export default function ChatWindow({
   onOpenProfile,
   getChatDisplayName,
   onBack,
-  isMobileChatVisible
+  isMobileChatVisible,
+  onRenameGroup,
+  onDeleteGroup,
+  onTransferOwner
 }: Props) {
   const { t } = useTranslation()
+  const [groupPanelOpen, setGroupPanelOpen] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [nameInput, setNameInput] = useState('')
+  const isGroupAdmin =
+    activeChat?.type === 'GROUP' &&
+    activeChat.users.find((u) => u.userId === userId)?.role === 'ADMIN'
 
   if (!activeChat) {
     return (
@@ -83,50 +96,211 @@ export default function ChatWindow({
           </button>
         )}
         <div className={styles.ChatContactInfoLeft}>
-          <div
-            className={styles.AvatarWrap}
-            style={{ cursor: 'pointer' }}
-            onClick={() => otherUser && onOpenProfile(otherUser.id)}
-          >
-            <img
-              src={avatarSrc(otherUser?.avatarUrl)}
-              alt="avatar"
-              height={36}
-              width={36}
-              className={styles.ContactsChatPreviewProfilePicture}
-            />
-            {otherUser && (
-              <span
-                className={styles.StatusDotSmall}
-                style={{
-                  background:
-                    STATUS_COLOR[
-                      otherUser.status as keyof typeof STATUS_COLOR
-                    ] ?? '#7f8c8d'
-                }}
-              />
-            )}
-          </div>
-          <div>
-            <h2 className={styles.ChatContactName}>
-              {getChatDisplayName(activeChat)}
-            </h2>
-            {otherUser && (
-              <h5
-                className={styles.ChatContactStatus}
-                style={{
-                  color:
-                    STATUS_COLOR[
-                      otherUser.status as keyof typeof STATUS_COLOR
-                    ] ?? '#7f8c8d'
-                }}
+          {activeChat.type === 'GROUP' ? (
+            <>
+              <div className={styles.GroupIconWrap}>
+                <svg
+                  viewBox="0 0 36 36"
+                  width="36"
+                  height="36"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <circle cx="18" cy="18" r="18" fill="var(--bg-elevated)" />
+                  <circle cx="13" cy="14" r="5" fill="var(--text-muted)" />
+                  <circle
+                    cx="23"
+                    cy="14"
+                    r="5"
+                    fill="var(--text-muted)"
+                    opacity="0.7"
+                  />
+                  <path
+                    d="M4 28 Q4 22 13 22 Q18 22 20 24 Q15 24 15 28 Z"
+                    fill="var(--text-muted)"
+                  />
+                  <path
+                    d="M16 26 Q17 21 23 21 Q30 21 32 27 L32 28 Q29 24 23 24 Q17 24 16 28 Z"
+                    fill="var(--text-muted)"
+                    opacity="0.7"
+                  />
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <h2 className={styles.ChatContactName}>
+                  {getChatDisplayName(activeChat)}
+                </h2>
+                <h5 className={styles.ChatContactStatus}>
+                  {activeChat.users.map((u) => u.user.nickname).join(', ')}
+                </h5>
+              </div>
+            </>
+          ) : (
+            <>
+              <div
+                className={styles.AvatarWrap}
+                style={{ cursor: 'pointer' }}
+                onClick={() => otherUser && onOpenProfile(otherUser.id)}
               >
-                {t(`status.${otherUser.status}` as never)}
-              </h5>
+                <img
+                  src={avatarSrc(otherUser?.avatarUrl)}
+                  alt="avatar"
+                  height={36}
+                  width={36}
+                  className={styles.ContactsChatPreviewProfilePicture}
+                />
+                {otherUser && (
+                  <span
+                    className={styles.StatusDotSmall}
+                    style={{
+                      background:
+                        STATUS_COLOR[
+                          otherUser.status as keyof typeof STATUS_COLOR
+                        ] ?? '#7f8c8d'
+                    }}
+                  />
+                )}
+              </div>
+              <div>
+                <h2 className={styles.ChatContactName}>
+                  {getChatDisplayName(activeChat)}
+                </h2>
+                {otherUser && (
+                  <h5
+                    className={styles.ChatContactStatus}
+                    style={{
+                      color:
+                        STATUS_COLOR[
+                          otherUser.status as keyof typeof STATUS_COLOR
+                        ] ?? '#7f8c8d'
+                    }}
+                  >
+                    {t(`status.${otherUser.status}` as never)}
+                  </h5>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+        {activeChat?.type === 'GROUP' && (
+          <button
+            className={`${styles.GroupSettingsBtn} ${groupPanelOpen ? styles.GroupSettingsBtnActive : ''}`}
+            onClick={() => setGroupPanelOpen((v) => !v)}
+            title="Ustawienia grupy"
+          >
+            ⚙️
+          </button>
+        )}
+      </div>
+
+      {/* ── Panel ustawień grupy ── */}
+      {groupPanelOpen && activeChat?.type === 'GROUP' && (
+        <div className={styles.GroupPanel}>
+          {/* Nazwa grupy — każdy może zmienić */}
+          <div className={styles.GroupPanelSection}>
+            <p className={styles.GroupPanelLabel}>Nazwa grupy</p>
+            {editingName ? (
+              <div className={styles.GroupPanelNameEdit}>
+                <input
+                  className={styles.GroupPanelNameInput}
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      onRenameGroup(activeChat.id, nameInput)
+                      setEditingName(false)
+                    }
+                    if (e.key === 'Escape') setEditingName(false)
+                  }}
+                  autoFocus
+                />
+                <button
+                  className={styles.GroupPanelBtn}
+                  onClick={() => {
+                    onRenameGroup(activeChat.id, nameInput)
+                    setEditingName(false)
+                  }}
+                >
+                  Zapisz
+                </button>
+                <button
+                  className={styles.GroupPanelBtnSecondary}
+                  onClick={() => setEditingName(false)}
+                >
+                  Anuluj
+                </button>
+              </div>
+            ) : (
+              <div className={styles.GroupPanelNameRow}>
+                <span className={styles.GroupPanelNameText}>
+                  {activeChat.name}
+                </span>
+                <button
+                  className={styles.GroupPanelBtn}
+                  onClick={() => {
+                    setNameInput(activeChat.name ?? '')
+                    setEditingName(true)
+                  }}
+                >
+                  ✏️ Edytuj
+                </button>
+              </div>
             )}
           </div>
+
+          {/* Członkowie */}
+          <div className={styles.GroupPanelSection}>
+            <p className={styles.GroupPanelLabel}>
+              Członkowie ({activeChat.users.length})
+            </p>
+            {activeChat.users.map((u) => (
+              <div key={u.userId} className={styles.GroupPanelMember}>
+                <img
+                  src={avatarSrc(u.user.avatarUrl)}
+                  alt={u.user.nickname}
+                  width={28}
+                  height={28}
+                  className={styles.GroupPanelMemberAvatar}
+                  onClick={() => onOpenProfile(u.user.id)}
+                />
+                <span className={styles.GroupPanelMemberName}>
+                  {u.user.nickname}
+                </span>
+                {u.role === 'ADMIN' && (
+                  <span className={styles.GroupPanelAdminBadge}>Admin</span>
+                )}
+                {isGroupAdmin && u.userId !== userId && (
+                  <button
+                    className={styles.GroupPanelBtnDanger}
+                    title="Przekaż własność"
+                    onClick={() => {
+                      if (
+                        confirm(
+                          `Przekazać własność grupy użytkownikowi ${u.user.nickname}?`
+                        )
+                      )
+                        onTransferOwner(activeChat.id, u.userId)
+                    }}
+                  >
+                    👑
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Usuń grupę — tylko admin */}
+          {isGroupAdmin && (
+            <div className={styles.GroupPanelSection}>
+              <button
+                className={styles.GroupPanelBtnDangerFull}
+                onClick={() => onDeleteGroup(activeChat.id)}
+              >
+                🗑️ Usuń grupę
+              </button>
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
       {/* ── Wiadomości ── */}
       <div className={styles.ChatMessageContainer} ref={messageContainerRef}>

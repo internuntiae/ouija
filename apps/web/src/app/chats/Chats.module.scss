@@ -1185,3 +1185,234 @@
     cursor: not-allowed;
   }
 }
+
+/* ── Nagłówek czatu grupowego ── */
+.GroupAvatarStack {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.GroupStackAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-surface);
+  margin-left: -8px;
+  cursor: pointer;
+  object-fit: cover;
+
+  &:first-child {
+    margin-left: 0;
+  }
+
+  &:hover {
+    z-index: 1;
+    position: relative;
+  }
+}
+
+.GroupAvatarMore {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 2px solid var(--bg-surface);
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin-left: -8px;
+}
+
+/* ── Przycisk ustawień grupy w nagłówku ── */
+.GroupSettingsBtn {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.6rem;
+  color: var(--text-muted);
+  font-size: 1.6rem;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+  flex-shrink: 0;
+
+  &:hover {
+    background: var(--bg-elevated);
+    color: var(--text);
+  }
+}
+
+.GroupSettingsBtnActive {
+  background: var(--bg-elevated);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+/* ── Panel ustawień grupy ── */
+.GroupPanel {
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
+  padding: 1.2rem 1.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  max-height: 40vh;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.GroupPanelAvatarRow {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+}
+
+.GroupPanelAvatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+}
+
+.GroupPanelSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.GroupPanelLabel {
+  font-size: 1.05rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin: 0;
+}
+
+.GroupPanelNameRow {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.GroupPanelNameText {
+  font-size: 1.3rem;
+  color: var(--text);
+  flex: 1;
+}
+
+.GroupPanelNameEdit {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.GroupPanelNameInput {
+  flex: 1;
+  padding: 0.5rem 0.8rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  color: var(--text);
+  font-size: 1.3rem;
+  outline: none;
+
+  &:focus {
+    border-color: var(--accent, #7c6ee6);
+  }
+}
+
+.GroupPanelBtn {
+  padding: 0.4rem 0.9rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  color: var(--text);
+  font-size: 1.2rem;
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover {
+    background: var(--bg-hover, var(--bg-surface));
+  }
+}
+
+.GroupPanelBtnSecondary {
+  padding: 0.4rem 0.9rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text);
+  }
+}
+
+.GroupPanelMember {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.4rem 0;
+}
+
+.GroupPanelMemberAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.GroupPanelMemberName {
+  flex: 1;
+  font-size: 1.3rem;
+  color: var(--text);
+}
+
+.GroupPanelAdminBadge {
+  font-size: 1rem;
+  color: var(--accent, #7c6ee6);
+  background: color-mix(in srgb, var(--accent, #7c6ee6) 15%, transparent);
+  padding: 0.2rem 0.6rem;
+  border-radius: 1rem;
+}
+
+.GroupPanelBtnDanger {
+  background: transparent;
+  border: none;
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 0.2rem;
+  border-radius: 0.4rem;
+  opacity: 0.6;
+
+  &:hover {
+    opacity: 1;
+    background: var(--bg-elevated);
+  }
+}
+
+.GroupPanelBtnDangerFull {
+  width: 100%;
+  padding: 0.7rem;
+  background: transparent;
+  border: 1px solid #e74c3c;
+  border-radius: 0.8rem;
+  color: #e74c3c;
+  font-size: 1.3rem;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(231, 76, 60, 0.1);
+  }
+}
