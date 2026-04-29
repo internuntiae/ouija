@@ -17,6 +17,7 @@ let notificationDesktop = true
 let socket = null
 let reconnectTimer = null
 let nameCache = {} // senderId -> nickname, kept up to date by the page
+let mutedChats = new Set() // chatIds that the user has muted
 
 // ── Config sent from the page ──────────────────────────────────────────────
 
@@ -45,9 +46,13 @@ self.addEventListener('message', (event) => {
     return
   }
 
+  if (type === 'MUTED_CHATS') {
+    mutedChats = new Set(payload ?? [])
+    return
+  }
+
   if (type === 'SKIP_WAITING') {
     self.skipWaiting()
-    return
   }
 })
 
@@ -71,6 +76,9 @@ function connectWebSocket() {
 
       const newMsg = msg.payload
       if (!newMsg || newMsg.senderId === userId) return
+
+      // Skip notification if this chat is muted
+      if (mutedChats.has(newMsg.chatId)) return
 
       // Check if the /chats page is currently focused — if so, the page
       // will call SHOW_NOTIFICATION itself (with sound), so skip here.

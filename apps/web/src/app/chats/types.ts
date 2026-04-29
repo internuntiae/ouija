@@ -57,6 +57,7 @@ export interface Chat {
   // Wzbogacone pola doklejane po stronie frontu
   lastMessage?: Message | null
   unreadCount?: number
+  muted?: boolean
 }
 
 export interface UserSearchResult {

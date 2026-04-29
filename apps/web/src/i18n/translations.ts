@@ -164,6 +164,14 @@ export const translations = {
     'chat.errorSend': 'Błąd wysyłania',
     'chat.errorCreate': 'Błąd tworzenia czatu',
     'chat.errorInvite': 'Błąd wysyłania zaproszenia',
+    'chat.mute': 'Wycisz powiadomienia',
+    'chat.unmute': 'Włącz powiadomienia',
+    'chat.muted': 'Wyciszony',
+    'chat.someone': 'Ktoś',
+    'chat.friendRequestTitle': 'Nowe zaproszenie do znajomych',
+    'chat.friendRequestSent': 'wysłał(a) Ci zaproszenie do znajomych',
+    'chat.friendAcceptedTitle': 'Zaproszenie zaakceptowane',
+    'chat.friendAccepted': 'zaakceptował(a) Twoje zaproszenie',
 
     // ── Status użytkownika ───────────────────────────────────────────────────
     'status.ONLINE': 'Aktywny',
@@ -387,6 +395,14 @@ export const translations = {
     'chat.errorSend': 'Failed to send',
     'chat.errorCreate': 'Failed to create chat',
     'chat.errorInvite': 'Failed to send invite',
+    'chat.mute': 'Mute notifications',
+    'chat.unmute': 'Unmute notifications',
+    'chat.muted': 'Muted',
+    'chat.someone': 'Someone',
+    'chat.friendRequestTitle': 'New friend request',
+    'chat.friendRequestSent': 'sent you a friend request',
+    'chat.friendAcceptedTitle': 'Friend request accepted',
+    'chat.friendAccepted': 'accepted your friend request',
 
     // ── User status ──────────────────────────────────────────────────────────
     'status.ONLINE': 'Online',

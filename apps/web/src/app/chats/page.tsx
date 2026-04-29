@@ -66,6 +66,19 @@ function ChatsWithUser({ userId }: { userId: string }) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchUsers, setSearchUsers] = useState<UserSearchResult[]>([])
+  const [mutedChatIds, setMutedChatIds] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set()
+    try {
+      const stored = localStorage.getItem('mutedChats')
+      return stored ? new Set(JSON.parse(stored)) : new Set()
+    } catch {
+      return new Set()
+    }
+  })
+  const [friendRequestNotif, setFriendRequestNotif] = useState<string | null>(
+    null
+  )
+  const [friendIds, setFriendIds] = useState<Set<string>>(new Set())
 
   // ── Refs ──
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -78,6 +91,19 @@ function ChatsWithUser({ userId }: { userId: string }) {
 
   const { settings } = useSettings()
   const { t } = useTranslation()
+
+  // ── Załaduj znajomych ──
+  useEffect(() => {
+    fetch(`${API_URL}/api/users/${userId}/friends?status=ACCEPTED`)
+      .then((r) => r.json())
+      .then((data: { userId: string; friendId: string }[]) => {
+        const ids = new Set(
+          data.map((f) => (f.userId === userId ? f.friendId : f.userId))
+        )
+        setFriendIds(ids)
+      })
+      .catch(console.error)
+  }, [userId])
 
   // ── Status z bazy ──
   useEffect(() => {
@@ -217,6 +243,17 @@ function ChatsWithUser({ userId }: { userId: string }) {
     updateSwNameCache(users)
   }, [chats])
 
+  // ── Sync muted chats to localStorage and SW ──
+  useEffect(() => {
+    localStorage.setItem('mutedChats', JSON.stringify([...mutedChatIds]))
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'MUTED_CHATS',
+        payload: [...mutedChatIds]
+      })
+    }
+  }, [mutedChatIds])
+
   // ── WebSocket ──
   const wsRef = useRef<WebSocket | null>(null)
   useEffect(() => {
@@ -248,28 +285,34 @@ function ChatsWithUser({ userId }: { userId: string }) {
           if (newMsg.senderId !== userId) {
             setChats((prev) => {
               const chat = prev.find((c) => c.id === newMsg.chatId)
+              const isMuted = mutedChatIds.has(newMsg.chatId)
               const senderName =
                 chat?.users.find((u) => u.userId === newMsg.senderId)?.user
                   .nickname ?? 'Ktoś'
 
-              // Play sound via the in-page triggerNotification (works when
-              // the tab is open). The SW handles desktop notifications and
-              // also fires when the tab is closed / on another route.
-              triggerNotification(senderName, newMsg.content ?? '📎 Załącznik')
+              if (!isMuted) {
+                // Play sound via the in-page triggerNotification (works when
+                // the tab is open). The SW handles desktop notifications and
+                // also fires when the tab is closed / on another route.
+                triggerNotification(
+                  senderName,
+                  newMsg.content ?? '📎 Załącznik'
+                )
 
-              // Tell the SW who sent it so it can show a notification when
-              // the page is closed or on a different route.
-              if (
-                'serviceWorker' in navigator &&
-                navigator.serviceWorker.controller
-              ) {
-                navigator.serviceWorker.controller.postMessage({
-                  type: 'SHOW_NOTIFICATION',
-                  payload: {
-                    title: senderName,
-                    body: newMsg.content ?? '📎 Załącznik'
-                  }
-                })
+                // Tell the SW who sent it so it can show a notification when
+                // the page is closed or on a different route.
+                if (
+                  'serviceWorker' in navigator &&
+                  navigator.serviceWorker.controller
+                ) {
+                  navigator.serviceWorker.controller.postMessage({
+                    type: 'SHOW_NOTIFICATION',
+                    payload: {
+                      title: senderName,
+                      body: newMsg.content ?? '📎 Załącznik'
+                    }
+                  })
+                }
               }
 
               return prev // no state change — side-effect only
@@ -355,6 +398,63 @@ function ChatsWithUser({ userId }: { userId: string }) {
           setChats((prev) =>
             prev.some((c) => c.id === newChat.id) ? prev : [newChat, ...prev]
           )
+        }
+
+        if (msg.type === 'friendship:requested') {
+          const { friendship } = msg.payload as {
+            friendship: { userId: string; nickname?: string }
+          }
+          const senderNick =
+            (friendship as { userId: string; user?: { nickname?: string } })
+              ?.user?.nickname ?? t('chat.someone')
+          setFriendRequestNotif(senderNick)
+          triggerNotification(t('chat.friendRequestTitle'), senderNick)
+          setTimeout(() => setFriendRequestNotif(null), 5000)
+        }
+
+        if (msg.type === 'friendship:deleted') {
+          const { userId: fA, friendId: fB } = msg.payload as {
+            userId: string
+            friendId: string
+          }
+          const removedId = fA === userId ? fB : fA
+          setFriendIds((prev) => {
+            const next = new Set(prev)
+            next.delete(removedId)
+            return next
+          })
+          // If the removed friend's chat was active, deselect it
+          setActiveChatId((prev) => {
+            if (!prev) return prev
+            // We'll let the visibility filter hide it; clear active if needed
+            return prev
+          })
+        }
+
+        if (msg.type === 'friendship:updated') {
+          const { friendship } = msg.payload as {
+            friendship: { userId: string; friendId: string; status: string }
+          }
+          if (friendship.status === 'ACCEPTED') {
+            const newFriendId =
+              friendship.userId === userId
+                ? friendship.friendId
+                : friendship.userId
+            setFriendIds((prev) => new Set(prev).add(newFriendId))
+
+            // Find the friend's nickname from existing chats or fall back
+            setChats((prev) => {
+              const nick =
+                prev
+                  .flatMap((c) => c.users)
+                  .find((u) => u.userId === newFriendId)?.user.nickname ??
+                t('chat.someone')
+              setFriendRequestNotif(`✅ ${nick} ${t('chat.friendAccepted')}`)
+              triggerNotification(t('chat.friendAcceptedTitle'), nick)
+              setTimeout(() => setFriendRequestNotif(null), 5000)
+              return prev
+            })
+          }
         }
       } catch {
         /* ignoruj */
@@ -653,6 +753,16 @@ function ChatsWithUser({ userId }: { userId: string }) {
     }
   }
 
+  // ── Wycisz / odcisz czat ──
+  function handleToggleMute(chatId: string) {
+    setMutedChatIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(chatId)) next.delete(chatId)
+      else next.add(chatId)
+      return next
+    })
+  }
+
   // ── Otwórz czat z ProfilePopup ──
   async function handleMessageFromProfile(targetUserId: string) {
     await handleOpenChatWith(targetUserId)
@@ -684,17 +794,31 @@ function ChatsWithUser({ userId }: { userId: string }) {
     return chat.users.find((u) => u.userId !== userId)?.user.nickname ?? 'Czat'
   }
 
+  // Only show PRIVATE chats where the other user is still a friend.
+  // Group chats (type !== 'PRIVATE') are always shown.
+  const visibleChats = chats.filter((c) => {
+    if (c.type !== 'PRIVATE') return true
+    const otherId = c.users.find((u) => u.userId !== userId)?.userId
+    return otherId ? friendIds.has(otherId) : true
+  })
+
+  // If the currently active chat is now hidden, deselect it
+  const activeChatVisible = visibleChats.some((c) => c.id === activeChatId)
+  if (activeChatId && !activeChatVisible) {
+    // Use a timeout to avoid setState-during-render
+    setTimeout(() => setActiveChatId(null), 0)
+  }
+
   const filteredChats = searchQuery.trim()
-    ? chats.filter((c) =>
+    ? visibleChats.filter((c) =>
         getChatDisplayName(c).toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : chats
+    : visibleChats
 
-  const existingChatUserIds = new Set(
-    chats.flatMap((c) => c.users.map((u) => u.userId))
-  )
+  // For "new people" in search: exclude anyone who is already a friend
+  // (they already have a chat with us — onOpenChatWith handles that path).
   const newPeopleResults = searchQuery.trim()
-    ? searchUsers.filter((u) => !existingChatUserIds.has(u.id))
+    ? searchUsers.filter((u) => !friendIds.has(u.id))
     : []
 
   const activeChat = chats.find((c) => c.id === activeChatId) ?? null
@@ -703,6 +827,13 @@ function ChatsWithUser({ userId }: { userId: string }) {
 
   return (
     <div className={styles.container}>
+      {/* Powiadomienie o zaproszeniu do znajomych */}
+      {friendRequestNotif && (
+        <div className={styles.FriendRequestToast}>
+          👥 {friendRequestNotif} {t('chat.friendRequestSent')}
+        </div>
+      )}
+
       {/* Input poza warunkowym renderem */}
       <input
         type="file"
@@ -716,7 +847,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
 
       <ChatSidebar
         userId={userId}
-        chats={chats}
+        chats={visibleChats}
         activeChatId={activeChatId}
         myStatus={myStatus}
         showStatusMenu={showStatusMenu}
@@ -732,6 +863,8 @@ function ChatsWithUser({ userId }: { userId: string }) {
         newPeopleResults={newPeopleResults}
         sentInvites={sentInvites}
         loadingChats={loadingChats}
+        mutedChatIds={mutedChatIds}
+        onToggleMute={handleToggleMute}
         onSelectChat={(id) => {
           setActiveChatId(id)
           setChats((prev) =>

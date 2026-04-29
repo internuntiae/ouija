@@ -29,6 +29,8 @@ interface Props {
   newPeopleResults: UserSearchResult[]
   sentInvites: Set<string>
   loadingChats: boolean
+  mutedChatIds: Set<string>
+  onToggleMute: (chatId: string) => void
   onSelectChat: (id: string) => void
   onOpenProfile: (id: string) => void
   onSendInvite: (id: string) => void
@@ -57,6 +59,8 @@ export default function ChatSidebar({
   newPeopleResults,
   sentInvites,
   loadingChats,
+  mutedChatIds,
+  onToggleMute,
   onSelectChat,
   onOpenProfile,
   onSendInvite,
@@ -291,6 +295,7 @@ export default function ChatSidebar({
           const other = chat.users.find((u) => u.userId !== userId)?.user
           const lastMsg = getLastMessagePreview(chat)
           const unread = chat.unreadCount ?? 0
+          const isMuted = mutedChatIds.has(chat.id)
 
           return (
             <div
@@ -327,15 +332,35 @@ export default function ChatSidebar({
                     className={`${styles.ContactsChatPreviewMessageContainerName} ${unread > 0 && chat.id !== activeChatId ? styles.ChatNameUnread : ''}`}
                   >
                     {getChatDisplayName(chat, userId)}
+                    {isMuted && (
+                      <span
+                        className={styles.MutedIcon}
+                        title={t('chat.muted')}
+                      >
+                        🔇
+                      </span>
+                    )}
                   </h4>
-                  {chat.lastMessage && (
-                    <span className={styles.ChatPreviewTime}>
-                      {new Date(chat.lastMessage.sentAt).toLocaleTimeString(
-                        timeLocale,
-                        { hour: '2-digit', minute: '2-digit' }
-                      )}
-                    </span>
-                  )}
+                  <div className={styles.ChatPreviewTopRight}>
+                    {chat.lastMessage && (
+                      <span className={styles.ChatPreviewTime}>
+                        {new Date(chat.lastMessage.sentAt).toLocaleTimeString(
+                          timeLocale,
+                          { hour: '2-digit', minute: '2-digit' }
+                        )}
+                      </span>
+                    )}
+                    <button
+                      className={styles.MuteBtn}
+                      title={isMuted ? t('chat.unmute') : t('chat.mute')}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onToggleMute(chat.id)
+                      }}
+                    >
+                      {isMuted ? '🔇' : '🔔'}
+                    </button>
+                  </div>
                 </div>
                 <div className={styles.ContactsChatPreviewBottom}>
                   <p

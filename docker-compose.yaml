@@ -66,6 +66,7 @@ services:
       dockerfile: apps/web/Dockerfile
       args:
         - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+        - CDN_BASE_URL=${CDN_BASE_URL}
     container_name: ouija-web-app
     image: guc10/ouija-web
     pull_policy: never
