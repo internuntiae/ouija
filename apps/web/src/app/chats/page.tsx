@@ -26,209 +26,20 @@ import {
 import { useSettings } from '@/context/SettingsContext'
 import { useTranslation } from '@/i18n/translations'
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-const MOCK_USER_ID = 'mock-user-1'
-
-const MOCK_CHATS: Chat[] = [
-  {
-    id: 'mock-chat-1',
-    name: null,
-    type: 'PRIVATE',
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-    users: [
-      {
-        userId: 'mock-user-1',
-        chatId: 'mock-chat-1',
-        role: 'ADMIN',
-        joinedAt: '',
-        user: { id: 'mock-user-1', nickname: 'Ty', status: 'ONLINE' }
-      },
-      {
-        userId: 'mock-friend-1',
-        chatId: 'mock-chat-1',
-        role: 'MEMBER',
-        joinedAt: '',
-        user: { id: 'mock-friend-1', nickname: 'Anna Nowak', status: 'AWAY' }
-      }
-    ],
-    lastMessage: {
-      id: 'lm1',
-      chatId: 'mock-chat-1',
-      senderId: 'mock-friend-1',
-      content: 'Hej, co słychać?',
-      sentAt: new Date(Date.now() - 300000).toISOString(),
-      editedAt: null,
-      attachments: [],
-      reactions: []
-    },
-    unreadCount: 2
-  },
-  {
-    id: 'mock-chat-2',
-    name: null,
-    type: 'PRIVATE',
-    createdAt: '2024-01-02T00:00:00Z',
-    updatedAt: '2024-01-02T00:00:00Z',
-    users: [
-      {
-        userId: 'mock-user-1',
-        chatId: 'mock-chat-2',
-        role: 'MEMBER',
-        joinedAt: '',
-        user: { id: 'mock-user-1', nickname: 'Ty', status: 'ONLINE' }
-      },
-      {
-        userId: 'mock-friend-2',
-        chatId: 'mock-chat-2',
-        role: 'ADMIN',
-        joinedAt: '',
-        user: {
-          id: 'mock-friend-2',
-          nickname: 'Piotr Wiśniewski',
-          status: 'BUSY'
-        }
-      }
-    ],
-    lastMessage: {
-      id: 'lm2',
-      chatId: 'mock-chat-2',
-      senderId: 'mock-user-1',
-      content: 'Dobra, do jutra!',
-      sentAt: new Date(Date.now() - 3600000).toISOString(),
-      editedAt: null,
-      attachments: [],
-      reactions: []
-    },
-    unreadCount: 0
-  },
-  {
-    id: 'mock-chat-3',
-    name: 'Projekt zespołowy',
-    type: 'GROUP',
-    createdAt: '2024-01-03T00:00:00Z',
-    updatedAt: '2024-01-03T00:00:00Z',
-    users: [
-      {
-        userId: 'mock-user-1',
-        chatId: 'mock-chat-3',
-        role: 'ADMIN',
-        joinedAt: '',
-        user: { id: 'mock-user-1', nickname: 'Ty', status: 'ONLINE' }
-      },
-      {
-        userId: 'mock-friend-1',
-        chatId: 'mock-chat-3',
-        role: 'MEMBER',
-        joinedAt: '',
-        user: { id: 'mock-friend-1', nickname: 'Anna Nowak', status: 'AWAY' }
-      },
-      {
-        userId: 'mock-friend-2',
-        chatId: 'mock-chat-3',
-        role: 'MEMBER',
-        joinedAt: '',
-        user: {
-          id: 'mock-friend-2',
-          nickname: 'Piotr Wiśniewski',
-          status: 'BUSY'
-        }
-      }
-    ],
-    lastMessage: {
-      id: 'lm3',
-      chatId: 'mock-chat-3',
-      senderId: 'mock-friend-1',
-      content: 'Kiedy spotkanie?',
-      sentAt: new Date(Date.now() - 7200000).toISOString(),
-      editedAt: null,
-      attachments: [],
-      reactions: []
-    },
-    unreadCount: 5
-  }
-]
-
-function generateMockMessages(chatId: string): Message[] {
-  const senders = ['mock-user-1', 'mock-friend-1', 'mock-friend-2']
-  const contents = [
-    'Hej, co słychać?',
-    'Wszystko dobrze!',
-    'Kiedy spotkanie?',
-    'Jutro o 18',
-    'Dobra, będę',
-    'Okej 👍',
-    'Ej pomożesz z projektem?',
-    'Jasne, co trzeba?',
-    'Mam tu jakiś plik',
-    'Sprawdzam',
-    'Super robota!',
-    'Dzięki 😊',
-    'Masz chwilę?',
-    'Teraz nie, za godzinę',
-    'Spoko, piszę później',
-    'Hej',
-    'Co tam?',
-    'Normalnie',
-    'Okej',
-    'Dobra dobra'
-  ]
-  return Array.from({ length: 50 }, (_, i) => ({
-    id: `mock-msg-${i + 1}`,
-    chatId,
-    senderId: senders[(i + 1) % senders.length],
-    content: contents[(i + 1) % contents.length],
-    sentAt: new Date(Date.now() - (50 - i) * 60000).toISOString(),
-    editedAt: null,
-    attachments: [],
-    reactions:
-      i === 2
-        ? [
-            {
-              messageId: `mock-msg-${i + 1}`,
-              userId: 'mock-friend-1',
-              type: 'LIKE' as const
-            }
-          ]
-        : []
-  }))
-}
-
-const ALL_MOCK_MESSAGES: Record<string, Message[]> = {
-  'mock-chat-1': generateMockMessages('mock-chat-1'),
-  'mock-chat-2': generateMockMessages('mock-chat-2'),
-  'mock-chat-3': generateMockMessages('mock-chat-3')
-}
-
-const MOCK_SEARCH_USERS = [
-  {
-    id: 'mock-stranger-1',
-    nickname: 'Marek Zielony',
-    status: 'ONLINE' as UserStatus
-  },
-  {
-    id: 'mock-stranger-2',
-    nickname: 'Zofia Kamińska',
-    status: 'OFFLINE' as UserStatus
-  },
-  {
-    id: 'mock-stranger-3',
-    nickname: 'Tomasz Lewandowski',
-    status: 'AWAY' as UserStatus
-  }
-]
-
-const USE_MOCK = false
-
 // ─── Główny komponent ─────────────────────────────────────────────────────────
 
 function ChatsInner() {
-  const searchParams = useSearchParams()
   const userId =
     typeof window !== 'undefined'
-      ? (localStorage.getItem('userId') ?? MOCK_USER_ID)
-      : MOCK_USER_ID
+      ? (localStorage.getItem('userId') ?? null)
+      : null
+
+  if (!userId) return null
+  return <ChatsWithUser userId={userId} />
+}
+
+function ChatsWithUser({ userId }: { userId: string }) {
+  const searchParams = useSearchParams()
 
   // ── Stan ──
   const [chats, setChats] = useState<Chat[]>([])
@@ -271,7 +82,7 @@ function ChatsInner() {
   useEffect(() => {
     const cached = localStorage.getItem('userStatus') as UserStatus | null
     if (cached) setMyStatus(cached)
-    if (USE_MOCK) return
+
     fetch(`${API_URL}/api/?id=${userId}`)
       .then((r) => r.json())
       .then((data: { status?: UserStatus }) => {
@@ -285,18 +96,6 @@ function ChatsInner() {
 
   // ── Pobierz czaty ──
   useEffect(() => {
-    if (USE_MOCK) {
-      // Sortuj malejąco po dacie ostatniej wiadomości
-      const sorted = [...MOCK_CHATS].sort((a, b) => {
-        const ta = a.lastMessage?.sentAt ?? a.updatedAt
-        const tb = b.lastMessage?.sentAt ?? b.updatedAt
-        return new Date(tb).getTime() - new Date(ta).getTime()
-      })
-      setChats(sorted)
-      setActiveChatId((prev) => prev ?? sorted[0].id)
-      setLoadingChats(false)
-      return
-    }
     fetch(`${API_URL}/api/users/${userId}/chats`)
       .then((r) => r.json())
       .then((data: Chat[]) => {
@@ -358,15 +157,6 @@ function ChatsInner() {
 
     searchDebounceRef.current = setTimeout(async () => {
       setSearchLoading(true)
-      if (USE_MOCK) {
-        setSearchUsers(
-          MOCK_SEARCH_USERS.filter((u) =>
-            u.nickname.toLowerCase().includes(q.toLowerCase())
-          )
-        )
-        setSearchLoading(false)
-        return
-      }
       try {
         const res = await fetch(`${API_URL}/api/?q=${encodeURIComponent(q)}`)
         if (res.ok)
@@ -399,15 +189,6 @@ function ChatsInner() {
       prev.map((c) => (c.id === activeChatId ? { ...c, unreadCount: 0 } : c))
     )
 
-    if (USE_MOCK) {
-      const all = ALL_MOCK_MESSAGES[activeChatId] ?? []
-      const page = all.slice(-PAGE_SIZE)
-      lastIdRef.current = page[0]?.id ?? ''
-      setMessages(page)
-      setHasMore(all.length > PAGE_SIZE)
-      setLoadingMessages(false)
-      return
-    }
     fetch(`${API_URL}/api/chats/${activeChatId}/messages?limit=${PAGE_SIZE}`)
       .then((r) => r.json())
       .then((data: Message[]) => {
@@ -428,7 +209,6 @@ function ChatsInner() {
   // ── WebSocket ──
   const wsRef = useRef<WebSocket | null>(null)
   useEffect(() => {
-    if (USE_MOCK) return
     const WS_URL = API_URL.replace(/^http/, 'ws')
     const ws = new WebSocket(`${WS_URL}/ws?userId=${userId}`)
     wsRef.current = ws
@@ -442,11 +222,21 @@ function ChatsInner() {
 
         if (msg.type === 'message:created') {
           const newMsg = msg.payload as unknown as Message
-          setMessages((prev) => {
-            if (newMsg.chatId !== activeChatIdRef.current) return prev
-            if (prev.some((m) => m.id === newMsg.id)) return prev
-            return [...prev, newMsg]
-          })
+          // Only append to the visible message list when the chat is open.
+          // The duplicate guard handles the case where the sender already added
+          // the message optimistically via the HTTP response.
+          if (newMsg.chatId === activeChatIdRef.current) {
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === newMsg.id)) return prev
+              return [...prev, newMsg]
+            })
+          }
+
+          triggerNotification(
+            'ouija',
+            (newMsg.content ?? 'No message, ouija error! :)').toString()
+          )
+
           setChats((prev) => {
             const updated = prev.map((c) =>
               c.id === newMsg.chatId
@@ -556,26 +346,6 @@ function ChatsInner() {
     const container = messageContainerRef.current
     const prevScrollHeight = container?.scrollHeight ?? 0
 
-    if (USE_MOCK) {
-      const all = ALL_MOCK_MESSAGES[activeChatId] ?? []
-      const idx = all.findIndex((m) => m.id === lastIdRef.current)
-      const start = Math.max(0, idx - PAGE_SIZE)
-      const older = all.slice(start, idx)
-      if (!older.length) {
-        setHasMore(false)
-        setLoadingMore(false)
-        return
-      }
-      lastIdRef.current = older[0].id ?? ''
-      setHasMore(start > 0)
-      setMessages((prev) => [...older, ...prev])
-      requestAnimationFrame(() => {
-        if (container)
-          container.scrollTop = container.scrollHeight - prevScrollHeight
-      })
-      setLoadingMore(false)
-      return
-    }
     try {
       const res = await fetch(
         `${API_URL}/api/chats/${activeChatId}/messages?limit=${PAGE_SIZE}&lastId=${lastIdRef.current}`
@@ -649,39 +419,6 @@ function ChatsInner() {
       return
     setSending(true)
 
-    if (USE_MOCK) {
-      const newMsg: Message = {
-        id: `mock-${Date.now()}`,
-        chatId: activeChatId,
-        senderId: userId,
-        content: messageText.trim() || null,
-        sentAt: new Date().toISOString(),
-        editedAt: null,
-        attachments: [],
-        reactions: []
-      }
-      setMessages((prev) => [...prev, newMsg])
-      setChats((prev) => {
-        const updated = prev.map((c) =>
-          c.id === activeChatId ? { ...c, lastMessage: newMsg } : c
-        )
-        const idx = updated.findIndex((c) => c.id === activeChatId)
-        if (idx > 0) {
-          const [chat] = updated.splice(idx, 1)
-          updated.unshift(chat)
-        }
-        return updated
-      })
-      setMessageText('')
-      setPendingFiles([])
-      setSending(false)
-      setTimeout(
-        () => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }),
-        50
-      )
-      return
-    }
-
     try {
       let attachments: { url: string; type: AttachmentType }[] = []
       if (pendingFiles.length > 0) {
@@ -724,20 +461,11 @@ function ChatsInner() {
         setSending(false)
         return
       }
-      const data: Message = await res.json()
-      setMessages((prev) => [...prev, data])
-      // Aktualizuj lastMessage w liście czatów i przesuń na górę
-      setChats((prev) => {
-        const updated = prev.map((c) =>
-          c.id === activeChatId ? { ...c, lastMessage: data } : c
-        )
-        const idx = updated.findIndex((c) => c.id === activeChatId)
-        if (idx > 0) {
-          const [chat] = updated.splice(idx, 1)
-          updated.unshift(chat)
-        }
-        return updated
-      })
+      // Don't append the message here — the WS 'message:created' event
+      // will arrive for the sender too and is the single source of truth.
+      // Adding it here as well caused a visible duplicate on first send
+      // after a page refresh (race between HTTP response and WS delivery).
+      await res.json()
       setMessageText('')
       setPendingFiles([])
       setTimeout(
@@ -753,27 +481,6 @@ function ChatsInner() {
 
   // ── Reakcje ──
   async function handleReact(messageId: string, type: ReactionType) {
-    if (USE_MOCK) {
-      setMessages((prev) =>
-        prev.map((msg) => {
-          if (msg.id !== messageId) return msg
-          const existing = msg.reactions.find((r) => r.userId === userId)
-          if (existing?.type === type)
-            return {
-              ...msg,
-              reactions: msg.reactions.filter((r) => r.userId !== userId)
-            }
-          return {
-            ...msg,
-            reactions: [
-              ...msg.reactions.filter((r) => r.userId !== userId),
-              { messageId, userId, type }
-            ]
-          }
-        })
-      )
-      return
-    }
     const existing = messages
       .find((m) => m.id === messageId)
       ?.reactions.find((r) => r.userId === userId)
@@ -841,7 +548,6 @@ function ChatsInner() {
     setMyStatus(status)
     setShowStatusMenu(false)
     localStorage.setItem('userStatus', status)
-    if (USE_MOCK) return
     try {
       await fetch(`${API_URL}/api/${userId}`, {
         method: 'PUT',
@@ -865,11 +571,6 @@ function ChatsInner() {
       setSearchOpen(false)
       return
     }
-    if (USE_MOCK) {
-      setSearchQuery('')
-      setSearchOpen(false)
-      return
-    }
     try {
       const res = await fetch(`${API_URL}/api/chats`, {
         method: 'POST',
@@ -879,7 +580,10 @@ function ChatsInner() {
           userIds: [userId, targetUserId]
         })
       })
-      if (!res.ok) throw new Error(t('chat.errorCreate'))
+      if (!res.ok) {
+        alert(t('chat.errorCreate'))
+        return
+      }
       const newChat: Chat = await res.json()
       setChats((prev) =>
         prev.some((c) => c.id === newChat.id) ? prev : [newChat, ...prev]
@@ -894,17 +598,16 @@ function ChatsInner() {
 
   // ── Wyślij zaproszenie ──
   async function handleSendInvite(targetUserId: string) {
-    if (USE_MOCK) {
-      setSentInvites((prev) => new Set(prev).add(targetUserId))
-      return
-    }
     try {
       const res = await fetch(`${API_URL}/api/users/${userId}/friends`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ friendId: targetUserId })
       })
-      if (!res.ok) throw new Error()
+      if (!res.ok) {
+        alert(t('chat.errorInvite'))
+        return
+      }
       setSentInvites((prev) => new Set(prev).add(targetUserId))
     } catch {
       alert(t('chat.errorInvite'))

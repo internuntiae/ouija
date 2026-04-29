@@ -15,127 +15,6 @@ import ProfilePopup from '@/app/components/ProfilePopup/ProfilePopup'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
-const MOCK_USER = {
-  id: 'mock-user-1',
-  email: 'jan@gmail.com',
-  nickname: 'Jan Kowalski',
-  status: 'ONLINE',
-  avatarUrl: null as string | null
-}
-
-const MOCK_FRIENDS = [
-  {
-    userId: 'mock-user-1',
-    friendId: 'mock-friend-1',
-    status: 'ACCEPTED',
-    user: {
-      id: 'mock-user-1',
-      nickname: 'Jan Kowalski',
-      status: 'ONLINE',
-      avatarUrl: null as string | null
-    },
-    friend: {
-      id: 'mock-friend-1',
-      nickname: 'Anna Nowak',
-      status: 'AWAY',
-      avatarUrl: null as string | null
-    }
-  },
-  {
-    userId: 'mock-user-1',
-    friendId: 'mock-friend-2',
-    status: 'ACCEPTED',
-    user: {
-      id: 'mock-user-1',
-      nickname: 'Jan Kowalski',
-      status: 'ONLINE',
-      avatarUrl: null as string | null
-    },
-    friend: {
-      id: 'mock-friend-2',
-      nickname: 'Piotr Wiśniewski',
-      status: 'BUSY',
-      avatarUrl: null as string | null
-    }
-  },
-  {
-    userId: 'mock-friend-3',
-    friendId: 'mock-user-1',
-    status: 'ACCEPTED',
-    user: {
-      id: 'mock-friend-3',
-      nickname: 'Kasia Kowalczyk',
-      status: 'OFFLINE',
-      avatarUrl: null as string | null
-    },
-    friend: {
-      id: 'mock-user-1',
-      nickname: 'Jan Kowalski',
-      status: 'ONLINE',
-      avatarUrl: null as string | null
-    }
-  }
-]
-
-const MOCK_PENDING = [
-  {
-    userId: 'mock-stranger-1',
-    friendId: 'mock-user-1',
-    status: 'PENDING',
-    user: {
-      id: 'mock-stranger-1',
-      nickname: 'Marek Zielony',
-      status: 'ONLINE',
-      avatarUrl: null as string | null
-    },
-    friend: {
-      id: 'mock-user-1',
-      nickname: 'Jan Kowalski',
-      status: 'ONLINE',
-      avatarUrl: null as string | null
-    }
-  },
-  {
-    userId: 'mock-stranger-2',
-    friendId: 'mock-user-1',
-    status: 'PENDING',
-    user: {
-      id: 'mock-stranger-2',
-      nickname: 'Zofia Kamińska',
-      status: 'OFFLINE',
-      avatarUrl: null as string | null
-    },
-    friend: {
-      id: 'mock-user-1',
-      nickname: 'Jan Kowalski',
-      status: 'ONLINE',
-      avatarUrl: null as string | null
-    }
-  }
-]
-
-const MOCK_SENT_INVITES = [
-  {
-    userId: 'mock-user-1',
-    friendId: 'mock-stranger-3',
-    status: 'PENDING',
-    user: {
-      id: 'mock-user-1',
-      nickname: 'Jan Kowalski',
-      status: 'ONLINE',
-      avatarUrl: null as string | null
-    },
-    friend: {
-      id: 'mock-stranger-3',
-      nickname: 'Tomasz Lewandowski',
-      status: 'AWAY',
-      avatarUrl: null as string | null
-    }
-  }
-]
-
-const USE_MOCK = false
-
 const STATUS_COLOR: Record<string, string> = {
   ONLINE: '#2ecc71',
   AWAY: '#f39c12',
@@ -204,18 +83,17 @@ export default function Profile() {
   const { t } = useTranslation()
 
   const userId =
-    typeof window !== 'undefined'
-      ? (localStorage.getItem('userId') ?? MOCK_USER.id)
-      : MOCK_USER.id
+    typeof window !== 'undefined' ? localStorage.getItem('userId') : null
 
-  const [user, setUser] = useState<typeof MOCK_USER | null>(null)
+  const [user, setUser] = useState<(UserEntry & { email?: string }) | null>(
+    null
+  )
   const [friends, setFriends] = useState<FriendEntry[]>([])
   const [pendingInvites, setPendingInvites] = useState<InviteEntry[]>([])
   const [sentInvites, setSentInvites] = useState<InviteEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // ── NEW: controls which user's ProfilePopup is open ──
   const [profilePopupUserId, setProfilePopupUserId] = useState<string | null>(
     null
   )
@@ -225,14 +103,9 @@ export default function Profile() {
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file || !user) return
+    if (!file || !user || !userId) return
     setAvatarUploading(true)
     try {
-      if (USE_MOCK) {
-        const url = URL.createObjectURL(file)
-        setUser((prev) => (prev ? { ...prev, avatarUrl: url } : prev))
-        return
-      }
       const form = new FormData()
       form.append('ownerId', userId)
       form.append('files', file)
@@ -240,14 +113,20 @@ export default function Profile() {
         method: 'POST',
         body: form
       })
-      if (!uploadRes.ok) throw new Error('Błąd uploadu')
+      if (!uploadRes.ok) {
+        alert('Błąd uploadu')
+        return
+      }
       const [media] = await uploadRes.json()
       const updateRes = await fetch(`${API_URL}/api/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ avatarUrl: media.url })
       })
-      if (!updateRes.ok) throw new Error('Błąd zapisu avatara')
+      if (!updateRes.ok) {
+        alert('Błąd zapisu avatara')
+        return
+      }
       setUser((prev) => (prev ? { ...prev, avatarUrl: media.url } : prev))
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Błąd zmiany avatara')
@@ -257,15 +136,10 @@ export default function Profile() {
   }
 
   useEffect(() => {
-    if (USE_MOCK) {
-      setUser(MOCK_USER)
-      setFriends(MOCK_FRIENDS)
-      setPendingInvites(MOCK_PENDING)
-      setSentInvites(MOCK_SENT_INVITES)
+    if (!userId) {
       setLoading(false)
       return
     }
-
     async function fetchData() {
       try {
         const [userRes, friendsRes, pendingRes] = await Promise.all([
@@ -273,7 +147,11 @@ export default function Profile() {
           fetch(`${API_URL}/api/users/${userId}/friends?status=ACCEPTED`),
           fetch(`${API_URL}/api/users/${userId}/friends?status=PENDING`)
         ])
-        if (!userRes.ok) throw new Error('Błąd pobierania profilu')
+        if (!userRes.ok) {
+          setError('Błąd pobierania profilu')
+          setLoading(false)
+          return
+        }
         const [userData, friendsData, pendingData] = await Promise.all([
           userRes.json(),
           friendsRes.json(),
@@ -306,22 +184,16 @@ export default function Profile() {
   }
 
   async function handleRemoveFriend(friendId: string) {
-    if (USE_MOCK) {
-      setFriends((prev) =>
-        prev.filter((f) => f.friendId !== friendId && f.userId !== friendId)
-      )
-      return
-    }
+    if (!userId) return
     try {
-      const res = await fetch(
-        `${API_URL}/api/users/${userId}/friends/${friendId}`,
-        { method: 'DELETE' }
-      )
-      const res2 = await fetch(
-        `${API_URL}/api/users/${friendId}/friends/${userId}`,
-        { method: 'DELETE' }
-      )
-      if (!res.ok && !res2.ok) throw new Error('Błąd usuwania')
+      await Promise.all([
+        fetch(`${API_URL}/api/users/${userId}/friends/${friendId}`, {
+          method: 'DELETE'
+        }),
+        fetch(`${API_URL}/api/users/${friendId}/friends/${userId}`, {
+          method: 'DELETE'
+        })
+      ])
       setFriends((prev) =>
         prev.filter((f) => f.friendId !== friendId && f.userId !== friendId)
       )
@@ -331,10 +203,7 @@ export default function Profile() {
   }
 
   async function handleMessageFriend(friendId: string) {
-    if (USE_MOCK) {
-      router.push('/chats')
-      return
-    }
+    if (!userId) return
     try {
       const chatsRes = await fetch(`${API_URL}/api/users/${userId}/chats`)
       if (chatsRes.ok) {
@@ -353,7 +222,10 @@ export default function Profile() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'PRIVATE', userIds: [userId, friendId] })
       })
-      if (!res.ok) throw new Error('Błąd')
+      if (!res.ok) {
+        alert('Błąd')
+        return
+      }
       const chat = await res.json()
       router.push(`/chats?chatId=${chat.id}`)
     } catch (err) {
@@ -361,19 +233,12 @@ export default function Profile() {
     }
   }
 
-  // ── NEW: called from ProfilePopup's onMessageUser prop ──
   async function handleMessageFromProfile(friendId: string) {
     await handleMessageFriend(friendId)
   }
 
   async function handleAcceptInvite(inviterId: string) {
-    if (USE_MOCK) {
-      const invite = pendingInvites.find((i) => i.userId === inviterId)
-      if (invite)
-        setFriends((prev) => [...prev, { ...invite, status: 'ACCEPTED' }])
-      setPendingInvites((prev) => prev.filter((i) => i.userId !== inviterId))
-      return
-    }
+    if (!userId) return
     try {
       const res = await fetch(
         `${API_URL}/api/users/${inviterId}/friends/${userId}`,
@@ -383,9 +248,15 @@ export default function Profile() {
           body: JSON.stringify({ status: 'ACCEPTED' })
         }
       )
-      if (!res.ok) throw new Error('Błąd akceptacji')
+      if (!res.ok) {
+        alert('Błąd akceptacji')
+        return
+      }
       const inviterRes = await fetch(`${API_URL}/api/?id=${inviterId}`)
-      if (!inviterRes.ok) throw new Error('Błąd pobierania danych użytkownika')
+      if (!inviterRes.ok) {
+        alert('Błąd pobierania danych użytkownika')
+        return
+      }
       const inviterData = await inviterRes.json()
       const newFriend: FriendEntry = {
         userId: inviterId,
@@ -412,16 +283,16 @@ export default function Profile() {
   }
 
   async function handleRejectInvite(inviterId: string) {
-    if (USE_MOCK) {
-      setPendingInvites((prev) => prev.filter((i) => i.userId !== inviterId))
-      return
-    }
+    if (!userId) return
     try {
       const res = await fetch(
         `${API_URL}/api/users/${inviterId}/friends/${userId}`,
         { method: 'DELETE' }
       )
-      if (!res.ok) throw new Error('Błąd odrzucenia')
+      if (!res.ok) {
+        alert('Błąd odrzucenia')
+        return
+      }
       setPendingInvites((prev) => prev.filter((i) => i.userId !== inviterId))
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Błąd')
@@ -429,16 +300,16 @@ export default function Profile() {
   }
 
   async function handleCancelInvite(friendId: string) {
-    if (USE_MOCK) {
-      setSentInvites((prev) => prev.filter((i) => i.friendId !== friendId))
-      return
-    }
+    if (!userId) return
     try {
       const res = await fetch(
         `${API_URL}/api/users/${userId}/friends/${friendId}`,
         { method: 'DELETE' }
       )
-      if (!res.ok) throw new Error('Błąd cofania zaproszenia')
+      if (!res.ok) {
+        alert('Błąd cofania zaproszenia')
+        return
+      }
       setSentInvites((prev) => prev.filter((i) => i.friendId !== friendId))
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Błąd')
@@ -449,6 +320,7 @@ export default function Profile() {
     return f.userId === userId ? f.friend : f.user
   }
 
+  if (!userId) return <p className={styles.ErrorText}>{t('common.error')}</p>
   if (loading)
     return <p className={styles.LoadingText}>{t('common.loading')}</p>
   if (error) return <p className={styles.ErrorText}>{error}</p>
@@ -622,7 +494,6 @@ export default function Profile() {
               key={`${friendship.userId}-${friendship.friendId}`}
               className={styles.SectionFriend}
             >
-              {/* ── CHANGED: onClick now opens ProfilePopup instead of navigating ── */}
               <div
                 className={styles.AvatarWrap}
                 style={{ cursor: 'pointer' }}
