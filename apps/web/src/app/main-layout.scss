@@ -88,8 +88,8 @@ html {
     background-color: var(--bg-base);
     color: var(--text);
     transition:
-      background-color 0.25s ease,
-      color 0.25s ease;
+            background-color 0.25s ease,
+            color 0.25s ease;
 
     .container {
       width: 100%;
@@ -104,5 +104,48 @@ html {
       text-align: center;
       font-weight: 500;
     }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── HEADER MOBILE ─────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+@media (max-width: 768px) {
+  .Header {
+    padding-inline: 1.4rem;
+    gap: 1rem;
+    height: 5.6rem;
+  }
+
+  .HeaderRight {
+    gap: 1.6rem;
+  }
+
+  .HeaderLink {
+    font-size: 1.3rem;
+  }
+
+  .HeaderText {
+    font-size: 1.6rem;
+  }
+
+  .HeaderLogout {
+    padding: 0.5rem 1rem;
+    font-size: 1.2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .Header {
+    padding-inline: 1rem;
+  }
+
+  .HeaderRight {
+    gap: 1rem;
+  }
+
+  .HeaderLink {
+    font-size: 1.2rem;
   }
 }

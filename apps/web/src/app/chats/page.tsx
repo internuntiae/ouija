@@ -221,6 +221,17 @@ const MOCK_SEARCH_USERS = [
 
 const USE_MOCK = false
 
+// ─── Helper: fetch który rzuca błąd przy !res.ok ──────────────────────────────
+
+async function fetchOrThrow(
+  input: RequestInfo,
+  init?: RequestInit
+): Promise<Response> {
+  const res = await fetch(input, init)
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+  return res
+}
+
 // ─── Główny komponent ─────────────────────────────────────────────────────────
 
 function ChatsInner() {
@@ -254,6 +265,23 @@ function ChatsInner() {
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchUsers, setSearchUsers] = useState<UserSearchResult[]>([])
 
+  // ── Centralny stan błędów – zamiast lokalnych alert() / console.error ──
+  const [error, setError] = useState<string | null>(null)
+
+  // ── Mobile state ──
+  const [isMobile, setIsMobile] = useState(false)
+  const [mobileChatOpen, setMobileChatOpen] = useState(
+    () => !!searchParams.get('chatId')
+  )
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)')
+    setIsMobile(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+
   // ── Refs ──
   const bottomRef = useRef<HTMLDivElement>(null)
   const topSentinelRef = useRef<HTMLDivElement>(null)
@@ -271,6 +299,7 @@ function ChatsInner() {
     const cached = localStorage.getItem('userStatus') as UserStatus | null
     if (cached) setMyStatus(cached)
     if (USE_MOCK) return
+
     fetch(`${API_URL}/api/?id=${userId}`)
       .then((r) => r.json())
       .then((data: { status?: UserStatus }) => {
@@ -279,13 +308,14 @@ function ChatsInner() {
           localStorage.setItem('userStatus', data.status)
         }
       })
-      .catch(console.error)
+      .catch((err: unknown) =>
+        setError(err instanceof Error ? err.message : String(err))
+      )
   }, [userId])
 
   // ── Pobierz czaty ──
   useEffect(() => {
     if (USE_MOCK) {
-      // Sortuj malejąco po dacie ostatniej wiadomości
       const sorted = [...MOCK_CHATS].sort((a, b) => {
         const ta = a.lastMessage?.sentAt ?? a.updatedAt
         const tb = b.lastMessage?.sentAt ?? b.updatedAt
@@ -296,29 +326,22 @@ function ChatsInner() {
       setLoadingChats(false)
       return
     }
+
     fetch(`${API_URL}/api/users/${userId}/chats`)
       .then((r) => r.json())
-      .then((data: Chat[]) => {
-        // Dla każdego czatu pobierz ostatnią wiadomość
-        return Promise.all(
+      .then((data: Chat[]) =>
+        Promise.all(
           data.map(async (chat) => {
-            try {
-              const res = await fetch(
-                `${API_URL}/api/chats/${chat.id}/messages?limit=1`
-              )
-              if (res.ok) {
-                const msgs: Message[] = await res.json()
-                return { ...chat, lastMessage: msgs[0] ?? null }
-              }
-            } catch {
-              /* ignoruj */
-            }
-            return chat
+            const res = await fetch(
+              `${API_URL}/api/chats/${chat.id}/messages?limit=1`
+            )
+            if (!res.ok) return chat
+            const msgs: Message[] = await res.json()
+            return { ...chat, lastMessage: msgs[0] ?? null }
           })
         )
-      })
+      )
       .then((enriched) => {
-        // Sortuj malejąco po ostatniej wiadomości
         const sorted = enriched.sort((a, b) => {
           const ta = a.lastMessage?.sentAt ?? a.updatedAt
           const tb = b.lastMessage?.sentAt ?? b.updatedAt
@@ -329,17 +352,19 @@ function ChatsInner() {
           (prev) => prev ?? (sorted.length > 0 ? sorted[0].id : null)
         )
       })
-      .catch(console.error)
+      .catch((err: unknown) =>
+        setError(err instanceof Error ? err.message : String(err))
+      )
       .finally(() => setLoadingChats(false))
   }, [userId])
 
   // ── Zamknij dropdown ──
   useEffect(() => {
     function onOutside(e: MouseEvent) {
-      const t = e.target as Node
+      const target = e.target as Node
       const inSearch =
-        document.querySelector('[data-search-dropdown]')?.contains(t) ||
-        document.querySelector('[data-search-input]')?.contains(t)
+        document.querySelector('[data-search-dropdown]')?.contains(target) ||
+        document.querySelector('[data-search-input]')?.contains(target)
       if (!inSearch) setSearchOpen(false)
     }
     document.addEventListener('mousedown', onOutside)
@@ -367,13 +392,13 @@ function ChatsInner() {
         return
       }
       try {
-        const res = await fetch(`${API_URL}/api/?q=${encodeURIComponent(q)}`)
-        if (res.ok)
-          setSearchUsers(
-            (await res.json()).filter((u: UserSearchResult) => u.id !== userId)
-          )
-      } catch {
-        /* ignoruj */
+        const res = await fetchOrThrow(
+          `${API_URL}/api/?q=${encodeURIComponent(q)}`
+        )
+        const all: UserSearchResult[] = await res.json()
+        setSearchUsers(all.filter((u) => u.id !== userId))
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : String(err))
       } finally {
         setSearchLoading(false)
       }
@@ -393,7 +418,6 @@ function ChatsInner() {
     isFirstLoad.current = true
     setLoadingMessages(true)
 
-    // Oznacz czat jako przeczytany
     setChats((prev) =>
       prev.map((c) => (c.id === activeChatId ? { ...c, unreadCount: 0 } : c))
     )
@@ -407,6 +431,7 @@ function ChatsInner() {
       setLoadingMessages(false)
       return
     }
+
     fetch(`${API_URL}/api/chats/${activeChatId}/messages?limit=${PAGE_SIZE}`)
       .then((r) => r.json())
       .then((data: Message[]) => {
@@ -415,7 +440,9 @@ function ChatsInner() {
         setHasMore(data.length === PAGE_SIZE)
         lastIdRef.current = data[data.length - 1]?.id ?? ''
       })
-      .catch(console.error)
+      .catch((err: unknown) =>
+        setError(err instanceof Error ? err.message : String(err))
+      )
       .finally(() => setLoadingMessages(false))
   }, [activeChatId])
 
@@ -455,8 +482,9 @@ function ChatsInner() {
       setLoadingMore(false)
       return
     }
+
     try {
-      const res = await fetch(
+      const res = await fetchOrThrow(
         `${API_URL}/api/chats/${activeChatId}/messages?limit=${PAGE_SIZE}&lastId=${lastIdRef.current}`
       )
       const older: Message[] = await res.json()
@@ -472,8 +500,8 @@ function ChatsInner() {
         if (container)
           container.scrollTop = container.scrollHeight - prevScrollHeight
       })
-    } catch (err) {
-      console.error(err)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err))
     } finally {
       setLoadingMore(false)
     }
@@ -507,11 +535,10 @@ function ChatsInner() {
         osc.start()
         osc.stop(ctx.currentTime + 0.1)
       } catch {
-        /* ignoruj */
+        /* AudioContext może być zablokowany przez przeglądarkę — ignorujemy */
       }
     }
 
-    // Powiadomienie systemowe
     if (
       settings.notificationDesktop &&
       'Notification' in window &&
@@ -557,19 +584,15 @@ function ChatsInner() {
 
     try {
       let attachments: { url: string; type: AttachmentType }[] = []
+
       if (pendingFiles.length > 0) {
         const form = new FormData()
         form.append('ownerId', userId)
         pendingFiles.forEach((f) => form.append('files', f))
-        const uploadRes = await fetch(`${API_URL}/api/media/upload`, {
+        const uploadRes = await fetchOrThrow(`${API_URL}/api/media/upload`, {
           method: 'POST',
           body: form
         })
-        if (!uploadRes.ok) {
-          alert(t('chat.errorUpload'))
-          setSending(false)
-          return
-        }
         const mediaFiles: { url: string; mimeType: string }[] =
           await uploadRes.json()
         attachments = mediaFiles.map((mf) => ({
@@ -583,23 +606,21 @@ function ChatsInner() {
                 : 'FILE'
         }))
       }
-      const res = await fetch(`${API_URL}/api/chats/${activeChatId}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          content: messageText.trim() || null,
-          attachments
-        })
-      })
-      if (!res.ok) {
-        alert(t('chat.errorSend'))
-        setSending(false)
-        return
-      }
+
+      const res = await fetchOrThrow(
+        `${API_URL}/api/chats/${activeChatId}/messages`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId,
+            content: messageText.trim() || null,
+            attachments
+          })
+        }
+      )
       const data: Message = await res.json()
       setMessages((prev) => [...prev, data])
-      // Aktualizuj lastMessage w liście czatów
       setChats((prev) =>
         prev.map((c) =>
           c.id === activeChatId ? { ...c, lastMessage: data } : c
@@ -611,8 +632,8 @@ function ChatsInner() {
         () => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }),
         50
       )
-    } catch (err) {
-      alert(err instanceof Error ? err.message : t('chat.errorSend'))
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t('chat.errorSend'))
     } finally {
       setSending(false)
     }
@@ -641,12 +662,14 @@ function ChatsInner() {
       )
       return
     }
+
     const existing = messages
       .find((m) => m.id === messageId)
       ?.reactions.find((r) => r.userId === userId)
+
     try {
       if (existing?.type === type) {
-        await fetch(
+        await fetchOrThrow(
           `${API_URL}/api/messages/${messageId}/reactions/${userId}`,
           { method: 'DELETE' }
         )
@@ -661,7 +684,7 @@ function ChatsInner() {
           )
         )
       } else if (existing) {
-        await fetch(
+        await fetchOrThrow(
           `${API_URL}/api/messages/${messageId}/reactions/${userId}`,
           {
             method: 'PUT',
@@ -682,7 +705,7 @@ function ChatsInner() {
           )
         )
       } else {
-        await fetch(`${API_URL}/api/messages/${messageId}/reactions`, {
+        await fetchOrThrow(`${API_URL}/api/messages/${messageId}/reactions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId, type })
@@ -698,8 +721,8 @@ function ChatsInner() {
           )
         )
       }
-    } catch (err) {
-      console.error(err)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err))
     }
   }
 
@@ -709,14 +732,15 @@ function ChatsInner() {
     setShowStatusMenu(false)
     localStorage.setItem('userStatus', status)
     if (USE_MOCK) return
+
     try {
-      await fetch(`${API_URL}/api/${userId}`, {
+      await fetchOrThrow(`${API_URL}/api/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
       })
-    } catch (err) {
-      console.error(err)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err))
     }
   }
 
@@ -737,8 +761,9 @@ function ChatsInner() {
       setSearchOpen(false)
       return
     }
+
     try {
-      const res = await fetch(`${API_URL}/api/chats`, {
+      const res = await fetchOrThrow(`${API_URL}/api/chats`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -746,7 +771,6 @@ function ChatsInner() {
           userIds: [userId, targetUserId]
         })
       })
-      if (!res.ok) throw new Error(t('chat.errorCreate'))
       const newChat: Chat = await res.json()
       setChats((prev) =>
         prev.some((c) => c.id === newChat.id) ? prev : [newChat, ...prev]
@@ -754,8 +778,8 @@ function ChatsInner() {
       setTimeout(() => setActiveChatId(newChat.id), 0)
       setSearchQuery('')
       setSearchOpen(false)
-    } catch (err) {
-      alert(err instanceof Error ? err.message : t('chat.errorCreate'))
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t('chat.errorCreate'))
     }
   }
 
@@ -765,16 +789,16 @@ function ChatsInner() {
       setSentInvites((prev) => new Set(prev).add(targetUserId))
       return
     }
+
     try {
-      const res = await fetch(`${API_URL}/api/users/${userId}/friends`, {
+      await fetchOrThrow(`${API_URL}/api/users/${userId}/friends`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ friendId: targetUserId })
       })
-      if (!res.ok) throw new Error()
       setSentInvites((prev) => new Set(prev).add(targetUserId))
-    } catch {
-      alert(t('chat.errorInvite'))
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t('chat.errorInvite'))
     }
   }
 
@@ -829,19 +853,16 @@ function ChatsInner() {
   const lastNotifiedMsgId = useRef<string | null>(null)
 
   // ── Powiadomienia dla nowych wiadomości od innych ──
-  // lastNotifiedMsgId zapobiega powiadomieniu przy pierwszym załadowaniu czatu
   useEffect(() => {
     if (!messages.length) {
       lastNotifiedMsgId.current = null
       return
     }
     const last = messages[messages.length - 1]
-    // Ustaw punkt startowy przy pierwszym załadowaniu — nie powiadamiaj
     if (lastNotifiedMsgId.current === null) {
       lastNotifiedMsgId.current = last.id
       return
     }
-    // Powiadamiaj tylko o naprawdę nowych wiadomościach (nowe id, nie moje)
     if (
       last.id !== lastNotifiedMsgId.current &&
       last.senderId !== userId &&
@@ -857,6 +878,47 @@ function ChatsInner() {
 
   return (
     <div className={styles.container}>
+      {/* ── Globalny toast błędu ── */}
+      {error && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '2rem',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: '#c0392b',
+            color: '#fff',
+            padding: '0.8rem 1.8rem',
+            borderRadius: '0.8rem',
+            fontSize: '1.3rem',
+            zIndex: 9999,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem',
+            maxWidth: 'calc(100vw - 4rem)'
+          }}
+          role="alert"
+        >
+          <span>{error}</span>
+          <button
+            onClick={() => setError(null)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#fff',
+              cursor: 'pointer',
+              fontSize: '1.6rem',
+              lineHeight: 1,
+              padding: '0 0.2rem'
+            }}
+            aria-label="Zamknij"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Input poza warunkowym renderem */}
       <input
         type="file"
@@ -888,6 +950,7 @@ function ChatsInner() {
         loadingChats={loadingChats}
         onSelectChat={(id) => {
           setActiveChatId(id)
+          setMobileChatOpen(true)
           setChats((prev) =>
             prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c))
           )
@@ -895,6 +958,7 @@ function ChatsInner() {
         onOpenProfile={setProfilePopupUserId}
         onSendInvite={handleSendInvite}
         onOpenChatWith={handleOpenChatWith}
+        isMobileHidden={isMobile && mobileChatOpen}
       />
 
       <ChatWindow
@@ -917,6 +981,8 @@ function ChatsInner() {
         onReact={handleReact}
         onOpenProfile={setProfilePopupUserId}
         getChatDisplayName={getChatDisplayName}
+        onBack={isMobile ? () => setMobileChatOpen(false) : undefined}
+        isMobileChatVisible={!isMobile || mobileChatOpen}
       />
 
       {profilePopupUserId && (

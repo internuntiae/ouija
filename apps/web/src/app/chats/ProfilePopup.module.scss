@@ -341,3 +341,27 @@
   font-size: 1.3rem;
   margin: 0;
 }
+// ══════════════════════════════════════════════════════════════════════════════
+// ── MOBILE RESPONSIVE ─────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+@media (max-width: 768px) {
+  .Popup {
+    width: calc(100vw - 2.4rem);
+    max-width: 100%;
+    border-radius: 1.4rem;
+  }
+
+  .ActionBar {
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    padding: 1rem 1.2rem;
+  }
+
+  .ActionBtn {
+    flex: 1 1 auto;
+    min-width: 8rem;
+    text-align: center;
+    justify-content: center;
+  }
+}

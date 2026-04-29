@@ -109,8 +109,8 @@
   font-family: inherit;
   cursor: pointer;
   transition:
-    border-color 0.2s,
-    background 0.2s;
+          border-color 0.2s,
+          background 0.2s;
   &:hover {
     border-color: var(--text);
     background: var(--bg-hover);
@@ -292,8 +292,8 @@
   padding: 0.5rem 1.2rem;
   cursor: pointer;
   transition:
-    background 0.15s,
-    color 0.15s;
+          background 0.15s,
+          color 0.15s;
   &:hover {
     color: var(--text);
     background: var(--bg-elevated);
@@ -346,8 +346,8 @@
   padding: 0.7rem 2rem;
   cursor: pointer;
   transition:
-    background 0.2s,
-    color 0.2s;
+          background 0.2s,
+          color 0.2s;
   margin-top: 0.5rem;
   &:hover {
     background: #5a1f1f;
@@ -379,5 +379,101 @@
   transition: background 0.2s;
   &:hover {
     background: var(--bg-hover);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── MOBILE RESPONSIVE ─────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+@media (max-width: 768px) {
+  .PageWrapper {
+    padding: 2rem 0 4rem;
+  }
+
+  .Section {
+    width: 92%;
+    padding: 1.6rem 1.4rem;
+    border-radius: 1.2rem;
+    margin: 0.6rem auto;
+  }
+
+  .SectionHeading {
+    font-size: 1.7rem;
+  }
+
+  // ── Formularz hasła ─────────────────────────────────────────────────────────
+  .PasswordForm {
+    flex-direction: column;
+    gap: 0.6rem;
+    max-width: 100%;
+  }
+
+  .PasswordInput {
+    font-size: 1.4rem;
+  }
+
+  .SaveBtn {
+    width: 100%;
+    text-align: center;
+    padding: 0.8rem 1rem;
+  }
+
+  // ── Znajomi ─────────────────────────────────────────────────────────────────
+  .SectionFriend {
+    gap: 0.8rem;
+    padding: 0.8rem;
+  }
+
+  .SectionFriendMessageButton,
+  .SectionFriendDeleteButton,
+  .AcceptBtn,
+  .RejectBtn {
+    padding: 0.5rem 0.8rem;
+    font-size: 1.1rem;
+  }
+
+  // ── Settings rows ───────────────────────────────────────────────────────────
+  .SettingRow {
+    gap: 1rem;
+  }
+
+  .SettingLabel {
+    font-size: 1.3rem;
+  }
+
+  .SegmentBtn {
+    padding: 0.5rem 0.8rem;
+    font-size: 1.1rem;
+  }
+
+  // ── Przycisk niebezpieczny ──────────────────────────────────────────────────
+  .DangerBtn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .Section {
+    width: 96%;
+    padding: 1.2rem 1rem;
+  }
+
+  .SectionFriend {
+    flex-wrap: wrap;
+  }
+
+  .FriendInfo {
+    min-width: 0;
+    flex: 1 1 60%;
+  }
+
+  .SectionFriendMessageButton,
+  .SectionFriendDeleteButton,
+  .AcceptBtn,
+  .RejectBtn {
+    flex: 1 1 auto;
+    text-align: center;
   }
 }
