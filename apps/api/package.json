@@ -7,8 +7,9 @@
     "build": "tsc && tsc-alias",
     "dev": "nodemon",
     "start": "node dist/server.js",
-    "deploy": "prisma migrate deploy",
-    "generate": "prisma generate",
+    "prisma:reset": "prisma migrate reset",
+    "prisma:dev": "prisma migrate dev",
+    "prisma:generate": "prisma generate",
     "studio": "prisma studio",
     "test": "jest",
     "test:watch": "jest --watch"

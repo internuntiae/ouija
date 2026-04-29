@@ -31,6 +31,8 @@ interface Props {
   onReact: (messageId: string, type: ReactionType) => void
   onOpenProfile: (id: string) => void
   getChatDisplayName: (chat: Chat) => string
+  onBack?: () => void
+  isMobileChatVisible?: boolean
 }
 
 export default function ChatWindow({
@@ -51,7 +53,9 @@ export default function ChatWindow({
   onSendMessage,
   onReact,
   onOpenProfile,
-  getChatDisplayName
+  getChatDisplayName,
+  onBack,
+  isMobileChatVisible
 }: Props) {
   const { t } = useTranslation()
 
@@ -64,9 +68,20 @@ export default function ChatWindow({
   }
 
   return (
-    <div className={styles.Chat}>
+    <div
+      className={`${styles.Chat}${isMobileChatVisible ? ` ${styles.ChatVisible}` : ''}`}
+    >
       {/* ── Nagłówek ── */}
       <div className={styles.ChatContactInfo}>
+        {onBack && (
+          <button
+            className={styles.BackButton}
+            onClick={onBack}
+            aria-label="Wróć do listy czatów"
+          >
+            ←
+          </button>
+        )}
         <div className={styles.ChatContactInfoLeft}>
           <div
             className={styles.AvatarWrap}

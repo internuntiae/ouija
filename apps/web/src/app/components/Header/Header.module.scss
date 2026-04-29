@@ -11,7 +11,7 @@
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 0.1rem solid var(--border);
-  font-family: var(--font-sans);
+  font-family: var(--font-sans), serif;
   color: var(--text-primary);
   font-size: 1.6rem;
   position: sticky;
@@ -62,7 +62,7 @@
     color: var(--text-secondary);
     font-size: 1.3rem;
     font-weight: 500;
-    font-family: var(--font-sans);
+    font-family: var(--font-sans), serif;
     padding: 0.6rem 1.6rem;
     border-radius: var(--radius-md);
     cursor: pointer;

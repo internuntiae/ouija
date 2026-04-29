@@ -795,3 +795,150 @@
   padding: 0.5rem;
   flex-shrink: 0;
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── MOBILE RESPONSIVE ─────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+@media (max-width: 768px) {
+  .container {
+    height: calc(100dvh - 5.6rem); // pełna wysokość minus header
+    flex-direction: column;
+    position: relative;
+  }
+
+  // ── Sidebar (lista czatów) ─────────────────────────────────────────────────
+  .Contacts {
+    width: 100%;
+    min-width: unset;
+    height: 100%;
+    border-right: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10;
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  // Klasa dodawana przez JS gdy otwarty jest chat
+  .ContactsHidden {
+    transform: translateX(-100%);
+    pointer-events: none;
+  }
+
+  // ── Obszar czatu ────────────────────────────────────────────────────────────
+  .Chat {
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 5;
+    transform: translateX(100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .ChatVisible {
+    transform: translateX(0);
+  }
+
+  // ── Header czatu (info o kontakcie) ─────────────────────────────────────────
+  .ChatContactInfo {
+    height: 5.6rem;
+    padding: 0 1rem;
+    gap: 0.8rem;
+  }
+
+  .ChatContactInfoLeft {
+    gap: 0.8rem;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .ChatContactName {
+    font-size: 1.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ChatContactStatus {
+    font-size: 1rem;
+  }
+
+  // Przycisk powrotu "←" (back button) widoczny tylko na mobile
+  .BackButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 2rem;
+    padding: 0.4rem 0.6rem;
+    cursor: pointer;
+    border-radius: 0.6rem;
+    flex-shrink: 0;
+    transition: background 0.12s;
+    &:hover {
+      background: var(--bg-elevated);
+    }
+  }
+
+  // ── Pole tekstowe ─────────────────────────────────────────────────────────
+  .ChatMessageToolbar {
+    padding: 0.6rem 0.8rem;
+    padding-bottom: max(0.6rem, env(safe-area-inset-bottom));
+
+    form {
+      gap: 0.6rem;
+    }
+  }
+
+  .ChatMessageToolbarInput {
+    font-size: 1.4rem;
+    padding: 0.8rem 1rem;
+  }
+
+  .ChatMessageToolbarSubmit {
+    padding: 0.8rem 1.4rem;
+    font-size: 1.3rem;
+  }
+
+  // ── Bąbelki wiadomości ────────────────────────────────────────────────────
+  .MessageBubble {
+    max-width: 80%;
+  }
+
+  .MessageAttachmentImage {
+    max-width: 20rem;
+    max-height: 16rem;
+  }
+
+  .MessageAttachmentVideo {
+    max-width: 20rem;
+  }
+
+  // ── Elementy wyszukiwarki / sidebaru ────────────────────────────────────────
+  .ContactsChatPreviewMessageContainerName,
+  .ContactsChatPreviewMessageContainerMessage {
+    max-width: calc(100vw - 14rem);
+  }
+
+  // ── Reaction button – nie chowaj za ekranem na mobile ─────────────────────
+  .MessageReactBtn {
+    opacity: 1;
+    right: -2.8rem;
+  }
+
+  .MessageWrapperOwn .MessageReactBtn {
+    right: auto;
+    left: -2.8rem;
+  }
+
+  // ── NoChatSelected – schowany na mobile (widać sidebar) ─────────────────────
+  .NoChatSelected {
+    display: none;
+  }
+}

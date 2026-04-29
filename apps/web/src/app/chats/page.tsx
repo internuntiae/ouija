@@ -80,6 +80,20 @@ function ChatsWithUser({ userId }: { userId: string }) {
   )
   const [friendIds, setFriendIds] = useState<Set<string>>(new Set())
 
+  // ── Mobile state ──
+  const [isMobile, setIsMobile] = useState(false)
+  const [mobileChatOpen, setMobileChatOpen] = useState(
+    () => !!searchParams.get('chatId')
+  )
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)')
+    setIsMobile(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+
   // ── Refs ──
   const bottomRef = useRef<HTMLDivElement>(null)
   const topSentinelRef = useRef<HTMLDivElement>(null)
@@ -125,27 +139,19 @@ function ChatsWithUser({ userId }: { userId: string }) {
   useEffect(() => {
     fetch(`${API_URL}/api/users/${userId}/chats`)
       .then((r) => r.json())
-      .then((data: Chat[]) => {
-        // Dla każdego czatu pobierz ostatnią wiadomość
-        return Promise.all(
+      .then((data: Chat[]) =>
+        Promise.all(
           data.map(async (chat) => {
-            try {
-              const res = await fetch(
-                `${API_URL}/api/chats/${chat.id}/messages?limit=1`
-              )
-              if (res.ok) {
-                const msgs: Message[] = await res.json()
-                return { ...chat, lastMessage: msgs[0] ?? null }
-              }
-            } catch {
-              /* ignoruj */
-            }
-            return chat
+            const res = await fetch(
+              `${API_URL}/api/chats/${chat.id}/messages?limit=1`
+            )
+            if (!res.ok) return chat
+            const msgs: Message[] = await res.json()
+            return { ...chat, lastMessage: msgs[0] ?? null }
           })
         )
-      })
+      )
       .then((enriched) => {
-        // Sortuj malejąco po ostatniej wiadomości
         const sorted = enriched.sort((a, b) => {
           const ta = a.lastMessage?.sentAt ?? a.updatedAt
           const tb = b.lastMessage?.sentAt ?? b.updatedAt
@@ -163,10 +169,10 @@ function ChatsWithUser({ userId }: { userId: string }) {
   // ── Zamknij dropdown ──
   useEffect(() => {
     function onOutside(e: MouseEvent) {
-      const t = e.target as Node
+      const target = e.target as Node
       const inSearch =
-        document.querySelector('[data-search-dropdown]')?.contains(t) ||
-        document.querySelector('[data-search-input]')?.contains(t)
+        document.querySelector('[data-search-dropdown]')?.contains(target) ||
+        document.querySelector('[data-search-input]')?.contains(target)
       if (!inSearch) setSearchOpen(false)
     }
     document.addEventListener('mousedown', onOutside)
@@ -211,7 +217,6 @@ function ChatsWithUser({ userId }: { userId: string }) {
     isFirstLoad.current = true
     setLoadingMessages(true)
 
-    // Oznacz czat jako przeczytany
     setChats((prev) =>
       prev.map((c) => (c.id === activeChatId ? { ...c, unreadCount: 0 } : c))
     )
@@ -541,7 +546,6 @@ function ChatsWithUser({ userId }: { userId: string }) {
       }
     }
 
-    // Powiadomienie systemowe
     if (
       settings.notificationDesktop &&
       'Notification' in window &&
@@ -847,7 +851,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
 
       <ChatSidebar
         userId={userId}
-        chats={visibleChats}
+        chats={chats}
         activeChatId={activeChatId}
         myStatus={myStatus}
         showStatusMenu={showStatusMenu}
@@ -867,6 +871,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
         onToggleMute={handleToggleMute}
         onSelectChat={(id) => {
           setActiveChatId(id)
+          setMobileChatOpen(true)
           setChats((prev) =>
             prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c))
           )
@@ -874,6 +879,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
         onOpenProfile={setProfilePopupUserId}
         onSendInvite={handleSendInvite}
         onOpenChatWith={handleOpenChatWith}
+        isMobileHidden={isMobile && mobileChatOpen}
       />
 
       <ChatWindow
@@ -896,6 +902,8 @@ function ChatsWithUser({ userId }: { userId: string }) {
         onReact={handleReact}
         onOpenProfile={setProfilePopupUserId}
         getChatDisplayName={getChatDisplayName}
+        onBack={isMobile ? () => setMobileChatOpen(false) : undefined}
+        isMobileChatVisible={!isMobile || mobileChatOpen}
       />
 
       {profilePopupUserId && (

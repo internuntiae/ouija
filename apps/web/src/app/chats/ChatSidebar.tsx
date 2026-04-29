@@ -35,6 +35,7 @@ interface Props {
   onOpenProfile: (id: string) => void
   onSendInvite: (id: string) => void
   onOpenChatWith: (id: string) => void
+  isMobileHidden?: boolean
 }
 
 function getChatDisplayName(chat: Chat, userId: string): string {
@@ -64,7 +65,8 @@ export default function ChatSidebar({
   onSelectChat,
   onOpenProfile,
   onSendInvite,
-  onOpenChatWith
+  onOpenChatWith,
+  isMobileHidden
 }: Props) {
   const { t, lang } = useTranslation()
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -87,7 +89,9 @@ export default function ChatSidebar({
   const timeLocale = lang === 'en' ? 'en-GB' : 'pl-PL'
 
   return (
-    <div className={styles.Contacts}>
+    <div
+      className={`${styles.Contacts}${isMobileHidden ? ` ${styles.ContactsHidden}` : ''}`}
+    >
       {/* ── Status ── */}
       <div
         className={styles.MyStatus}
