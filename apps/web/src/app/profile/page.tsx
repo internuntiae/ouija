@@ -107,27 +107,19 @@ export default function Profile() {
     setAvatarUploading(true)
     try {
       const form = new FormData()
-      form.append('ownerId', userId)
-      form.append('files', file)
-      const uploadRes = await fetch(`${API_URL}/api/media/upload`, {
+      form.append('avatar', file)
+      // POST /api/media/avatar/:userId — uploads file AND sets avatarUrl on user in one call
+      const res = await fetch(`${API_URL}/api/media/avatar/${userId}`, {
         method: 'POST',
         body: form
       })
-      if (!uploadRes.ok) {
-        alert('Błąd uploadu')
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        alert(err.error ?? 'Błąd uploadu avatara')
         return
       }
-      const [media] = await uploadRes.json()
-      // Store just the storedName in the DB — the API rehydrates it to a full URL
-      const updateRes = await fetch(`${API_URL}/api/${userId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ avatarUrl: media.storedName })
-      })
-      if (!updateRes.ok) {
-        alert('Błąd zapisu avatara')
-        return
-      }
+      const { media } = await res.json()
+      // media.url is already the full rehydrated URL
       setUser((prev) => (prev ? { ...prev, avatarUrl: media.url } : prev))
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Błąd zmiany avatara')

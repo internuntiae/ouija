@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useState, useCallback } from 'react'
 import styles from './Chats.module.scss'
 import {
   Chat,
@@ -36,6 +36,7 @@ interface Props {
   onSendInvite: (id: string) => void
   onOpenChatWith: (id: string) => void
   isMobileHidden?: boolean
+  onCreateGroupChat: (name: string, memberIds: string[]) => Promise<void>
 }
 
 function getChatDisplayName(chat: Chat, userId: string): string {
@@ -66,11 +67,82 @@ export default function ChatSidebar({
   onOpenProfile,
   onSendInvite,
   onOpenChatWith,
-  isMobileHidden
+  isMobileHidden,
+  onCreateGroupChat
 }: Props) {
   const { t, lang } = useTranslation()
   const searchInputRef = useRef<HTMLInputElement>(null)
   const searchDropdownRef = useRef<HTMLDivElement>(null)
+
+  // ── Czat grupowy ──
+  const [groupModalOpen, setGroupModalOpen] = useState(false)
+  const [groupName, setGroupName] = useState('')
+  const [groupSearch, setGroupSearch] = useState('')
+  const [groupSearchResults, setGroupSearchResults] = useState<
+    UserSearchResult[]
+  >([])
+  const [groupSearchLoading, setGroupSearchLoading] = useState(false)
+  const [groupMembers, setGroupMembers] = useState<UserSearchResult[]>([])
+  const [groupCreating, setGroupCreating] = useState(false)
+  const groupSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function openGroupModal() {
+    setGroupModalOpen(true)
+    setGroupName('')
+    setGroupSearch('')
+    setGroupSearchResults([])
+    setGroupMembers([])
+  }
+
+  function toggleMember(person: UserSearchResult) {
+    setGroupMembers((prev) =>
+      prev.some((m) => m.id === person.id)
+        ? prev.filter((m) => m.id !== person.id)
+        : [...prev, person]
+    )
+  }
+
+  const handleGroupSearch = useCallback(
+    (q: string) => {
+      setGroupSearch(q)
+      if (groupSearchTimer.current) clearTimeout(groupSearchTimer.current)
+      if (!q.trim()) {
+        setGroupSearchResults([])
+        return
+      }
+      groupSearchTimer.current = setTimeout(async () => {
+        setGroupSearchLoading(true)
+        try {
+          const API_URL =
+            process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+          const res = await fetch(`${API_URL}/api/?q=${encodeURIComponent(q)}`)
+          if (res.ok) {
+            const data: UserSearchResult[] = await res.json()
+            setGroupSearchResults(data.filter((u) => u.id !== userId))
+          }
+        } catch {
+          /* ignoruj */
+        } finally {
+          setGroupSearchLoading(false)
+        }
+      }, 300)
+    },
+    [userId]
+  )
+
+  async function handleCreateGroup() {
+    if (!groupName.trim() || groupMembers.length === 0 || groupCreating) return
+    setGroupCreating(true)
+    try {
+      await onCreateGroupChat(
+        groupName.trim(),
+        groupMembers.map((m) => m.id)
+      )
+      setGroupModalOpen(false)
+    } finally {
+      setGroupCreating(false)
+    }
+  }
 
   const STATUS_KEYS: UserStatus[] = ['ONLINE', 'AWAY', 'BUSY', 'OFFLINE']
 
@@ -122,6 +194,128 @@ export default function ChatSidebar({
               {t(`status.${s}` as never)}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* ── Nowa grupa ── */}
+      <div className={styles.NewGroupSection}>
+        <button className={styles.NewGroupBtn} onClick={openGroupModal}>
+          <span>👥</span> Nowa grupa
+        </button>
+      </div>
+
+      {/* ── Modal tworzenia grupy ── */}
+      {groupModalOpen && (
+        <div
+          className={styles.ModalOverlay}
+          onClick={() => setGroupModalOpen(false)}
+        >
+          <div className={styles.Modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.ModalHeader}>
+              <h3 className={styles.ModalTitle}>Nowy czat grupowy</h3>
+              <button
+                className={styles.ModalClose}
+                onClick={() => setGroupModalOpen(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className={styles.ModalBody}>
+              <input
+                type="text"
+                className={styles.ModalInput}
+                placeholder="Nazwa grupy"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                autoFocus
+              />
+
+              <input
+                type="text"
+                className={styles.ModalInput}
+                placeholder="Szukaj użytkowników..."
+                value={groupSearch}
+                onChange={(e) => handleGroupSearch(e.target.value)}
+              />
+
+              {groupSearchLoading && (
+                <p className={styles.ModalHint}>Szukam...</p>
+              )}
+
+              {groupSearchResults.length > 0 && (
+                <div className={styles.ModalSearchResults}>
+                  {groupSearchResults.map((person) => {
+                    const selected = groupMembers.some(
+                      (m) => m.id === person.id
+                    )
+                    return (
+                      <div
+                        key={person.id}
+                        className={`${styles.ModalSearchItem} ${selected ? styles.ModalSearchItemSelected : ''}`}
+                        onClick={() => toggleMember(person)}
+                      >
+                        <img
+                          src={avatarSrc(person.avatarUrl)}
+                          alt="avatar"
+                          width={28}
+                          height={28}
+                          className={styles.ContactsChatPreviewProfilePicture}
+                        />
+                        <span className={styles.ModalSearchItemName}>
+                          {person.nickname}
+                        </span>
+                        {selected && (
+                          <span className={styles.ModalCheckmark}>✓</span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {groupMembers.length > 0 && (
+                <div className={styles.ModalMembers}>
+                  <p className={styles.ModalHint}>
+                    Wybrani ({groupMembers.length}):
+                  </p>
+                  <div className={styles.ModalMemberChips}>
+                    {groupMembers.map((m) => (
+                      <span key={m.id} className={styles.ModalChip}>
+                        {m.nickname}
+                        <button
+                          className={styles.ModalChipRemove}
+                          onClick={() => toggleMember(m)}
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className={styles.ModalFooter}>
+              <button
+                className={styles.ModalCancelBtn}
+                onClick={() => setGroupModalOpen(false)}
+              >
+                Anuluj
+              </button>
+              <button
+                className={styles.ModalConfirmBtn}
+                onClick={handleCreateGroup}
+                disabled={
+                  !groupName.trim() ||
+                  groupMembers.length === 0 ||
+                  groupCreating
+                }
+              >
+                {groupCreating ? 'Tworzę...' : 'Utwórz grupę'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

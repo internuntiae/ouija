@@ -829,6 +829,27 @@ function ChatsWithUser({ userId }: { userId: string }) {
   const otherUser =
     activeChat?.users.find((u) => u.userId !== userId)?.user ?? null
 
+  async function handleCreateGroupChat(name: string, memberIds: string[]) {
+    if (!userId) return
+    const res = await fetch(`${API_URL}/api/chats`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        type: 'GROUP',
+        userIds: [userId, ...memberIds]
+      })
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      alert(err.error ?? 'Błąd tworzenia grupy')
+      return
+    }
+    const chat = await res.json()
+    setChats((prev) => [chat, ...prev])
+    setActiveChatId(chat.id)
+  }
+
   return (
     <div className={styles.container}>
       {/* Powiadomienie o zaproszeniu do znajomych */}
@@ -879,6 +900,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
         onOpenProfile={setProfilePopupUserId}
         onSendInvite={handleSendInvite}
         onOpenChatWith={handleOpenChatWith}
+        onCreateGroupChat={handleCreateGroupChat}
         isMobileHidden={isMobile && mobileChatOpen}
       />
 

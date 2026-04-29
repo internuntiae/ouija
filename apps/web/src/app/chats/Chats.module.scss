@@ -944,3 +944,244 @@
     display: none;
   }
 }
+
+/* ── Nowa grupa ── */
+.NewGroupSection {
+  padding: 0.6rem 0.8rem;
+  border-bottom: 0.1rem solid var(--border);
+  flex-shrink: 0;
+}
+
+.NewGroupBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.7rem 1rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  color: var(--text);
+  font-size: 1.3rem;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover {
+    background: var(--bg-hover, var(--bg-surface));
+  }
+}
+
+/* ── Modal ── */
+.ModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.Modal {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 1.2rem;
+  width: min(42rem, 90vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 2rem 4rem rgba(0, 0, 0, 0.4);
+}
+
+.ModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.4rem 1.6rem 1rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.ModalTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.ModalClose {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.4rem;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.4rem;
+
+  &:hover {
+    color: var(--text);
+    background: var(--bg-elevated);
+  }
+}
+
+.ModalBody {
+  padding: 1.2rem 1.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+}
+
+.ModalInput {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  color: var(--text);
+  font-size: 1.3rem;
+  outline: none;
+  box-sizing: border-box;
+
+  &:focus {
+    border-color: var(--accent, #7c6ee6);
+  }
+
+  &::placeholder {
+    color: var(--text-muted);
+  }
+}
+
+.ModalHint {
+  font-size: 1.15rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.ModalSearchResults {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  max-height: 18rem;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  padding: 0.4rem;
+}
+
+.ModalSearchItem {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.6rem;
+  cursor: pointer;
+  transition: background 0.12s;
+
+  &:hover {
+    background: var(--bg-elevated);
+  }
+}
+
+.ModalSearchItemSelected {
+  background: color-mix(in srgb, var(--accent, #7c6ee6) 15%, transparent);
+
+  &:hover {
+    background: color-mix(in srgb, var(--accent, #7c6ee6) 22%, transparent);
+  }
+}
+
+.ModalSearchItemName {
+  flex: 1;
+  font-size: 1.3rem;
+  color: var(--text);
+}
+
+.ModalCheckmark {
+  font-size: 1.2rem;
+  color: var(--accent, #7c6ee6);
+  font-weight: 700;
+}
+
+.ModalMembers {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ModalMemberChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ModalChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.8rem;
+  background: color-mix(in srgb, var(--accent, #7c6ee6) 20%, transparent);
+  border-radius: 2rem;
+  font-size: 1.2rem;
+  color: var(--text);
+}
+
+.ModalChipRemove {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 1rem;
+  padding: 0;
+  line-height: 1;
+
+  &:hover {
+    color: var(--text);
+  }
+}
+
+.ModalFooter {
+  display: flex;
+  gap: 0.8rem;
+  justify-content: flex-end;
+  padding: 1rem 1.6rem 1.4rem;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.ModalCancelBtn {
+  padding: 0.7rem 1.4rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  color: var(--text-muted);
+  font-size: 1.3rem;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--bg-elevated);
+    color: var(--text);
+  }
+}
+
+.ModalConfirmBtn {
+  padding: 0.7rem 1.6rem;
+  background: var(--accent, #7c6ee6);
+  border: none;
+  border-radius: 0.8rem;
+  color: #fff;
+  font-size: 1.3rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+
+  &:hover:not(:disabled) {
+    opacity: 0.85;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
