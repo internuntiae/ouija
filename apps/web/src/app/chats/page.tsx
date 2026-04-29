@@ -235,6 +235,7 @@ function ChatsInner() {
   const [activeChatId, setActiveChatId] = useState<string | null>(
     searchParams.get('chatId')
   )
+  const activeChatIdRef = useRef<string | null>(searchParams.get('chatId'))
   const [messages, setMessages] = useState<Message[]>([])
   const [messageText, setMessageText] = useState('')
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
@@ -419,6 +420,126 @@ function ChatsInner() {
       .finally(() => setLoadingMessages(false))
   }, [activeChatId])
 
+  // ── Sync activeChatIdRef ──
+  useEffect(() => {
+    activeChatIdRef.current = activeChatId
+  }, [activeChatId])
+
+  // ── WebSocket ──
+  const wsRef = useRef<WebSocket | null>(null)
+  useEffect(() => {
+    if (USE_MOCK) return
+    const WS_URL = API_URL.replace(/^http/, 'ws')
+    const ws = new WebSocket(`${WS_URL}/ws?userId=${userId}`)
+    wsRef.current = ws
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data) as {
+          type: string
+          payload: Record<string, unknown>
+        }
+
+        if (msg.type === 'message:created') {
+          const newMsg = msg.payload as unknown as Message
+          setMessages((prev) => {
+            if (newMsg.chatId !== activeChatIdRef.current) return prev
+            if (prev.some((m) => m.id === newMsg.id)) return prev
+            return [...prev, newMsg]
+          })
+          setChats((prev) => {
+            const updated = prev.map((c) =>
+              c.id === newMsg.chatId
+                ? {
+                    ...c,
+                    lastMessage: newMsg,
+                    unreadCount:
+                      newMsg.chatId !== activeChatIdRef.current &&
+                      newMsg.senderId !== userId
+                        ? (c.unreadCount ?? 0) + 1
+                        : c.unreadCount
+                  }
+                : c
+            )
+            const idx = updated.findIndex((c) => c.id === newMsg.chatId)
+            if (idx > 0) {
+              const [chat] = updated.splice(idx, 1)
+              updated.unshift(chat)
+            }
+            return updated
+          })
+          if (newMsg.chatId === activeChatIdRef.current) {
+            setTimeout(
+              () => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }),
+              50
+            )
+          }
+        }
+
+        if (msg.type === 'message:updated') {
+          const updated = msg.payload as unknown as Message
+          setMessages((prev) =>
+            prev.map((m) => (m.id === updated.id ? updated : m))
+          )
+        }
+
+        if (msg.type === 'message:deleted') {
+          const { messageId } = msg.payload as { messageId: string }
+          setMessages((prev) => prev.filter((m) => m.id !== messageId))
+        }
+
+        if (
+          msg.type === 'reaction:added' ||
+          msg.type === 'reaction:updated' ||
+          msg.type === 'reaction:deleted'
+        ) {
+          const {
+            messageId,
+            userId: rUserId,
+            type: rType
+          } = msg.payload as {
+            messageId: string
+            userId: string
+            type: ReactionType
+          }
+          setMessages((prev) =>
+            prev.map((m) => {
+              if (m.id !== messageId) return m
+              const withoutUser = m.reactions.filter(
+                (r) => r.userId !== rUserId
+              )
+              if (msg.type === 'reaction:deleted')
+                return { ...m, reactions: withoutUser }
+              return {
+                ...m,
+                reactions: [
+                  ...withoutUser,
+                  { messageId, userId: rUserId, type: rType }
+                ]
+              }
+            })
+          )
+        }
+
+        if (msg.type === 'chat:created') {
+          const newChat = msg.payload as unknown as Chat
+          setChats((prev) =>
+            prev.some((c) => c.id === newChat.id) ? prev : [newChat, ...prev]
+          )
+        }
+      } catch {
+        /* ignoruj */
+      }
+    }
+
+    ws.onerror = (err) => console.error('[WS] błąd:', err)
+
+    return () => {
+      ws.close()
+      wsRef.current = null
+    }
+  }, [userId])
+
   // ── Scroll do dołu przy pierwszym ładowaniu ──
   useEffect(() => {
     if (messages.length > 0 && isFirstLoad.current) {
@@ -540,11 +661,17 @@ function ChatsInner() {
         reactions: []
       }
       setMessages((prev) => [...prev, newMsg])
-      setChats((prev) =>
-        prev.map((c) =>
+      setChats((prev) => {
+        const updated = prev.map((c) =>
           c.id === activeChatId ? { ...c, lastMessage: newMsg } : c
         )
-      )
+        const idx = updated.findIndex((c) => c.id === activeChatId)
+        if (idx > 0) {
+          const [chat] = updated.splice(idx, 1)
+          updated.unshift(chat)
+        }
+        return updated
+      })
       setMessageText('')
       setPendingFiles([])
       setSending(false)
@@ -599,12 +726,18 @@ function ChatsInner() {
       }
       const data: Message = await res.json()
       setMessages((prev) => [...prev, data])
-      // Aktualizuj lastMessage w liście czatów
-      setChats((prev) =>
-        prev.map((c) =>
+      // Aktualizuj lastMessage w liście czatów i przesuń na górę
+      setChats((prev) => {
+        const updated = prev.map((c) =>
           c.id === activeChatId ? { ...c, lastMessage: data } : c
         )
-      )
+        const idx = updated.findIndex((c) => c.id === activeChatId)
+        if (idx > 0) {
+          const [chat] = updated.splice(idx, 1)
+          updated.unshift(chat)
+        }
+        return updated
+      })
       setMessageText('')
       setPendingFiles([])
       setTimeout(

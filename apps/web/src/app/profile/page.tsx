@@ -317,7 +317,11 @@ export default function Profile() {
         `${API_URL}/api/users/${userId}/friends/${friendId}`,
         { method: 'DELETE' }
       )
-      if (!res.ok) throw new Error('Błąd usuwania')
+      const res2 = await fetch(
+        `${API_URL}/api/users/${friendId}/friends/${userId}`,
+        { method: 'DELETE' }
+      )
+      if (!res.ok && !res2.ok) throw new Error('Błąd usuwania')
       setFriends((prev) =>
         prev.filter((f) => f.friendId !== friendId && f.userId !== friendId)
       )
