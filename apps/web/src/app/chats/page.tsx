@@ -24,6 +24,7 @@ import {
   PAGE_SIZE
 } from './types'
 import { useSettings } from '@/context/SettingsContext'
+import { updateSwNameCache } from '@/app/sw-register'
 import { useTranslation } from '@/i18n/translations'
 
 // ─── Główny komponent ─────────────────────────────────────────────────────────
@@ -206,6 +207,16 @@ function ChatsWithUser({ userId }: { userId: string }) {
     activeChatIdRef.current = activeChatId
   }, [activeChatId])
 
+  // ── Keep SW name cache in sync so background notifications show nicknames ──
+  useEffect(() => {
+    const users = chats.flatMap((c) =>
+      c.users
+        .filter((u) => u.userId !== userId)
+        .map((u) => ({ id: u.userId, nickname: u.user.nickname }))
+    )
+    updateSwNameCache(users)
+  }, [chats])
+
   // ── WebSocket ──
   const wsRef = useRef<WebSocket | null>(null)
   useEffect(() => {
@@ -240,7 +251,27 @@ function ChatsWithUser({ userId }: { userId: string }) {
               const senderName =
                 chat?.users.find((u) => u.userId === newMsg.senderId)?.user
                   .nickname ?? 'Ktoś'
+
+              // Play sound via the in-page triggerNotification (works when
+              // the tab is open). The SW handles desktop notifications and
+              // also fires when the tab is closed / on another route.
               triggerNotification(senderName, newMsg.content ?? '📎 Załącznik')
+
+              // Tell the SW who sent it so it can show a notification when
+              // the page is closed or on a different route.
+              if (
+                'serviceWorker' in navigator &&
+                navigator.serviceWorker.controller
+              ) {
+                navigator.serviceWorker.controller.postMessage({
+                  type: 'SHOW_NOTIFICATION',
+                  payload: {
+                    title: senderName,
+                    body: newMsg.content ?? '📎 Załącznik'
+                  }
+                })
+              }
+
               return prev // no state change — side-effect only
             })
           }
