@@ -861,9 +861,11 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    text-align: left;
   }
 
   .ChatContactStatus {
+    text-align: left;
     font-size: 1rem;
   }
 
