@@ -881,7 +881,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
             })
           )
         }
-      }, 3000)
+      }, 6700)
     }
   }
 
