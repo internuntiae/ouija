@@ -59,7 +59,16 @@ function ChatsWithUser({ userId }: { userId: string }) {
   const [hasMore, setHasMore] = useState(true)
   const [sending, setSending] = useState(false)
   const [myStatus, setMyStatus] = useState<UserStatus>('ONLINE')
+  const myStatusRef = useRef<UserStatus>('ONLINE')
   const [showStatusMenu, setShowStatusMenu] = useState(false)
+  const [typingUsers, setTypingUsers] = useState<
+    { userId: string; nickname: string; avatarUrl?: string | null }[]
+  >([])
+  const typingTimeouts = useRef<Map<string, ReturnType<typeof setTimeout>>>(
+    new Map()
+  )
+  const isTypingRef = useRef(false)
+  const typingThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [sentInvites, setSentInvites] = useState<Set<string>>(new Set())
   const [profilePopupUserId, setProfilePopupUserId] = useState<string | null>(
     null
@@ -139,6 +148,11 @@ function ChatsWithUser({ userId }: { userId: string }) {
       })
       .catch(console.error)
   }, [userId])
+
+  // Keep myStatusRef in sync so WS close handler can read current status
+  useEffect(() => {
+    myStatusRef.current = myStatus
+  }, [myStatus])
 
   // ── Pobierz czaty ──
   useEffect(() => {
@@ -241,6 +255,10 @@ function ChatsWithUser({ userId }: { userId: string }) {
   // ── Sync activeChatIdRef ──
   useEffect(() => {
     activeChatIdRef.current = activeChatId
+    // Clear typing indicators when switching chats
+    typingTimeouts.current.forEach((t) => clearTimeout(t))
+    typingTimeouts.current.clear()
+    setTypingUsers([])
   }, [activeChatId])
 
   // ── Keep SW name cache in sync so background notifications show nicknames ──
@@ -357,15 +375,23 @@ function ChatsWithUser({ userId }: { userId: string }) {
           msg.type === 'reaction:updated' ||
           msg.type === 'reaction:deleted'
         ) {
-          const {
-            messageId,
-            userId: rUserId,
-            type: rType
-          } = msg.payload as {
+          // Server sends { chatId, messageId, reaction: { userId, type, user? } }
+          // or for deleted: { chatId, messageId, userId }
+          const payload = msg.payload as {
             messageId: string
-            userId: string
-            type: ReactionType
+            userId?: string
+            type?: ReactionType
+            reaction?: {
+              userId: string
+              type: ReactionType
+              user?: { nickname: string; avatarUrl?: string | null }
+            }
           }
+          const messageId = payload.messageId
+          const rUserId = payload.reaction?.userId ?? payload.userId ?? ''
+          const rType = (payload.reaction?.type ?? payload.type) as ReactionType
+          const rUser = payload.reaction?.user
+
           setMessages((prev) =>
             prev.map((m) => {
               if (m.id !== messageId) return m
@@ -374,11 +400,14 @@ function ChatsWithUser({ userId }: { userId: string }) {
               )
               if (msg.type === 'reaction:deleted')
                 return { ...m, reactions: withoutUser }
+              // For own reactions, the optimistic update already applied the
+              // correct state — only update if user info enrichment is available
+              if (rUserId === userId && !rUser) return m
               return {
                 ...m,
                 reactions: [
                   ...withoutUser,
-                  { messageId, userId: rUserId, type: rType }
+                  { messageId, userId: rUserId, type: rType, user: rUser }
                 ]
               }
             })
@@ -491,6 +520,68 @@ function ChatsWithUser({ userId }: { userId: string }) {
             })
           }
         }
+
+        // ── Typing indicators ──
+        if (msg.type === 'typing:start') {
+          const {
+            chatId,
+            userId: typingUserId,
+            nickname,
+            avatarUrl
+          } = msg.payload as {
+            chatId: string
+            userId: string
+            nickname: string
+            avatarUrl?: string | null
+          }
+          if (chatId !== activeChatIdRef.current) return
+          // Auto-expire after 4s if no stop event
+          const existing = typingTimeouts.current.get(typingUserId)
+          if (existing) clearTimeout(existing)
+          setTypingUsers((prev) => {
+            if (prev.some((u) => u.userId === typingUserId)) return prev
+            return [...prev, { userId: typingUserId, nickname, avatarUrl }]
+          })
+          typingTimeouts.current.set(
+            typingUserId,
+            setTimeout(() => {
+              setTypingUsers((prev) =>
+                prev.filter((u) => u.userId !== typingUserId)
+              )
+              typingTimeouts.current.delete(typingUserId)
+            }, 4000)
+          )
+        }
+
+        if (msg.type === 'typing:stop') {
+          const { userId: typingUserId } = msg.payload as { userId: string }
+          const t = typingTimeouts.current.get(typingUserId)
+          if (t) {
+            clearTimeout(t)
+            typingTimeouts.current.delete(typingUserId)
+          }
+          setTypingUsers((prev) =>
+            prev.filter((u) => u.userId !== typingUserId)
+          )
+        }
+
+        // ── User status updates from others ──
+        if (msg.type === 'user:status') {
+          const { userId: changedUserId, status } = msg.payload as {
+            userId: string
+            status: string
+          }
+          setChats((prev) =>
+            prev.map((c) => ({
+              ...c,
+              users: c.users.map((u) =>
+                u.userId === changedUserId
+                  ? { ...u, user: { ...u.user, status: status as UserStatus } }
+                  : u
+              )
+            }))
+          )
+        }
       } catch {
         /* ignoruj */
       }
@@ -591,6 +682,17 @@ function ChatsWithUser({ userId }: { userId: string }) {
     if (!activeChatId || (!messageText.trim() && pendingFiles.length === 0))
       return
     setSending(true)
+    // Stop typing indicator on send
+    if (isTypingRef.current) {
+      isTypingRef.current = false
+      if (typingThrottleRef.current) clearTimeout(typingThrottleRef.current)
+      wsRef.current?.send(
+        JSON.stringify({
+          type: 'typing:stop',
+          payload: { chatId: activeChatId }
+        })
+      )
+    }
 
     try {
       let attachments: { url: string; type: AttachmentType }[] = []
@@ -701,14 +803,14 @@ function ChatsWithUser({ userId }: { userId: string }) {
           body: JSON.stringify({ userId, type })
         })
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === messageId
-              ? {
-                  ...m,
-                  reactions: [...m.reactions, { messageId, userId, type }]
-                }
-              : m
-          )
+          prev.map((m) => {
+            if (m.id !== messageId) return m
+            const withoutMe = m.reactions.filter((r) => r.userId !== userId)
+            return {
+              ...m,
+              reactions: [...withoutMe, { messageId, userId, type }]
+            }
+          })
         )
       }
     } catch (err) {
@@ -721,6 +823,10 @@ function ChatsWithUser({ userId }: { userId: string }) {
     setMyStatus(status)
     setShowStatusMenu(false)
     localStorage.setItem('userStatus', status)
+    // Notify server so it can persist and relay to friends
+    wsRef.current?.send(
+      JSON.stringify({ type: 'user:status', payload: { status } })
+    )
     try {
       await fetch(`${API_URL}/api/${userId}`, {
         method: 'PUT',
@@ -729,6 +835,53 @@ function ChatsWithUser({ userId }: { userId: string }) {
       })
     } catch (err) {
       console.error(err)
+    }
+  }
+
+  // ── Typing indicator ──
+  function handleTypingChange(isTyping: boolean) {
+    const ws = wsRef.current
+    if (!ws || ws.readyState !== WebSocket.OPEN || !activeChatId) return
+
+    if (isTyping && !isTypingRef.current) {
+      isTypingRef.current = true
+      const chat = chats.find((c) => c.id === activeChatId)
+      const me = chat?.users.find((u) => u.userId === userId)
+      ws.send(
+        JSON.stringify({
+          type: 'typing:start',
+          payload: {
+            chatId: activeChatId,
+            nickname: me?.user.nickname ?? 'Ktoś',
+            avatarUrl: me?.user.avatarUrl ?? null
+          }
+        })
+      )
+    } else if (!isTyping && isTypingRef.current) {
+      isTypingRef.current = false
+      if (typingThrottleRef.current) clearTimeout(typingThrottleRef.current)
+      ws.send(
+        JSON.stringify({
+          type: 'typing:stop',
+          payload: { chatId: activeChatId }
+        })
+      )
+    }
+
+    // Auto-send stop after 3s of inactivity
+    if (isTyping) {
+      if (typingThrottleRef.current) clearTimeout(typingThrottleRef.current)
+      typingThrottleRef.current = setTimeout(() => {
+        if (isTypingRef.current) {
+          isTypingRef.current = false
+          wsRef.current?.send(
+            JSON.stringify({
+              type: 'typing:stop',
+              payload: { chatId: activeChatId }
+            })
+          )
+        }
+      }, 3000)
     }
   }
 
@@ -1099,6 +1252,8 @@ function ChatsWithUser({ userId }: { userId: string }) {
         onUpgradeToGroup={handleUpgradeToGroup}
         friendIds={friendIds}
         allChats={chats}
+        typingUsers={typingUsers}
+        onTypingChange={handleTypingChange}
       />
 
       {profilePopupUserId && (

@@ -408,7 +408,7 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
   background: var(--bg-base);
   position: relative;
 }
@@ -421,6 +421,8 @@
   align-items: center;
   padding: 0 1.5rem;
   background: var(--bg-base);
+  position: relative;
+  z-index: 10;
 }
 
 .ChatContactInfoLeft {
@@ -447,6 +449,7 @@
 .ChatMessageContainer {
   flex: 1;
   overflow-y: auto;
+  overflow-x: clip;
   display: flex;
   flex-direction: column;
   padding: 1.5rem;
@@ -685,7 +688,7 @@
   border: 1px solid var(--border-mid);
   border-radius: 2rem;
   padding: 0.5rem 0.8rem;
-  z-index: 20;
+  z-index: 200;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
   &Left {
     right: 0;
@@ -1466,4 +1469,152 @@
   &:hover {
     background: var(--bg-elevated);
   }
+}
+
+// ── Reaction tooltip ────────────────────────────────────────────────────────
+
+.ReactionTooltip {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  background: var(--bg-elevated, #1e1e2e);
+  border: 1px solid var(--border-mid, rgba(255, 255, 255, 0.1));
+  border-radius: 0.8rem;
+  padding: 0.6rem 0.9rem;
+  min-width: 10rem;
+  max-width: 22rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  animation: tooltipFadeIn 0.15s ease;
+
+  // Arrow pointing down
+  &::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--bg-elevated, #1e1e2e);
+  }
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.ReactionTooltipEmoji {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.ReactionTooltipUsers {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  width: 100%;
+}
+
+.ReactionTooltipUser {
+  font-size: 1.1rem;
+  color: var(--text, #e0e0e0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 18rem;
+}
+
+// ── Typing indicator ─────────────────────────────────────────────────────────
+
+.TypingIndicator {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 1.2rem 0.2rem;
+  min-height: 2.8rem;
+  animation: typingFadeIn 0.2s ease;
+}
+
+@keyframes typingFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.TypingAvatars {
+  display: flex;
+  align-items: center;
+}
+
+.TypingAvatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--bg-surface, #12121a);
+  margin-left: -0.5rem;
+
+  &:first-child {
+    margin-left: 0;
+  }
+}
+
+.TypingDots {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+
+  span {
+    display: block;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--text-muted, #888);
+    animation: typingBounce 1.2s ease-in-out infinite;
+
+    &:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+    &:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+  }
+}
+
+@keyframes typingBounce {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  30% {
+    transform: translateY(-0.4rem);
+    opacity: 1;
+  }
+}
+
+.TypingLabel {
+  font-size: 1.1rem;
+  color: var(--text-muted, #888);
+  font-style: italic;
 }

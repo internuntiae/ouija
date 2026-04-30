@@ -45,6 +45,12 @@ interface Props {
   friendIds: Set<string>
   allChats: Chat[]
   currentUserId?: string
+  typingUsers?: {
+    userId: string
+    nickname: string
+    avatarUrl?: string | null
+  }[]
+  onTypingChange?: (isTyping: boolean) => void
 }
 
 export default function ChatWindow({
@@ -72,7 +78,9 @@ export default function ChatWindow({
   onDeleteGroup,
   onTransferOwner,
   onAddMember,
-  onUpgradeToGroup
+  onUpgradeToGroup,
+  typingUsers = [],
+  onTypingChange
 }: Props) {
   const { t } = useTranslation()
   const [groupPanelOpen, setGroupPanelOpen] = useState(false)
@@ -696,6 +704,7 @@ export default function ChatWindow({
             isOwn={msg.senderId === userId}
             userId={userId}
             onReact={onReact}
+            chatUsers={activeChat?.users ?? []}
           />
         ))}
         <div ref={bottomRef} />
@@ -729,6 +738,36 @@ export default function ChatWindow({
         </div>
       )}
 
+      {/* ── Typing indicator ── */}
+      {typingUsers.length > 0 && (
+        <div className={styles.TypingIndicator}>
+          <span className={styles.TypingAvatars}>
+            {typingUsers.slice(0, 5).map((u) => (
+              <img
+                key={u.userId}
+                src={u.avatarUrl ?? '/ouija_white_logo_square.png'}
+                alt={u.nickname}
+                className={styles.TypingAvatar}
+                title={u.nickname}
+              />
+            ))}
+          </span>
+          <span className={styles.TypingDots}>
+            <span />
+            <span />
+            <span />
+          </span>
+          <span className={styles.TypingLabel}>
+            {typingUsers.length === 1
+              ? typingUsers[0].nickname
+              : typingUsers.length <= 3
+                ? typingUsers.map((u) => u.nickname).join(', ')
+                : `${typingUsers.length} osoby`}{' '}
+            pisze…
+          </span>
+        </div>
+      )}
+
       {/* ── Toolbar ── */}
       <div className={styles.ChatMessageToolbar}>
         <form onSubmit={onSendMessage}>
@@ -744,7 +783,11 @@ export default function ChatWindow({
             placeholder={t('chat.messagePlaceholder')}
             className={styles.ChatMessageToolbarInput}
             value={messageText}
-            onChange={(e) => setMessageText(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value
+              setMessageText(val)
+              if (onTypingChange) onTypingChange(val.length > 0)
+            }}
             disabled={sending}
           />
           <input

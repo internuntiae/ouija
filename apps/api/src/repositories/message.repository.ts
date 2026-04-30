@@ -23,7 +23,12 @@ export const getAllMessages = async (
     },
     take: limit,
     orderBy: { id: 'desc' },
-    include: { attachments: true, reactions: true }
+    include: {
+      attachments: true,
+      reactions: {
+        include: { user: { select: { nickname: true, avatarUrl: true } } }
+      }
+    }
   })
 
   if (messages.length > 0) {
@@ -52,7 +57,12 @@ export const createMessage = async (
         ? { createMany: { data: reactions } }
         : undefined
     },
-    include: { attachments: true, reactions: true }
+    include: {
+      attachments: true,
+      reactions: {
+        include: { user: { select: { nickname: true, avatarUrl: true } } }
+      }
+    }
   })
   await redis.uploadMessages(chatId, message)
   // Zwracaj wiadomość żeby controller mógł ją odesłać klientowi

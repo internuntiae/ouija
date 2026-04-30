@@ -9,10 +9,23 @@ interface Props {
   isOwn: boolean
   userId: string
   onReact: (messageId: string, type: ReactionType) => void
+  chatUsers?: {
+    userId: string
+    user: { nickname: string; avatarUrl?: string | null }
+  }[]
 }
 
-export default function MessageBubble({ msg, isOwn, userId, onReact }: Props) {
+export default function MessageBubble({
+  msg,
+  isOwn,
+  userId,
+  onReact,
+  chatUsers = []
+}: Props) {
   const [showPicker, setShowPicker] = useState(false)
+  const [hoveredReaction, setHoveredReaction] = useState<ReactionType | null>(
+    null
+  )
   const pickerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -25,9 +38,21 @@ export default function MessageBubble({ msg, isOwn, userId, onReact }: Props) {
   }, [showPicker])
 
   const reactions = msg.reactions ?? []
-  const reactionCounts = reactions.reduce<
-    Partial<Record<ReactionType, number>>
-  >((acc, r) => ({ ...acc, [r.type]: (acc[r.type] ?? 0) + 1 }), {})
+
+  // Group reactions by type, collecting reactors
+  const reactionGroups = reactions.reduce<
+    Partial<Record<ReactionType, { count: number; users: string[] }>>
+  >((acc, r) => {
+    const nickname =
+      r.user?.nickname ??
+      chatUsers.find((cu) => cu.userId === r.userId)?.user.nickname ??
+      r.userId
+    if (!acc[r.type]) acc[r.type] = { count: 0, users: [] }
+    acc[r.type]!.count++
+    acc[r.type]!.users.push(nickname)
+    return acc
+  }, {})
+
   const myReaction = reactions.find((r) => r.userId === userId)?.type
 
   return (
@@ -104,26 +129,43 @@ export default function MessageBubble({ msg, isOwn, userId, onReact }: Props) {
         )}
       </div>
 
-      {Object.keys(reactionCounts).length > 0 && (
+      {Object.keys(reactionGroups).length > 0 && (
         <div
           className={`${styles.ReactionBar} ${isOwn ? styles.ReactionBarOwn : ''}`}
         >
-          {(Object.entries(reactionCounts) as [ReactionType, number][]).map(
-            ([type, count]) => {
-              const emoji = REACTION_EMOJI[type]
-              if (!emoji) return null
-              return (
-                <span
-                  key={type}
-                  className={`${styles.ReactionChip} ${myReaction === type ? styles.ReactionChipActive : ''}`}
-                  onClick={() => onReact(msg.id, type)}
-                  title={type}
-                >
-                  {emoji} {count}
-                </span>
-              )
-            }
-          )}
+          {(
+            Object.entries(reactionGroups) as [
+              ReactionType,
+              { count: number; users: string[] }
+            ][]
+          ).map(([type, { count, users }]) => {
+            const emoji = REACTION_EMOJI[type]
+            if (!emoji) return null
+            return (
+              <span
+                key={type}
+                className={`${styles.ReactionChip} ${myReaction === type ? styles.ReactionChipActive : ''}`}
+                onClick={() => onReact(msg.id, type)}
+                onMouseEnter={() => setHoveredReaction(type)}
+                onMouseLeave={() => setHoveredReaction(null)}
+                style={{ position: 'relative' }}
+              >
+                {emoji} {count}
+                {hoveredReaction === type && users.length > 0 && (
+                  <span className={styles.ReactionTooltip}>
+                    <span className={styles.ReactionTooltipEmoji}>{emoji}</span>
+                    <span className={styles.ReactionTooltipUsers}>
+                      {users.map((name, i) => (
+                        <span key={i} className={styles.ReactionTooltipUser}>
+                          {name}
+                        </span>
+                      ))}
+                    </span>
+                  </span>
+                )}
+              </span>
+            )
+          })}
         </div>
       )}
     </div>

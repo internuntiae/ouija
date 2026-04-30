@@ -9,12 +9,13 @@ export type ReactionType =
   | 'THUMBS_UP'
   | 'THUMBS_DOWN'
 export type AttachmentType = 'IMAGE' | 'VIDEO' | 'FILE' | 'AUDIO'
-export type UserStatus = 'ONLINE' | 'OFFLINE' | 'AWAY' | 'BUSY'
+export type UserStatus = 'ONLINE' | 'OFFLINE' | 'AWAY' | 'BUSY' | 'INVISIBLE'
 
 export interface Reaction {
   messageId: string
   userId: string
   type: ReactionType
+  user?: { nickname: string; avatarUrl?: string | null }
 }
 export interface Attachment {
   id: string
@@ -89,14 +90,16 @@ export const STATUS_LABEL: Record<UserStatus, string> = {
   ONLINE: 'Aktywny',
   AWAY: 'Zaraz wracam',
   BUSY: 'Nie przeszkadzać',
-  OFFLINE: 'Offline'
+  OFFLINE: 'Offline',
+  INVISIBLE: 'Niewidoczny'
 }
 
 export const STATUS_COLOR: Record<UserStatus, string> = {
   ONLINE: '#2ecc71',
   AWAY: '#f39c12',
   BUSY: '#e74c3c',
-  OFFLINE: '#7f8c8d'
+  OFFLINE: '#7f8c8d',
+  INVISIBLE: '#7f8c8d'
 }
 
 export const PAGE_SIZE = 20
