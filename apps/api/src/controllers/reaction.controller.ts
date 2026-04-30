@@ -33,6 +33,11 @@ export const addReaction = async (req: Request, res: Response) => {
       userId,
       type as ReactionType
     )
+    // Fetch user info to include in WS payload for tooltips
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { nickname: true, avatarUrl: true }
+    })
     res.status(201).json(reaction)
 
     const chatId = await getChatIdForMessage(messageId)
@@ -40,7 +45,7 @@ export const addReaction = async (req: Request, res: Response) => {
       const memberIds = await getChatMemberIds(chatId)
       sendToUsers(memberIds, {
         type: 'reaction:added',
-        payload: { chatId, messageId, reaction }
+        payload: { chatId, messageId, reaction: { ...reaction, user } }
       })
     }
   } catch (error) {
@@ -57,6 +62,10 @@ export const updateReaction = async (req: Request, res: Response) => {
       userId,
       type as ReactionType
     )
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { nickname: true, avatarUrl: true }
+    })
     res.status(200).json(reaction)
 
     const chatId = await getChatIdForMessage(messageId)
@@ -64,7 +73,7 @@ export const updateReaction = async (req: Request, res: Response) => {
       const memberIds = await getChatMemberIds(chatId)
       sendToUsers(memberIds, {
         type: 'reaction:updated',
-        payload: { chatId, messageId, reaction }
+        payload: { chatId, messageId, reaction: { ...reaction, user } }
       })
     }
   } catch (error) {

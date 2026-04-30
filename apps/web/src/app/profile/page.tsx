@@ -11,129 +11,9 @@ import {
   type FontSize
 } from '@/context/SettingsContext'
 import { useTranslation } from '@/i18n/translations'
+import ProfilePopup from '@/app/components/ProfilePopup/ProfilePopup'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
-
-const MOCK_USER = {
-  id: 'mock-user-1',
-  email: 'jan@gmail.com',
-  nickname: 'Jan Kowalski',
-  status: 'ONLINE',
-  avatarUrl: null as string | null
-}
-
-const MOCK_FRIENDS = [
-  {
-    userId: 'mock-user-1',
-    friendId: 'mock-friend-1',
-    status: 'ACCEPTED',
-    user: {
-      id: 'mock-user-1',
-      nickname: 'Jan Kowalski',
-      status: 'ONLINE',
-      avatarUrl: null as string | null
-    },
-    friend: {
-      id: 'mock-friend-1',
-      nickname: 'Anna Nowak',
-      status: 'AWAY',
-      avatarUrl: null as string | null
-    }
-  },
-  {
-    userId: 'mock-user-1',
-    friendId: 'mock-friend-2',
-    status: 'ACCEPTED',
-    user: {
-      id: 'mock-user-1',
-      nickname: 'Jan Kowalski',
-      status: 'ONLINE',
-      avatarUrl: null as string | null
-    },
-    friend: {
-      id: 'mock-friend-2',
-      nickname: 'Piotr Wiśniewski',
-      status: 'BUSY',
-      avatarUrl: null as string | null
-    }
-  },
-  {
-    userId: 'mock-friend-3',
-    friendId: 'mock-user-1',
-    status: 'ACCEPTED',
-    user: {
-      id: 'mock-friend-3',
-      nickname: 'Kasia Kowalczyk',
-      status: 'OFFLINE',
-      avatarUrl: null as string | null
-    },
-    friend: {
-      id: 'mock-user-1',
-      nickname: 'Jan Kowalski',
-      status: 'ONLINE',
-      avatarUrl: null as string | null
-    }
-  }
-]
-
-const MOCK_PENDING = [
-  {
-    userId: 'mock-stranger-1',
-    friendId: 'mock-user-1',
-    status: 'PENDING',
-    user: {
-      id: 'mock-stranger-1',
-      nickname: 'Marek Zielony',
-      status: 'ONLINE',
-      avatarUrl: null as string | null
-    },
-    friend: {
-      id: 'mock-user-1',
-      nickname: 'Jan Kowalski',
-      status: 'ONLINE',
-      avatarUrl: null as string | null
-    }
-  },
-  {
-    userId: 'mock-stranger-2',
-    friendId: 'mock-user-1',
-    status: 'PENDING',
-    user: {
-      id: 'mock-stranger-2',
-      nickname: 'Zofia Kamińska',
-      status: 'OFFLINE',
-      avatarUrl: null as string | null
-    },
-    friend: {
-      id: 'mock-user-1',
-      nickname: 'Jan Kowalski',
-      status: 'ONLINE',
-      avatarUrl: null as string | null
-    }
-  }
-]
-
-const MOCK_SENT_INVITES = [
-  {
-    userId: 'mock-user-1',
-    friendId: 'mock-stranger-3',
-    status: 'PENDING',
-    user: {
-      id: 'mock-user-1',
-      nickname: 'Jan Kowalski',
-      status: 'ONLINE',
-      avatarUrl: null as string | null
-    },
-    friend: {
-      id: 'mock-stranger-3',
-      nickname: 'Tomasz Lewandowski',
-      status: 'AWAY',
-      avatarUrl: null as string | null
-    }
-  }
-]
-
-const USE_MOCK = false
 
 const STATUS_COLOR: Record<string, string> = {
   ONLINE: '#2ecc71',
@@ -143,7 +23,7 @@ const STATUS_COLOR: Record<string, string> = {
 }
 
 function avatarSrc(url?: string | null) {
-  return url ?? '/ouija_white.png'
+  return url ?? '/ouija_white_logo_square.png'
 }
 
 function SettingRow({
@@ -203,45 +83,43 @@ export default function Profile() {
   const { t } = useTranslation()
 
   const userId =
-    typeof window !== 'undefined'
-      ? (localStorage.getItem('userId') ?? MOCK_USER.id)
-      : MOCK_USER.id
+    typeof window !== 'undefined' ? localStorage.getItem('userId') : null
 
-  const [user, setUser] = useState<typeof MOCK_USER | null>(null)
+  const [user, setUser] = useState<(UserEntry & { email?: string }) | null>(
+    null
+  )
   const [friends, setFriends] = useState<FriendEntry[]>([])
   const [pendingInvites, setPendingInvites] = useState<InviteEntry[]>([])
   const [sentInvites, setSentInvites] = useState<InviteEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const [profilePopupUserId, setProfilePopupUserId] = useState<string | null>(
+    null
+  )
+
   const [settingsSaved, setSettingsSaved] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file || !user) return
+    if (!file || !user || !userId) return
     setAvatarUploading(true)
     try {
-      if (USE_MOCK) {
-        const url = URL.createObjectURL(file)
-        setUser((prev) => (prev ? { ...prev, avatarUrl: url } : prev))
-        return
-      }
       const form = new FormData()
-      form.append('ownerId', userId)
-      form.append('files', file)
-      const uploadRes = await fetch(`${API_URL}/api/media/upload`, {
+      form.append('avatar', file)
+      // POST /api/media/avatar/:userId — uploads file AND sets avatarUrl on user in one call
+      const res = await fetch(`${API_URL}/api/media/avatar/${userId}`, {
         method: 'POST',
         body: form
       })
-      if (!uploadRes.ok) throw new Error('Błąd uploadu')
-      const [media] = await uploadRes.json()
-      const updateRes = await fetch(`${API_URL}/api/${userId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ avatarUrl: media.url })
-      })
-      if (!updateRes.ok) throw new Error('Błąd zapisu avatara')
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        alert(err.error ?? 'Błąd uploadu avatara')
+        return
+      }
+      const { media } = await res.json()
+      // media.url is already the full rehydrated URL
       setUser((prev) => (prev ? { ...prev, avatarUrl: media.url } : prev))
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Błąd zmiany avatara')
@@ -251,15 +129,10 @@ export default function Profile() {
   }
 
   useEffect(() => {
-    if (USE_MOCK) {
-      setUser(MOCK_USER)
-      setFriends(MOCK_FRIENDS)
-      setPendingInvites(MOCK_PENDING)
-      setSentInvites(MOCK_SENT_INVITES)
+    if (!userId) {
       setLoading(false)
       return
     }
-
     async function fetchData() {
       try {
         const [userRes, friendsRes, pendingRes] = await Promise.all([
@@ -267,7 +140,11 @@ export default function Profile() {
           fetch(`${API_URL}/api/users/${userId}/friends?status=ACCEPTED`),
           fetch(`${API_URL}/api/users/${userId}/friends?status=PENDING`)
         ])
-        if (!userRes.ok) throw new Error('Błąd pobierania profilu')
+        if (!userRes.ok) {
+          setError('Błąd pobierania profilu')
+          setLoading(false)
+          return
+        }
         const [userData, friendsData, pendingData] = await Promise.all([
           userRes.json(),
           friendsRes.json(),
@@ -300,18 +177,16 @@ export default function Profile() {
   }
 
   async function handleRemoveFriend(friendId: string) {
-    if (USE_MOCK) {
-      setFriends((prev) =>
-        prev.filter((f) => f.friendId !== friendId && f.userId !== friendId)
-      )
-      return
-    }
+    if (!userId) return
     try {
-      const res = await fetch(
-        `${API_URL}/api/users/${userId}/friends/${friendId}`,
-        { method: 'DELETE' }
-      )
-      if (!res.ok) throw new Error('Błąd usuwania')
+      await Promise.all([
+        fetch(`${API_URL}/api/users/${userId}/friends/${friendId}`, {
+          method: 'DELETE'
+        }),
+        fetch(`${API_URL}/api/users/${friendId}/friends/${userId}`, {
+          method: 'DELETE'
+        })
+      ])
       setFriends((prev) =>
         prev.filter((f) => f.friendId !== friendId && f.userId !== friendId)
       )
@@ -321,10 +196,7 @@ export default function Profile() {
   }
 
   async function handleMessageFriend(friendId: string) {
-    if (USE_MOCK) {
-      router.push('/chats')
-      return
-    }
+    if (!userId) return
     try {
       const chatsRes = await fetch(`${API_URL}/api/users/${userId}/chats`)
       if (chatsRes.ok) {
@@ -343,7 +215,10 @@ export default function Profile() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'PRIVATE', userIds: [userId, friendId] })
       })
-      if (!res.ok) throw new Error('Błąd')
+      if (!res.ok) {
+        alert('Błąd')
+        return
+      }
       const chat = await res.json()
       router.push(`/chats?chatId=${chat.id}`)
     } catch (err) {
@@ -351,14 +226,12 @@ export default function Profile() {
     }
   }
 
+  async function handleMessageFromProfile(friendId: string) {
+    await handleMessageFriend(friendId)
+  }
+
   async function handleAcceptInvite(inviterId: string) {
-    if (USE_MOCK) {
-      const invite = pendingInvites.find((i) => i.userId === inviterId)
-      if (invite)
-        setFriends((prev) => [...prev, { ...invite, status: 'ACCEPTED' }])
-      setPendingInvites((prev) => prev.filter((i) => i.userId !== inviterId))
-      return
-    }
+    if (!userId) return
     try {
       const res = await fetch(
         `${API_URL}/api/users/${inviterId}/friends/${userId}`,
@@ -368,9 +241,15 @@ export default function Profile() {
           body: JSON.stringify({ status: 'ACCEPTED' })
         }
       )
-      if (!res.ok) throw new Error('Błąd akceptacji')
+      if (!res.ok) {
+        alert('Błąd akceptacji')
+        return
+      }
       const inviterRes = await fetch(`${API_URL}/api/?id=${inviterId}`)
-      if (!inviterRes.ok) throw new Error('Błąd pobierania danych użytkownika')
+      if (!inviterRes.ok) {
+        alert('Błąd pobierania danych użytkownika')
+        return
+      }
       const inviterData = await inviterRes.json()
       const newFriend: FriendEntry = {
         userId: inviterId,
@@ -397,16 +276,16 @@ export default function Profile() {
   }
 
   async function handleRejectInvite(inviterId: string) {
-    if (USE_MOCK) {
-      setPendingInvites((prev) => prev.filter((i) => i.userId !== inviterId))
-      return
-    }
+    if (!userId) return
     try {
       const res = await fetch(
         `${API_URL}/api/users/${inviterId}/friends/${userId}`,
         { method: 'DELETE' }
       )
-      if (!res.ok) throw new Error('Błąd odrzucenia')
+      if (!res.ok) {
+        alert('Błąd odrzucenia')
+        return
+      }
       setPendingInvites((prev) => prev.filter((i) => i.userId !== inviterId))
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Błąd')
@@ -414,16 +293,16 @@ export default function Profile() {
   }
 
   async function handleCancelInvite(friendId: string) {
-    if (USE_MOCK) {
-      setSentInvites((prev) => prev.filter((i) => i.friendId !== friendId))
-      return
-    }
+    if (!userId) return
     try {
       const res = await fetch(
         `${API_URL}/api/users/${userId}/friends/${friendId}`,
         { method: 'DELETE' }
       )
-      if (!res.ok) throw new Error('Błąd cofania zaproszenia')
+      if (!res.ok) {
+        alert('Błąd cofania zaproszenia')
+        return
+      }
       setSentInvites((prev) => prev.filter((i) => i.friendId !== friendId))
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Błąd')
@@ -434,334 +313,417 @@ export default function Profile() {
     return f.userId === userId ? f.friend : f.user
   }
 
+  if (!userId) return <p className={styles.ErrorText}>{t('common.error')}</p>
   if (loading)
     return <p className={styles.LoadingText}>{t('common.loading')}</p>
   if (error) return <p className={styles.ErrorText}>{error}</p>
   if (!user) return null
 
+  // Compute account details
+  const accountCreatedAt = (
+    user as UserEntry & { email?: string; createdAt?: string }
+  ).createdAt
+  const createdDate = accountCreatedAt ? new Date(accountCreatedAt) : null
+  const accountAgeMs = createdDate ? Date.now() - createdDate.getTime() : null
+  const accountAgeDays =
+    accountAgeMs !== null
+      ? Math.floor(accountAgeMs / (1000 * 60 * 60 * 24))
+      : null
+  const accountAgeHours =
+    accountAgeMs !== null
+      ? Math.floor((accountAgeMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+      : null
+  const accountAgeMinutes =
+    accountAgeMs !== null
+      ? Math.floor((accountAgeMs % (1000 * 60 * 60)) / (1000 * 60))
+      : null
+
   return (
     <div className={styles.PageWrapper}>
       {/* ── Profil ── */}
       <div className={`${styles.Section} ${styles.First}`}>
-        <div className={styles.AvatarEditWrap}>
-          <img
-            className={styles.SectionProfilePicture}
-            src={avatarSrc(user.avatarUrl)}
-            alt="avatar"
-            width={120}
-            height={120}
-          />
-          <label
-            className={styles.AvatarEditBtn}
-            title={t('profile.changeAvatar')}
-          >
-            {avatarUploading ? '...' : '📷'}
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/gif,image/webp"
-              style={{ display: 'none' }}
-              onChange={handleAvatarChange}
-              disabled={avatarUploading}
+        <div className={styles.ProfileHeader}>
+          <div className={styles.AvatarEditWrap}>
+            <img
+              className={styles.SectionProfilePicture}
+              src={avatarSrc(user.avatarUrl)}
+              alt="avatar"
+              width={120}
+              height={120}
             />
-          </label>
+            <label
+              className={styles.AvatarEditBtn}
+              title={t('profile.changeAvatar')}
+            >
+              {avatarUploading ? '...' : '📷'}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                style={{ display: 'none' }}
+                onChange={handleAvatarChange}
+                disabled={avatarUploading}
+              />
+            </label>
+          </div>
+          <div className={styles.ProfileInfo}>
+            <h2 className={styles.ProfileNickname}>{user.nickname}</h2>
+            <p className={styles.SectionText}>Email: {user.email}</p>
+            <p className={styles.SectionText}>
+              <span
+                className={styles.StatusDotInline}
+                style={{ background: STATUS_COLOR[user.status] }}
+              />
+              {t(`status.${user.status}` as never)}
+            </p>
+            {createdDate && (
+              <p className={styles.SectionText}>
+                {t('profile.accountCreated')}:{' '}
+                {createdDate.toLocaleDateString()}
+              </p>
+            )}
+            {accountAgeDays !== null && (
+              <p className={styles.SectionText}>
+                {t('profile.accountAge')}: {accountAgeDays}{' '}
+                {t('profile.accountAgeDays')}, {accountAgeHours}h{' '}
+                {accountAgeMinutes}m
+              </p>
+            )}
+            <p className={styles.SectionText}>
+              {t('profile.passwordLabel')}{' '}
+              <a
+                style={{ cursor: 'pointer' }}
+                onClick={() => router.push('/forgot-password')}
+              >
+                {t('profile.changePasswordRedirect')}
+              </a>
+            </p>
+          </div>
         </div>
-        <h2 className={styles.SectionHeading}>{user.nickname}</h2>
-        <p className={styles.SectionText}>Email: {user.email}</p>
-        <p className={styles.SectionText}>
-          {t('profile.passwordLabel')}{' '}
-          <a
-            style={{ cursor: 'pointer' }}
-            onClick={() => router.push('/forgot-password')}
-          >
-            {t('profile.changePasswordRedirect')}
-          </a>
-        </p>
       </div>
 
-      {/* ── Zaproszenia przychodzące ── */}
-      {pendingInvites.length > 0 && (
-        <div className={styles.Section}>
-          <h2 className={styles.SectionHeading}>
-            {t('profile.pendingInvites')}
-            <span className={styles.Badge}>{pendingInvites.length}</span>
-          </h2>
-          {pendingInvites.map((invite) => (
-            <div
-              key={`${invite.userId}-${invite.friendId}`}
-              className={styles.SectionFriend}
-            >
-              <div
-                className={styles.AvatarWrap}
-                style={{ cursor: 'pointer' }}
-                onClick={() => router.push(`/profile/${invite.user.id}`)}
-              >
-                <img
-                  className={styles.SectionFriendAvatar}
-                  src={avatarSrc(invite.user.avatarUrl)}
-                  alt="avatar"
-                  width={48}
-                  height={48}
-                />
-                <span
-                  className={styles.StatusDot}
-                  style={{ background: STATUS_COLOR[invite.user.status] }}
-                />
-              </div>
-              <div className={styles.FriendInfo}>
-                <h3 className={styles.SectionFriendName}>
-                  {invite.user.nickname}
-                </h3>
-                <span className={styles.FriendStatusText}>
-                  {t('profile.wantsToBeYourFriend')}
-                </span>
-              </div>
-              <button
-                className={styles.AcceptBtn}
-                onClick={() => handleAcceptInvite(invite.userId)}
-              >
-                {t('profile.accept')}
-              </button>
-              <button
-                className={styles.RejectBtn}
-                onClick={() => handleRejectInvite(invite.userId)}
-              >
-                {t('profile.reject')}
-              </button>
-            </div>
-          ))}
-        </div>
+      {/* ── ProfilePopup ── */}
+      {profilePopupUserId && (
+        <ProfilePopup
+          userId={profilePopupUserId}
+          viewerId={userId}
+          onClose={() => setProfilePopupUserId(null)}
+          onMessageUser={handleMessageFromProfile}
+        />
       )}
 
-      {/* ── Wysłane zaproszenia ── */}
-      {sentInvites.length > 0 && (
-        <div className={styles.Section}>
-          <h2 className={styles.SectionHeading}>
-            {t('profile.sentInvites')}
-            <span className={styles.Badge}>{sentInvites.length}</span>
-          </h2>
-          {sentInvites.map((invite) => (
-            <div
-              key={`${invite.userId}-${invite.friendId}`}
-              className={styles.SectionFriend}
-            >
-              <div
-                className={styles.AvatarWrap}
-                style={{ cursor: 'pointer' }}
-                onClick={() => router.push(`/profile/${invite.friend.id}`)}
-              >
-                <img
-                  className={styles.SectionFriendAvatar}
-                  src={avatarSrc(invite.friend.avatarUrl)}
-                  alt="avatar"
-                  width={48}
-                  height={48}
-                />
-                <span
-                  className={styles.StatusDot}
-                  style={{ background: STATUS_COLOR[invite.friend.status] }}
-                />
-              </div>
-              <div className={styles.FriendInfo}>
-                <h3 className={styles.SectionFriendName}>
-                  {invite.friend.nickname}
-                </h3>
-                <span className={styles.FriendStatusText}>
-                  {t(
-                    `status.${invite.friend.status}` as `status.${string}` &
-                      Parameters<typeof t>[0]
-                  ) ?? invite.friend.status}{' '}
-                  · {t('profile.awaitingResponse')}
-                </span>
-              </div>
-              <button
-                className={styles.RejectBtn}
-                onClick={() => handleCancelInvite(invite.friendId)}
-              >
-                {t('profile.cancel')}
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ── Znajomi ── */}
-      <div className={styles.Section}>
-        <h2 className={styles.SectionHeading}>{t('profile.friends')}</h2>
-        {friends.length === 0 && (
-          <p className={styles.SectionText}>{t('profile.noFriends')}</p>
-        )}
-        {friends.map((friendship) => {
-          const friend = getFriendUser(friendship)
-          return (
-            <div
-              key={`${friendship.userId}-${friendship.friendId}`}
-              className={styles.SectionFriend}
-            >
-              <div
-                className={styles.AvatarWrap}
-                style={{ cursor: 'pointer' }}
-                onClick={() => router.push(`/profile/${friend.id}`)}
-              >
-                <img
-                  className={styles.SectionFriendAvatar}
-                  src={avatarSrc(friend.avatarUrl)}
-                  alt="avatar"
-                  width={48}
-                  height={48}
-                />
-                <span
-                  className={styles.StatusDot}
-                  style={{ background: STATUS_COLOR[friend.status] }}
-                />
-              </div>
-              <div className={styles.FriendInfo}>
-                <h3 className={styles.SectionFriendName}>{friend.nickname}</h3>
-                <span
-                  className={styles.FriendStatusText}
-                  style={{ color: STATUS_COLOR[friend.status] }}
+      {/* ── Two-column section: Friends/Invites | App Settings ── */}
+      <div className={styles.TwoColumnSection}>
+        {/* LEFT: Friend requests + Friends */}
+        <div className={styles.TwoColumnLeft}>
+          {/* ── Zaproszenia przychodzące (repeated here for column layout) ── */}
+          {pendingInvites.length > 0 && (
+            <div className={styles.ColumnCard}>
+              <h2 className={styles.SectionHeading}>
+                {t('profile.pendingInvites')}
+                <span className={styles.Badge}>{pendingInvites.length}</span>
+              </h2>
+              {pendingInvites.map((invite) => (
+                <div
+                  key={`pi-${invite.userId}-${invite.friendId}`}
+                  className={styles.SectionFriend}
                 >
-                  {t(
-                    `status.${friend.status}` as `status.${string}` &
-                      Parameters<typeof t>[0]
-                  ) ?? friend.status}
-                </span>
-              </div>
-              <button
-                className={styles.SectionFriendMessageButton}
-                onClick={() => handleMessageFriend(friend.id)}
-              >
-                {t('profile.message')}
-              </button>
-              <button
-                className={styles.SectionFriendDeleteButton}
-                onClick={() => handleRemoveFriend(friend.id)}
-              >
-                {t('profile.remove')}
-              </button>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* ── Ustawienia ── */}
-      <div className={styles.Section}>
-        <h2 className={styles.SectionHeading}>{t('profile.settings')}</h2>
-        {settingsSaved && (
-          <p className={styles.SuccessMsg}>{t('profile.saved')}</p>
-        )}
-
-        <div className={styles.SettingsGroup}>
-          <h3 className={styles.SettingsGroupTitle}>
-            {t('profile.appearance')}
-          </h3>
-          <SettingRow label={t('profile.theme')}>
-            <div className={styles.SegmentedControl}>
-              {(['dark', 'light'] as Theme[]).map((th) => (
-                <button
-                  key={th}
-                  className={`${styles.SegmentBtn} ${settings.theme === th ? styles.SegmentBtnActive : ''}`}
-                  onClick={() => handleSaveSetting('theme', th)}
-                >
-                  {th === 'dark'
-                    ? t('profile.themeDark')
-                    : t('profile.themeLight')}
-                </button>
+                  <div
+                    className={styles.AvatarWrap}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => router.push(`/profile/${invite.user.id}`)}
+                  >
+                    <img
+                      className={styles.SectionFriendAvatar}
+                      src={avatarSrc(invite.user.avatarUrl)}
+                      alt="avatar"
+                      width={40}
+                      height={40}
+                    />
+                    <span
+                      className={styles.StatusDot}
+                      style={{ background: STATUS_COLOR[invite.user.status] }}
+                    />
+                  </div>
+                  <div className={styles.FriendInfo}>
+                    <h3 className={styles.SectionFriendName}>
+                      {invite.user.nickname}
+                    </h3>
+                    <span className={styles.FriendStatusText}>
+                      {t('profile.wantsToBeYourFriend')}
+                    </span>
+                  </div>
+                  <button
+                    className={styles.AcceptBtn}
+                    onClick={() => handleAcceptInvite(invite.userId)}
+                  >
+                    {t('profile.accept')}
+                  </button>
+                  <button
+                    className={styles.RejectBtn}
+                    onClick={() => handleRejectInvite(invite.userId)}
+                  >
+                    {t('profile.reject')}
+                  </button>
+                </div>
               ))}
             </div>
-          </SettingRow>
-          <SettingRow label={t('profile.fontSize')}>
-            <div className={styles.SegmentedControl}>
-              {(
-                [
-                  ['small', t('profile.fontSmall')],
-                  ['medium', t('profile.fontMedium')],
-                  ['large', t('profile.fontLarge')]
-                ] as [FontSize, string][]
-              ).map(([val, label]) => (
-                <button
-                  key={val}
-                  className={`${styles.SegmentBtn} ${settings.fontSize === val ? styles.SegmentBtnActive : ''}`}
-                  onClick={() => handleSaveSetting('fontSize', val)}
+          )}
+
+          {/* ── Wysłane zaproszenia ── */}
+          {sentInvites.length > 0 && (
+            <div className={styles.ColumnCard}>
+              <h2 className={styles.SectionHeading}>
+                {t('profile.sentInvites')}
+                <span className={styles.Badge}>{sentInvites.length}</span>
+              </h2>
+              {sentInvites.map((invite) => (
+                <div
+                  key={`si-${invite.userId}-${invite.friendId}`}
+                  className={styles.SectionFriend}
                 >
-                  {label}
-                </button>
+                  <div
+                    className={styles.AvatarWrap}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => router.push(`/profile/${invite.friend.id}`)}
+                  >
+                    <img
+                      className={styles.SectionFriendAvatar}
+                      src={avatarSrc(invite.friend.avatarUrl)}
+                      alt="avatar"
+                      width={40}
+                      height={40}
+                    />
+                    <span
+                      className={styles.StatusDot}
+                      style={{ background: STATUS_COLOR[invite.friend.status] }}
+                    />
+                  </div>
+                  <div className={styles.FriendInfo}>
+                    <h3 className={styles.SectionFriendName}>
+                      {invite.friend.nickname}
+                    </h3>
+                    <span className={styles.FriendStatusText}>
+                      · {t('profile.awaitingResponse')}
+                    </span>
+                  </div>
+                  <button
+                    className={styles.RejectBtn}
+                    onClick={() => handleCancelInvite(invite.friendId)}
+                  >
+                    {t('profile.cancel')}
+                  </button>
+                </div>
               ))}
             </div>
-          </SettingRow>
-        </div>
+          )}
 
-        <div className={styles.SettingsGroup}>
-          <h3 className={styles.SettingsGroupTitle}>{t('profile.language')}</h3>
-          <SettingRow label={t('profile.language')}>
-            <div className={styles.SegmentedControl}>
-              {(
-                [
-                  ['pl', t('profile.langPl')],
-                  ['en', t('profile.langEn')]
-                ] as [Language, string][]
-              ).map(([val, label]) => (
-                <button
-                  key={val}
-                  className={`${styles.SegmentBtn} ${settings.language === val ? styles.SegmentBtnActive : ''}`}
-                  onClick={() => handleSaveSetting('language', val)}
+          {/* ── Znajomi ── */}
+          <div className={styles.ColumnCard}>
+            <h2 className={styles.SectionHeading}>{t('profile.friends')}</h2>
+            {friends.length === 0 && (
+              <p className={styles.SectionText}>{t('profile.noFriends')}</p>
+            )}
+            {friends.map((friendship) => {
+              const friend = getFriendUser(friendship)
+              return (
+                <div
+                  key={`${friendship.userId}-${friendship.friendId}`}
+                  className={styles.SectionFriend}
                 >
-                  {label}
-                </button>
-              ))}
+                  <div
+                    className={styles.AvatarWrap}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => setProfilePopupUserId(friend.id)}
+                  >
+                    <img
+                      className={styles.SectionFriendAvatar}
+                      src={avatarSrc(friend.avatarUrl)}
+                      alt="avatar"
+                      width={40}
+                      height={40}
+                    />
+                    <span
+                      className={styles.StatusDot}
+                      style={{ background: STATUS_COLOR[friend.status] }}
+                    />
+                  </div>
+                  <div className={styles.FriendInfo}>
+                    <h3 className={styles.SectionFriendName}>
+                      {friend.nickname}
+                    </h3>
+                    <span
+                      className={styles.FriendStatusText}
+                      style={{ color: STATUS_COLOR[friend.status] }}
+                    >
+                      {t(
+                        `status.${friend.status}` as `status.${string}` &
+                          Parameters<typeof t>[0]
+                      ) ?? friend.status}
+                    </span>
+                  </div>
+                  <button
+                    className={styles.SectionFriendMessageButton}
+                    onClick={() => handleMessageFriend(friend.id)}
+                  >
+                    {t('profile.message')}
+                  </button>
+                  <button
+                    className={styles.SectionFriendDeleteButton}
+                    onClick={() => handleRemoveFriend(friend.id)}
+                  >
+                    {t('profile.remove')}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* RIGHT: App Settings */}
+        <div className={styles.TwoColumnRight}>
+          <div className={styles.ColumnCard}>
+            <h2 className={styles.SectionHeading}>{t('profile.settings')}</h2>
+            {settingsSaved && (
+              <p className={styles.SuccessMsg}>{t('profile.saved')}</p>
+            )}
+
+            <div className={styles.SettingsGroup}>
+              <h3 className={styles.SettingsGroupTitle}>
+                {t('profile.appearance')}
+              </h3>
+              <SettingRow label={t('profile.theme')}>
+                <div className={styles.SegmentedControl}>
+                  {(['dark', 'light'] as Theme[]).map((th) => (
+                    <button
+                      key={th}
+                      className={`${styles.SegmentBtn} ${settings.theme === th ? styles.SegmentBtnActive : ''}`}
+                      onClick={() => handleSaveSetting('theme', th)}
+                    >
+                      {th === 'dark'
+                        ? t('profile.themeDark')
+                        : t('profile.themeLight')}
+                    </button>
+                  ))}
+                </div>
+              </SettingRow>
+              <SettingRow label={t('profile.fontSize')}>
+                <div className={styles.SegmentedControl}>
+                  {(['small', 'medium', 'large'] as FontSize[]).map((val) => (
+                    <button
+                      key={val}
+                      className={`${styles.SegmentBtn} ${settings.fontSize === val ? styles.SegmentBtnActive : ''}`}
+                      onClick={() => handleSaveSetting('fontSize', val)}
+                    >
+                      {val === 'small'
+                        ? t('profile.fontSmall')
+                        : val === 'medium'
+                          ? t('profile.fontMedium')
+                          : t('profile.fontLarge')}
+                    </button>
+                  ))}
+                </div>
+              </SettingRow>
             </div>
-          </SettingRow>
-        </div>
 
-        <div className={styles.SettingsGroup}>
-          <h3 className={styles.SettingsGroupTitle}>
-            {t('profile.notifications')}
-          </h3>
-          <SettingRow label={t('profile.notifications')}>
-            <Toggle
-              checked={settings.notificationsEnabled}
-              onChange={(v) => handleSaveSetting('notificationsEnabled', v)}
-            />
-          </SettingRow>
-          <SettingRow label={t('profile.notifSound')}>
-            <Toggle
-              checked={settings.notificationSound}
-              onChange={(v) => handleSaveSetting('notificationSound', v)}
-            />
-          </SettingRow>
-          <SettingRow label={t('profile.notifDesktop')}>
-            <Toggle
-              checked={settings.notificationDesktop}
-              onChange={(v) => {
-                if (
-                  v &&
-                  typeof window !== 'undefined' &&
-                  'Notification' in window
-                ) {
-                  Notification.requestPermission().then((perm) => {
-                    handleSaveSetting('notificationDesktop', perm === 'granted')
-                  })
-                } else {
-                  handleSaveSetting('notificationDesktop', v)
-                }
-              }}
-            />
-          </SettingRow>
-        </div>
+            <div className={styles.SettingsGroup}>
+              <h3 className={styles.SettingsGroupTitle}>
+                {t('profile.language')}
+              </h3>
+              <SettingRow label={t('profile.language')}>
+                <div className={styles.SegmentedControl}>
+                  {(['pl', 'en'] as Language[]).map((val) => (
+                    <button
+                      key={val}
+                      className={`${styles.SegmentBtn} ${settings.language === val ? styles.SegmentBtnActive : ''}`}
+                      onClick={() => handleSaveSetting('language', val)}
+                    >
+                      {val === 'pl' ? t('profile.langPl') : t('profile.langEn')}
+                    </button>
+                  ))}
+                </div>
+              </SettingRow>
+            </div>
 
-        <div className={styles.SettingsGroup}>
-          <h3 className={styles.SettingsGroupTitle}>{t('profile.account')}</h3>
-          <button
-            className={styles.DangerBtn}
-            onClick={() => {
-              if (confirm(t('profile.logoutConfirm'))) {
-                localStorage.removeItem('userId')
-                localStorage.removeItem('userNickname')
-                router.push('/login')
-              }
-            }}
-          >
-            {t('profile.logout')}
-          </button>
+            <div className={styles.SettingsGroup}>
+              <h3 className={styles.SettingsGroupTitle}>
+                {t('profile.notifications')}
+              </h3>
+              <SettingRow label={t('profile.notifications')}>
+                <Toggle
+                  checked={settings.notificationsEnabled}
+                  onChange={(v) => handleSaveSetting('notificationsEnabled', v)}
+                />
+              </SettingRow>
+              <SettingRow label={t('profile.notifSound')}>
+                <Toggle
+                  checked={settings.notificationSound}
+                  onChange={(v) => handleSaveSetting('notificationSound', v)}
+                />
+              </SettingRow>
+              <SettingRow label={t('profile.notifDesktop')}>
+                <Toggle
+                  checked={settings.notificationDesktop}
+                  onChange={(v) => {
+                    if (
+                      v &&
+                      typeof window !== 'undefined' &&
+                      'Notification' in window
+                    ) {
+                      Notification.requestPermission().then((perm) => {
+                        handleSaveSetting(
+                          'notificationDesktop',
+                          perm === 'granted'
+                        )
+                      })
+                    } else {
+                      handleSaveSetting('notificationDesktop', v)
+                    }
+                  }}
+                />
+              </SettingRow>
+            </div>
+
+            <div className={styles.SettingsGroup}>
+              <h3 className={styles.SettingsGroupTitle}>
+                {t('profile.account')}
+              </h3>
+              <button
+                className={styles.DangerBtn}
+                onClick={async () => {
+                  if (confirm(t('profile.logoutConfirm'))) {
+                    const uid = localStorage.getItem('userId')
+                    if (uid) {
+                      // Save the current status so we can restore it on next login
+                      const currentStatus = localStorage.getItem('userStatus')
+                      if (
+                        currentStatus &&
+                        currentStatus !== 'OFFLINE' &&
+                        currentStatus !== 'INVISIBLE'
+                      ) {
+                        localStorage.setItem('preLogoutStatus', currentStatus)
+                      }
+                      // Set status to OFFLINE before disconnecting
+                      try {
+                        await fetch(`${API_URL}/api/${uid}`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ status: 'OFFLINE' })
+                        })
+                      } catch {
+                        /* best-effort */
+                      }
+                    }
+                    localStorage.removeItem('userId')
+                    localStorage.removeItem('userNickname')
+                    localStorage.removeItem('userStatus')
+                    router.push('/login')
+                  }
+                }}
+              >
+                {t('profile.logout')}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

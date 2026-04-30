@@ -43,6 +43,7 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD}
       SMTP_FROM: ${SMTP_FROM:-Ouija <noreply@ouija.local>}
       APP_URL: ${APP_URL:-http://localhost:3000}
+      CDN_BASE_URL: ${CDN_BASE_URL:-http://localhost:3001}
       AUTH_REQUIRE_EMAIL_VERIFICATION: ${AUTH_REQUIRE_EMAIL_VERIFICATION}
       AUTH_ENABLE_PASSWORD_RESET: ${AUTH_ENABLE_PASSWORD_RESET}
     ports:
@@ -64,11 +65,16 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+        - CDN_BASE_URL=${CDN_BASE_URL}
     container_name: ouija-web-app
     image: guc10/ouija-web
     pull_policy: never
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+      APP_URL: ${APP_URL:-http://localhost:3000}          # ADD THIS
+      CDN_BASE_URL: ${CDN_BASE_URL:-http://localhost:3001/api/media}
     ports:
       - "3000:3000"
     depends_on:

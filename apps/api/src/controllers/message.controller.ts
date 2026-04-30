@@ -28,11 +28,12 @@ export const createMessage = async (req: Request, res: Response) => {
     )
     res.status(201).json(message)
 
-    // Notify all chat members
+    // Notify all chat members — spread message fields directly so the
+    // frontend can cast payload straight to Message without unwrapping.
     const memberIds = await getChatMemberIds(chatId)
     sendToUsers(memberIds, {
       type: 'message:created',
-      payload: { chatId, message }
+      payload: { ...message } as Record<string, unknown>
     })
   } catch (error) {
     res.status(500).json({ error: (error as Error).message })

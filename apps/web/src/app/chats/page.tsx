@@ -1,7 +1,8 @@
 'use client'
 
 import styles from './Chats.module.scss'
-import ProfilePopup from './ProfilePopup'
+import ProfilePopup from '../components/ProfilePopup/ProfilePopup'
+import GroupInfoPopup from '../components/GroupInfoPopup/GroupInfoPopup'
 import {
   useState,
   useEffect,
@@ -19,222 +20,36 @@ import {
   UserStatus,
   UserSearchResult,
   ReactionType,
+  REACTION_EMOJI,
   AttachmentType,
   API_URL,
   PAGE_SIZE
 } from './types'
 import { useSettings } from '@/context/SettingsContext'
+import { updateSwNameCache } from '@/app/sw-register'
 import { useTranslation } from '@/i18n/translations'
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-const MOCK_USER_ID = 'mock-user-1'
-
-const MOCK_CHATS: Chat[] = [
-  {
-    id: 'mock-chat-1',
-    name: null,
-    type: 'PRIVATE',
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-    users: [
-      {
-        userId: 'mock-user-1',
-        chatId: 'mock-chat-1',
-        role: 'ADMIN',
-        joinedAt: '',
-        user: { id: 'mock-user-1', nickname: 'Ty', status: 'ONLINE' }
-      },
-      {
-        userId: 'mock-friend-1',
-        chatId: 'mock-chat-1',
-        role: 'MEMBER',
-        joinedAt: '',
-        user: { id: 'mock-friend-1', nickname: 'Anna Nowak', status: 'AWAY' }
-      }
-    ],
-    lastMessage: {
-      id: 'lm1',
-      chatId: 'mock-chat-1',
-      senderId: 'mock-friend-1',
-      content: 'Hej, co słychać?',
-      sentAt: new Date(Date.now() - 300000).toISOString(),
-      editedAt: null,
-      attachments: [],
-      reactions: []
-    },
-    unreadCount: 2
-  },
-  {
-    id: 'mock-chat-2',
-    name: null,
-    type: 'PRIVATE',
-    createdAt: '2024-01-02T00:00:00Z',
-    updatedAt: '2024-01-02T00:00:00Z',
-    users: [
-      {
-        userId: 'mock-user-1',
-        chatId: 'mock-chat-2',
-        role: 'MEMBER',
-        joinedAt: '',
-        user: { id: 'mock-user-1', nickname: 'Ty', status: 'ONLINE' }
-      },
-      {
-        userId: 'mock-friend-2',
-        chatId: 'mock-chat-2',
-        role: 'ADMIN',
-        joinedAt: '',
-        user: {
-          id: 'mock-friend-2',
-          nickname: 'Piotr Wiśniewski',
-          status: 'BUSY'
-        }
-      }
-    ],
-    lastMessage: {
-      id: 'lm2',
-      chatId: 'mock-chat-2',
-      senderId: 'mock-user-1',
-      content: 'Dobra, do jutra!',
-      sentAt: new Date(Date.now() - 3600000).toISOString(),
-      editedAt: null,
-      attachments: [],
-      reactions: []
-    },
-    unreadCount: 0
-  },
-  {
-    id: 'mock-chat-3',
-    name: 'Projekt zespołowy',
-    type: 'GROUP',
-    createdAt: '2024-01-03T00:00:00Z',
-    updatedAt: '2024-01-03T00:00:00Z',
-    users: [
-      {
-        userId: 'mock-user-1',
-        chatId: 'mock-chat-3',
-        role: 'ADMIN',
-        joinedAt: '',
-        user: { id: 'mock-user-1', nickname: 'Ty', status: 'ONLINE' }
-      },
-      {
-        userId: 'mock-friend-1',
-        chatId: 'mock-chat-3',
-        role: 'MEMBER',
-        joinedAt: '',
-        user: { id: 'mock-friend-1', nickname: 'Anna Nowak', status: 'AWAY' }
-      },
-      {
-        userId: 'mock-friend-2',
-        chatId: 'mock-chat-3',
-        role: 'MEMBER',
-        joinedAt: '',
-        user: {
-          id: 'mock-friend-2',
-          nickname: 'Piotr Wiśniewski',
-          status: 'BUSY'
-        }
-      }
-    ],
-    lastMessage: {
-      id: 'lm3',
-      chatId: 'mock-chat-3',
-      senderId: 'mock-friend-1',
-      content: 'Kiedy spotkanie?',
-      sentAt: new Date(Date.now() - 7200000).toISOString(),
-      editedAt: null,
-      attachments: [],
-      reactions: []
-    },
-    unreadCount: 5
-  }
-]
-
-function generateMockMessages(chatId: string): Message[] {
-  const senders = ['mock-user-1', 'mock-friend-1', 'mock-friend-2']
-  const contents = [
-    'Hej, co słychać?',
-    'Wszystko dobrze!',
-    'Kiedy spotkanie?',
-    'Jutro o 18',
-    'Dobra, będę',
-    'Okej 👍',
-    'Ej pomożesz z projektem?',
-    'Jasne, co trzeba?',
-    'Mam tu jakiś plik',
-    'Sprawdzam',
-    'Super robota!',
-    'Dzięki 😊',
-    'Masz chwilę?',
-    'Teraz nie, za godzinę',
-    'Spoko, piszę później',
-    'Hej',
-    'Co tam?',
-    'Normalnie',
-    'Okej',
-    'Dobra dobra'
-  ]
-  return Array.from({ length: 50 }, (_, i) => ({
-    id: `mock-msg-${i + 1}`,
-    chatId,
-    senderId: senders[(i + 1) % senders.length],
-    content: contents[(i + 1) % contents.length],
-    sentAt: new Date(Date.now() - (50 - i) * 60000).toISOString(),
-    editedAt: null,
-    attachments: [],
-    reactions:
-      i === 2
-        ? [
-            {
-              messageId: `mock-msg-${i + 1}`,
-              userId: 'mock-friend-1',
-              type: 'LIKE' as const
-            }
-          ]
-        : []
-  }))
-}
-
-const ALL_MOCK_MESSAGES: Record<string, Message[]> = {
-  'mock-chat-1': generateMockMessages('mock-chat-1'),
-  'mock-chat-2': generateMockMessages('mock-chat-2'),
-  'mock-chat-3': generateMockMessages('mock-chat-3')
-}
-
-const MOCK_SEARCH_USERS = [
-  {
-    id: 'mock-stranger-1',
-    nickname: 'Marek Zielony',
-    status: 'ONLINE' as UserStatus
-  },
-  {
-    id: 'mock-stranger-2',
-    nickname: 'Zofia Kamińska',
-    status: 'OFFLINE' as UserStatus
-  },
-  {
-    id: 'mock-stranger-3',
-    nickname: 'Tomasz Lewandowski',
-    status: 'AWAY' as UserStatus
-  }
-]
-
-const USE_MOCK = false
 
 // ─── Główny komponent ─────────────────────────────────────────────────────────
 
 function ChatsInner() {
-  const searchParams = useSearchParams()
   const userId =
     typeof window !== 'undefined'
-      ? (localStorage.getItem('userId') ?? MOCK_USER_ID)
-      : MOCK_USER_ID
+      ? (localStorage.getItem('userId') ?? null)
+      : null
+
+  if (!userId) return null
+  return <ChatsWithUser userId={userId} />
+}
+
+function ChatsWithUser({ userId }: { userId: string }) {
+  const searchParams = useSearchParams()
 
   // ── Stan ──
   const [chats, setChats] = useState<Chat[]>([])
   const [activeChatId, setActiveChatId] = useState<string | null>(
     searchParams.get('chatId')
   )
+  const activeChatIdRef = useRef<string | null>(searchParams.get('chatId'))
   const [messages, setMessages] = useState<Message[]>([])
   const [messageText, setMessageText] = useState('')
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
@@ -244,15 +59,54 @@ function ChatsInner() {
   const [hasMore, setHasMore] = useState(true)
   const [sending, setSending] = useState(false)
   const [myStatus, setMyStatus] = useState<UserStatus>('ONLINE')
+  const myStatusRef = useRef<UserStatus>('ONLINE')
   const [showStatusMenu, setShowStatusMenu] = useState(false)
+  const [typingUsers, setTypingUsers] = useState<
+    { userId: string; nickname: string; avatarUrl?: string | null }[]
+  >([])
+  const typingTimeouts = useRef<Map<string, ReturnType<typeof setTimeout>>>(
+    new Map()
+  )
+  const isTypingRef = useRef(false)
+  const typingThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [sentInvites, setSentInvites] = useState<Set<string>>(new Set())
   const [profilePopupUserId, setProfilePopupUserId] = useState<string | null>(
     null
   )
+  const [groupInfoPopupChatId, setGroupInfoPopupChatId] = useState<
+    string | null
+  >(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchUsers, setSearchUsers] = useState<UserSearchResult[]>([])
+  const [mutedChatIds, setMutedChatIds] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set()
+    try {
+      const stored = localStorage.getItem('mutedChats')
+      return stored ? new Set(JSON.parse(stored)) : new Set()
+    } catch {
+      return new Set()
+    }
+  })
+  const [friendRequestNotif, setFriendRequestNotif] = useState<string | null>(
+    null
+  )
+  const [friendIds, setFriendIds] = useState<Set<string>>(new Set())
+
+  // ── Mobile state ──
+  const [isMobile, setIsMobile] = useState(false)
+  const [mobileChatOpen, setMobileChatOpen] = useState(
+    () => !!searchParams.get('chatId')
+  )
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)')
+    setIsMobile(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
 
   // ── Refs ──
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -266,59 +120,84 @@ function ChatsInner() {
   const { settings } = useSettings()
   const { t } = useTranslation()
 
+  // ── Załaduj znajomych ──
+  useEffect(() => {
+    fetch(`${API_URL}/api/users/${userId}/friends?status=ACCEPTED`)
+      .then((r) => r.json())
+      .then((data: { userId: string; friendId: string }[]) => {
+        const ids = new Set(
+          data.map((f) => (f.userId === userId ? f.friendId : f.userId))
+        )
+        setFriendIds(ids)
+      })
+      .catch(console.error)
+  }, [userId])
+
   // ── Status z bazy ──
   useEffect(() => {
+    // If the user just logged back in after a previous session, restore their
+    // pre-logout status (e.g. DnD/BUSY) instead of defaulting to ONLINE/OFFLINE
+    const preLogout = localStorage.getItem(
+      'preLogoutStatus'
+    ) as UserStatus | null
+    if (preLogout) {
+      localStorage.removeItem('preLogoutStatus')
+      setMyStatus(preLogout)
+      localStorage.setItem('userStatus', preLogout)
+      // Push it to the server immediately
+      fetch(`${API_URL}/api/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: preLogout })
+      }).catch(console.error)
+      return
+    }
+
+    // Use cached status first (avoids showing INVISIBLE flash on reconnect)
     const cached = localStorage.getItem('userStatus') as UserStatus | null
-    if (cached) setMyStatus(cached)
-    if (USE_MOCK) return
+    if (cached && cached !== 'INVISIBLE') setMyStatus(cached)
+
     fetch(`${API_URL}/api/?id=${userId}`)
       .then((r) => r.json())
       .then((data: { status?: UserStatus }) => {
         if (data?.status) {
-          setMyStatus(data.status)
-          localStorage.setItem('userStatus', data.status)
+          // If DB has INVISIBLE it means we disconnected and the server hasn't
+          // restored our status yet. Use cached status so dropdown doesn't flicker.
+          const effectiveStatus =
+            data.status === 'INVISIBLE'
+              ? cached && cached !== 'INVISIBLE'
+                ? cached
+                : 'OFFLINE'
+              : data.status
+          setMyStatus(effectiveStatus as UserStatus)
+          localStorage.setItem('userStatus', effectiveStatus)
         }
       })
       .catch(console.error)
   }, [userId])
 
+  // Keep myStatusRef in sync so WS close handler can read current status
+  useEffect(() => {
+    myStatusRef.current = myStatus
+  }, [myStatus])
+
   // ── Pobierz czaty ──
   useEffect(() => {
-    if (USE_MOCK) {
-      // Sortuj malejąco po dacie ostatniej wiadomości
-      const sorted = [...MOCK_CHATS].sort((a, b) => {
-        const ta = a.lastMessage?.sentAt ?? a.updatedAt
-        const tb = b.lastMessage?.sentAt ?? b.updatedAt
-        return new Date(tb).getTime() - new Date(ta).getTime()
-      })
-      setChats(sorted)
-      setActiveChatId((prev) => prev ?? sorted[0].id)
-      setLoadingChats(false)
-      return
-    }
     fetch(`${API_URL}/api/users/${userId}/chats`)
       .then((r) => r.json())
-      .then((data: Chat[]) => {
-        // Dla każdego czatu pobierz ostatnią wiadomość
-        return Promise.all(
+      .then((data: Chat[]) =>
+        Promise.all(
           data.map(async (chat) => {
-            try {
-              const res = await fetch(
-                `${API_URL}/api/chats/${chat.id}/messages?limit=1`
-              )
-              if (res.ok) {
-                const msgs: Message[] = await res.json()
-                return { ...chat, lastMessage: msgs[0] ?? null }
-              }
-            } catch {
-              /* ignoruj */
-            }
-            return chat
+            const res = await fetch(
+              `${API_URL}/api/chats/${chat.id}/messages?limit=1`
+            )
+            if (!res.ok) return chat
+            const msgs: Message[] = await res.json()
+            return { ...chat, lastMessage: msgs[0] ?? null }
           })
         )
-      })
+      )
       .then((enriched) => {
-        // Sortuj malejąco po ostatniej wiadomości
         const sorted = enriched.sort((a, b) => {
           const ta = a.lastMessage?.sentAt ?? a.updatedAt
           const tb = b.lastMessage?.sentAt ?? b.updatedAt
@@ -336,10 +215,10 @@ function ChatsInner() {
   // ── Zamknij dropdown ──
   useEffect(() => {
     function onOutside(e: MouseEvent) {
-      const t = e.target as Node
+      const target = e.target as Node
       const inSearch =
-        document.querySelector('[data-search-dropdown]')?.contains(t) ||
-        document.querySelector('[data-search-input]')?.contains(t)
+        document.querySelector('[data-search-dropdown]')?.contains(target) ||
+        document.querySelector('[data-search-input]')?.contains(target)
       if (!inSearch) setSearchOpen(false)
     }
     document.addEventListener('mousedown', onOutside)
@@ -357,15 +236,6 @@ function ChatsInner() {
 
     searchDebounceRef.current = setTimeout(async () => {
       setSearchLoading(true)
-      if (USE_MOCK) {
-        setSearchUsers(
-          MOCK_SEARCH_USERS.filter((u) =>
-            u.nickname.toLowerCase().includes(q.toLowerCase())
-          )
-        )
-        setSearchLoading(false)
-        return
-      }
       try {
         const res = await fetch(`${API_URL}/api/?q=${encodeURIComponent(q)}`)
         if (res.ok)
@@ -393,20 +263,10 @@ function ChatsInner() {
     isFirstLoad.current = true
     setLoadingMessages(true)
 
-    // Oznacz czat jako przeczytany
     setChats((prev) =>
       prev.map((c) => (c.id === activeChatId ? { ...c, unreadCount: 0 } : c))
     )
 
-    if (USE_MOCK) {
-      const all = ALL_MOCK_MESSAGES[activeChatId] ?? []
-      const page = all.slice(-PAGE_SIZE)
-      lastIdRef.current = page[0]?.id ?? ''
-      setMessages(page)
-      setHasMore(all.length > PAGE_SIZE)
-      setLoadingMessages(false)
-      return
-    }
     fetch(`${API_URL}/api/chats/${activeChatId}/messages?limit=${PAGE_SIZE}`)
       .then((r) => r.json())
       .then((data: Message[]) => {
@@ -418,6 +278,380 @@ function ChatsInner() {
       .catch(console.error)
       .finally(() => setLoadingMessages(false))
   }, [activeChatId])
+
+  // ── Sync activeChatIdRef ──
+  useEffect(() => {
+    activeChatIdRef.current = activeChatId
+    // Clear typing indicators when switching chats
+    typingTimeouts.current.forEach((t) => clearTimeout(t))
+    typingTimeouts.current.clear()
+    setTypingUsers([])
+  }, [activeChatId])
+
+  // ── Keep SW name cache in sync so background notifications show nicknames ──
+  useEffect(() => {
+    const users = chats.flatMap((c) =>
+      c.users
+        .filter((u) => u.userId !== userId)
+        .map((u) => ({ id: u.userId, nickname: u.user.nickname }))
+    )
+    updateSwNameCache(users)
+  }, [chats])
+
+  // ── Sync muted chats to localStorage and SW ──
+  useEffect(() => {
+    localStorage.setItem('mutedChats', JSON.stringify([...mutedChatIds]))
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'MUTED_CHATS',
+        payload: [...mutedChatIds]
+      })
+    }
+  }, [mutedChatIds])
+
+  // ── WebSocket ──
+  const wsRef = useRef<WebSocket | null>(null)
+  useEffect(() => {
+    const WS_URL = API_URL.replace(/^http/, 'ws')
+    const ws = new WebSocket(`${WS_URL}/ws?userId=${userId}`)
+    wsRef.current = ws
+
+    ws.onopen = () => {
+      // If the user had a non-default status before logging out, broadcast it
+      // to friends now that the WS connection is live
+      const statusToAnnounce = localStorage.getItem(
+        'userStatus'
+      ) as UserStatus | null
+      if (
+        statusToAnnounce &&
+        statusToAnnounce !== 'OFFLINE' &&
+        statusToAnnounce !== 'INVISIBLE'
+      ) {
+        ws.send(
+          JSON.stringify({
+            type: 'user:status',
+            payload: { status: statusToAnnounce }
+          })
+        )
+      }
+    }
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data) as {
+          type: string
+          payload: Record<string, unknown>
+        }
+
+        if (msg.type === 'message:created') {
+          const newMsg = msg.payload as unknown as Message
+          // Only append to the visible message list when the chat is open.
+          // The duplicate guard handles the case where the sender already added
+          // the message optimistically via the HTTP response.
+          if (newMsg.chatId === activeChatIdRef.current) {
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === newMsg.id)) return prev
+              return [...prev, newMsg]
+            })
+          }
+
+          // Notify — only for messages from others, regardless of
+          // whether the app is focused or which chat is open.
+          if (newMsg.senderId !== userId) {
+            setChats((prev) => {
+              const chat = prev.find((c) => c.id === newMsg.chatId)
+              const isMuted = mutedChatIds.has(newMsg.chatId)
+              const senderName =
+                chat?.users.find((u) => u.userId === newMsg.senderId)?.user
+                  .nickname ?? 'Ktoś'
+
+              if (!isMuted) {
+                triggerNotification(
+                  senderName,
+                  newMsg.content ?? '📎 Załącznik'
+                )
+              }
+
+              return prev // no state change — side-effect only
+            })
+          }
+
+          setChats((prev) => {
+            const updated = prev.map((c) =>
+              c.id === newMsg.chatId
+                ? {
+                    ...c,
+                    lastMessage: newMsg,
+                    unreadCount:
+                      newMsg.chatId !== activeChatIdRef.current &&
+                      newMsg.senderId !== userId
+                        ? (c.unreadCount ?? 0) + 1
+                        : c.unreadCount
+                  }
+                : c
+            )
+            const idx = updated.findIndex((c) => c.id === newMsg.chatId)
+            if (idx > 0) {
+              const [chat] = updated.splice(idx, 1)
+              updated.unshift(chat)
+            }
+            return updated
+          })
+          if (newMsg.chatId === activeChatIdRef.current) {
+            setTimeout(
+              () => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }),
+              50
+            )
+          }
+        }
+
+        if (msg.type === 'message:updated') {
+          const updated = msg.payload as unknown as Message
+          setMessages((prev) =>
+            prev.map((m) => (m.id === updated.id ? updated : m))
+          )
+        }
+
+        if (msg.type === 'message:deleted') {
+          const { messageId } = msg.payload as { messageId: string }
+          setMessages((prev) => prev.filter((m) => m.id !== messageId))
+        }
+
+        if (
+          msg.type === 'reaction:added' ||
+          msg.type === 'reaction:updated' ||
+          msg.type === 'reaction:deleted'
+        ) {
+          // Server sends { chatId, messageId, reaction: { userId, type, user? } }
+          // or for deleted: { chatId, messageId, userId }
+          const payload = msg.payload as {
+            messageId: string
+            userId?: string
+            type?: ReactionType
+            reaction?: {
+              userId: string
+              type: ReactionType
+              user?: { nickname: string; avatarUrl?: string | null }
+            }
+          }
+          const messageId = payload.messageId
+          const rUserId = payload.reaction?.userId ?? payload.userId ?? ''
+          const rType = (payload.reaction?.type ?? payload.type) as ReactionType
+          const rUser = payload.reaction?.user
+
+          setMessages((prev) =>
+            prev.map((m) => {
+              if (m.id !== messageId) return m
+              const withoutUser = m.reactions.filter(
+                (r) => r.userId !== rUserId
+              )
+              if (msg.type === 'reaction:deleted')
+                return { ...m, reactions: withoutUser }
+              // For own reactions, the optimistic update already applied the
+              // correct state — only update if user info enrichment is available
+              if (rUserId === userId && !rUser) return m
+              return {
+                ...m,
+                reactions: [
+                  ...withoutUser,
+                  { messageId, userId: rUserId, type: rType, user: rUser }
+                ]
+              }
+            })
+          )
+          // Notify the message owner when someone else reacts to their message
+          if (msg.type === 'reaction:added' && rUserId !== userId) {
+            setMessages((prev) => {
+              const reactedMsg = prev.find((m) => m.id === messageId)
+              if (reactedMsg && reactedMsg.senderId === userId) {
+                const emoji = REACTION_EMOJI[rType] ?? '👍'
+                triggerNotification(
+                  t('chat.reactionTitle'),
+                  `${emoji} ${t('chat.reactionBody')}`
+                )
+              }
+              return prev
+            })
+          }
+        }
+
+        if (msg.type === 'chat:created') {
+          const newChat = ((msg.payload as Record<string, unknown>).chat ??
+            msg.payload) as unknown as Chat
+          if (!newChat?.users) return
+          setChats((prev) =>
+            prev.some((c) => c.id === newChat.id) ? prev : [newChat, ...prev]
+          )
+        }
+
+        if (msg.type === 'chat:updated') {
+          const { chatId, chat } = msg.payload as {
+            chatId: string
+            chat?: Chat
+          }
+          if (chat) {
+            setChats((prev) =>
+              prev.map((c) =>
+                c.id === chatId
+                  ? {
+                      ...c,
+                      ...chat,
+                      lastMessage: c.lastMessage,
+                      unreadCount: c.unreadCount
+                    }
+                  : c
+              )
+            )
+          }
+        }
+
+        if (msg.type === 'chat:deleted') {
+          const { chatId } = msg.payload as { chatId: string }
+          setChats((prev) => prev.filter((c) => c.id !== chatId))
+          setActiveChatId((prev) => (prev === chatId ? null : prev))
+        }
+
+        if (msg.type === 'friendship:requested') {
+          const { friendship } = msg.payload as {
+            friendship: { userId: string; nickname?: string }
+          }
+          const senderNick =
+            (friendship as { userId: string; user?: { nickname?: string } })
+              ?.user?.nickname ?? t('chat.someone')
+          setFriendRequestNotif(senderNick)
+          triggerNotification(t('chat.friendRequestTitle'), senderNick)
+          setTimeout(() => setFriendRequestNotif(null), 5000)
+        }
+
+        if (msg.type === 'friendship:deleted') {
+          const { userId: fA, friendId: fB } = msg.payload as {
+            userId: string
+            friendId: string
+          }
+          const removedId = fA === userId ? fB : fA
+          setFriendIds((prev) => {
+            const next = new Set(prev)
+            next.delete(removedId)
+            return next
+          })
+          // If the removed friend's chat was active, deselect it
+          setActiveChatId((prev) => {
+            if (!prev) return prev
+            // We'll let the visibility filter hide it; clear active if needed
+            return prev
+          })
+        }
+
+        if (msg.type === 'friendship:updated') {
+          const { friendship } = msg.payload as {
+            friendship: { userId: string; friendId: string; status: string }
+          }
+          if (friendship.status === 'ACCEPTED') {
+            const newFriendId =
+              friendship.userId === userId
+                ? friendship.friendId
+                : friendship.userId
+            setFriendIds((prev) => new Set(prev).add(newFriendId))
+
+            // Find the friend's nickname from existing chats or fall back
+            setChats((prev) => {
+              const nick =
+                prev
+                  .flatMap((c) => c.users)
+                  .find((u) => u.userId === newFriendId)?.user.nickname ??
+                t('chat.someone')
+              setFriendRequestNotif(`✅ ${nick} ${t('chat.friendAccepted')}`)
+              triggerNotification(t('chat.friendAcceptedTitle'), nick)
+              setTimeout(() => setFriendRequestNotif(null), 5000)
+              return prev
+            })
+          }
+        }
+
+        // ── Typing indicators ──
+        if (msg.type === 'typing:start') {
+          const {
+            chatId,
+            userId: typingUserId,
+            nickname,
+            avatarUrl
+          } = msg.payload as {
+            chatId: string
+            userId: string
+            nickname: string
+            avatarUrl?: string | null
+          }
+          if (chatId !== activeChatIdRef.current) return
+          // Auto-expire after 4s if no stop event
+          const existing = typingTimeouts.current.get(typingUserId)
+          if (existing) clearTimeout(existing)
+          setTypingUsers((prev) => {
+            if (prev.some((u) => u.userId === typingUserId)) return prev
+            return [...prev, { userId: typingUserId, nickname, avatarUrl }]
+          })
+          typingTimeouts.current.set(
+            typingUserId,
+            setTimeout(() => {
+              setTypingUsers((prev) =>
+                prev.filter((u) => u.userId !== typingUserId)
+              )
+              typingTimeouts.current.delete(typingUserId)
+            }, 4000)
+          )
+        }
+
+        if (msg.type === 'typing:stop') {
+          const { userId: typingUserId } = msg.payload as { userId: string }
+          const t = typingTimeouts.current.get(typingUserId)
+          if (t) {
+            clearTimeout(t)
+            typingTimeouts.current.delete(typingUserId)
+          }
+          setTypingUsers((prev) =>
+            prev.filter((u) => u.userId !== typingUserId)
+          )
+        }
+
+        // ── User status updates from others ──
+        if (msg.type === 'user:status') {
+          const {
+            userId: changedUserId,
+            status,
+            self
+          } = msg.payload as {
+            userId: string
+            status: string
+            self?: boolean
+          }
+          // If this is our own status being restored after reconnect, update myStatus
+          if (self || changedUserId === userId) {
+            const restored = status as UserStatus
+            setMyStatus(restored)
+            localStorage.setItem('userStatus', restored)
+          }
+          setChats((prev) =>
+            prev.map((c) => ({
+              ...c,
+              users: c.users.map((u) =>
+                u.userId === changedUserId
+                  ? { ...u, user: { ...u.user, status: status as UserStatus } }
+                  : u
+              )
+            }))
+          )
+        }
+      } catch {
+        /* ignoruj */
+      }
+    }
+
+    ws.onerror = (err) => console.error('[WS] błąd:', err)
+
+    return () => {
+      ws.close()
+      wsRef.current = null
+    }
+  }, [userId])
 
   // ── Scroll do dołu przy pierwszym ładowaniu ──
   useEffect(() => {
@@ -435,26 +669,6 @@ function ChatsInner() {
     const container = messageContainerRef.current
     const prevScrollHeight = container?.scrollHeight ?? 0
 
-    if (USE_MOCK) {
-      const all = ALL_MOCK_MESSAGES[activeChatId] ?? []
-      const idx = all.findIndex((m) => m.id === lastIdRef.current)
-      const start = Math.max(0, idx - PAGE_SIZE)
-      const older = all.slice(start, idx)
-      if (!older.length) {
-        setHasMore(false)
-        setLoadingMore(false)
-        return
-      }
-      lastIdRef.current = older[0].id ?? ''
-      setHasMore(start > 0)
-      setMessages((prev) => [...older, ...prev])
-      requestAnimationFrame(() => {
-        if (container)
-          container.scrollTop = container.scrollHeight - prevScrollHeight
-      })
-      setLoadingMore(false)
-      return
-    }
     try {
       const res = await fetch(
         `${API_URL}/api/chats/${activeChatId}/messages?limit=${PAGE_SIZE}&lastId=${lastIdRef.current}`
@@ -511,13 +725,12 @@ function ChatsInner() {
       }
     }
 
-    // Powiadomienie systemowe
     if (
       settings.notificationDesktop &&
       'Notification' in window &&
       Notification.permission === 'granted'
     ) {
-      new Notification(title, { body, icon: '/ouija_white.png' })
+      new Notification(title, { body, icon: '/ouija_white_logo_square.png' })
     }
   }
 
@@ -527,32 +740,16 @@ function ChatsInner() {
     if (!activeChatId || (!messageText.trim() && pendingFiles.length === 0))
       return
     setSending(true)
-
-    if (USE_MOCK) {
-      const newMsg: Message = {
-        id: `mock-${Date.now()}`,
-        chatId: activeChatId,
-        senderId: userId,
-        content: messageText.trim() || null,
-        sentAt: new Date().toISOString(),
-        editedAt: null,
-        attachments: [],
-        reactions: []
-      }
-      setMessages((prev) => [...prev, newMsg])
-      setChats((prev) =>
-        prev.map((c) =>
-          c.id === activeChatId ? { ...c, lastMessage: newMsg } : c
-        )
+    // Stop typing indicator on send
+    if (isTypingRef.current) {
+      isTypingRef.current = false
+      if (typingThrottleRef.current) clearTimeout(typingThrottleRef.current)
+      wsRef.current?.send(
+        JSON.stringify({
+          type: 'typing:stop',
+          payload: { chatId: activeChatId }
+        })
       )
-      setMessageText('')
-      setPendingFiles([])
-      setSending(false)
-      setTimeout(
-        () => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }),
-        50
-      )
-      return
     }
 
     try {
@@ -597,14 +794,11 @@ function ChatsInner() {
         setSending(false)
         return
       }
-      const data: Message = await res.json()
-      setMessages((prev) => [...prev, data])
-      // Aktualizuj lastMessage w liście czatów
-      setChats((prev) =>
-        prev.map((c) =>
-          c.id === activeChatId ? { ...c, lastMessage: data } : c
-        )
-      )
+      // Don't append the message here — the WS 'message:created' event
+      // will arrive for the sender too and is the single source of truth.
+      // Adding it here as well caused a visible duplicate on first send
+      // after a page refresh (race between HTTP response and WS delivery).
+      await res.json()
       setMessageText('')
       setPendingFiles([])
       setTimeout(
@@ -620,27 +814,6 @@ function ChatsInner() {
 
   // ── Reakcje ──
   async function handleReact(messageId: string, type: ReactionType) {
-    if (USE_MOCK) {
-      setMessages((prev) =>
-        prev.map((msg) => {
-          if (msg.id !== messageId) return msg
-          const existing = msg.reactions.find((r) => r.userId === userId)
-          if (existing?.type === type)
-            return {
-              ...msg,
-              reactions: msg.reactions.filter((r) => r.userId !== userId)
-            }
-          return {
-            ...msg,
-            reactions: [
-              ...msg.reactions.filter((r) => r.userId !== userId),
-              { messageId, userId, type }
-            ]
-          }
-        })
-      )
-      return
-    }
     const existing = messages
       .find((m) => m.id === messageId)
       ?.reactions.find((r) => r.userId === userId)
@@ -688,14 +861,14 @@ function ChatsInner() {
           body: JSON.stringify({ userId, type })
         })
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === messageId
-              ? {
-                  ...m,
-                  reactions: [...m.reactions, { messageId, userId, type }]
-                }
-              : m
-          )
+          prev.map((m) => {
+            if (m.id !== messageId) return m
+            const withoutMe = m.reactions.filter((r) => r.userId !== userId)
+            return {
+              ...m,
+              reactions: [...withoutMe, { messageId, userId, type }]
+            }
+          })
         )
       }
     } catch (err) {
@@ -708,7 +881,20 @@ function ChatsInner() {
     setMyStatus(status)
     setShowStatusMenu(false)
     localStorage.setItem('userStatus', status)
-    if (USE_MOCK) return
+    // Immediately update the current user's own entries in all chats so the
+    // navbar status dots reflect the change without waiting for a WS round-trip
+    setChats((prev) =>
+      prev.map((c) => ({
+        ...c,
+        users: c.users.map((u) =>
+          u.userId === userId ? { ...u, user: { ...u.user, status } } : u
+        )
+      }))
+    )
+    // Notify server so it can persist and relay to friends
+    wsRef.current?.send(
+      JSON.stringify({ type: 'user:status', payload: { status } })
+    )
     try {
       await fetch(`${API_URL}/api/${userId}`, {
         method: 'PUT',
@@ -717,6 +903,53 @@ function ChatsInner() {
       })
     } catch (err) {
       console.error(err)
+    }
+  }
+
+  // ── Typing indicator ──
+  function handleTypingChange(isTyping: boolean) {
+    const ws = wsRef.current
+    if (!ws || ws.readyState !== WebSocket.OPEN || !activeChatId) return
+
+    if (isTyping && !isTypingRef.current) {
+      isTypingRef.current = true
+      const chat = chats.find((c) => c.id === activeChatId)
+      const me = chat?.users.find((u) => u.userId === userId)
+      ws.send(
+        JSON.stringify({
+          type: 'typing:start',
+          payload: {
+            chatId: activeChatId,
+            nickname: me?.user.nickname ?? 'Ktoś',
+            avatarUrl: me?.user.avatarUrl ?? null
+          }
+        })
+      )
+    } else if (!isTyping && isTypingRef.current) {
+      isTypingRef.current = false
+      if (typingThrottleRef.current) clearTimeout(typingThrottleRef.current)
+      ws.send(
+        JSON.stringify({
+          type: 'typing:stop',
+          payload: { chatId: activeChatId }
+        })
+      )
+    }
+
+    // Auto-send stop after 3s of inactivity
+    if (isTyping) {
+      if (typingThrottleRef.current) clearTimeout(typingThrottleRef.current)
+      typingThrottleRef.current = setTimeout(() => {
+        if (isTypingRef.current) {
+          isTypingRef.current = false
+          wsRef.current?.send(
+            JSON.stringify({
+              type: 'typing:stop',
+              payload: { chatId: activeChatId }
+            })
+          )
+        }
+      }, 6700)
     }
   }
 
@@ -732,11 +965,6 @@ function ChatsInner() {
       setSearchOpen(false)
       return
     }
-    if (USE_MOCK) {
-      setSearchQuery('')
-      setSearchOpen(false)
-      return
-    }
     try {
       const res = await fetch(`${API_URL}/api/chats`, {
         method: 'POST',
@@ -746,7 +974,10 @@ function ChatsInner() {
           userIds: [userId, targetUserId]
         })
       })
-      if (!res.ok) throw new Error(t('chat.errorCreate'))
+      if (!res.ok) {
+        alert(t('chat.errorCreate'))
+        return
+      }
       const newChat: Chat = await res.json()
       setChats((prev) =>
         prev.some((c) => c.id === newChat.id) ? prev : [newChat, ...prev]
@@ -761,21 +992,30 @@ function ChatsInner() {
 
   // ── Wyślij zaproszenie ──
   async function handleSendInvite(targetUserId: string) {
-    if (USE_MOCK) {
-      setSentInvites((prev) => new Set(prev).add(targetUserId))
-      return
-    }
     try {
       const res = await fetch(`${API_URL}/api/users/${userId}/friends`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ friendId: targetUserId })
       })
-      if (!res.ok) throw new Error()
+      if (!res.ok) {
+        alert(t('chat.errorInvite'))
+        return
+      }
       setSentInvites((prev) => new Set(prev).add(targetUserId))
     } catch {
       alert(t('chat.errorInvite'))
     }
+  }
+
+  // ── Wycisz / odcisz czat ──
+  function handleToggleMute(chatId: string) {
+    setMutedChatIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(chatId)) next.delete(chatId)
+      else next.add(chatId)
+      return next
+    })
   }
 
   // ── Otwórz czat z ProfilePopup ──
@@ -809,54 +1049,202 @@ function ChatsInner() {
     return chat.users.find((u) => u.userId !== userId)?.user.nickname ?? 'Czat'
   }
 
+  // Only show PRIVATE chats where the other user is still a friend.
+  // Group chats (type !== 'PRIVATE') are always shown.
+  const visibleChats = chats.filter((c) => {
+    if (c.type !== 'PRIVATE') return true
+    const otherId = c.users.find((u) => u.userId !== userId)?.userId
+    return otherId ? friendIds.has(otherId) : true
+  })
+
+  // If the currently active chat is now hidden, deselect it
+  const activeChatVisible = visibleChats.some((c) => c.id === activeChatId)
+  if (activeChatId && !activeChatVisible) {
+    // Use a timeout to avoid setState-during-render
+    setTimeout(() => setActiveChatId(null), 0)
+  }
+
   const filteredChats = searchQuery.trim()
-    ? chats.filter((c) =>
+    ? visibleChats.filter((c) =>
         getChatDisplayName(c).toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : chats
+    : visibleChats
 
-  const existingChatUserIds = new Set(
-    chats.flatMap((c) => c.users.map((u) => u.userId))
-  )
+  // For "new people" in search: exclude anyone who is already a friend
+  // (they already have a chat with us — onOpenChatWith handles that path).
   const newPeopleResults = searchQuery.trim()
-    ? searchUsers.filter((u) => !existingChatUserIds.has(u.id))
+    ? searchUsers.filter((u) => !friendIds.has(u.id))
     : []
 
   const activeChat = chats.find((c) => c.id === activeChatId) ?? null
   const otherUser =
     activeChat?.users.find((u) => u.userId !== userId)?.user ?? null
 
-  const lastNotifiedMsgId = useRef<string | null>(null)
+  async function handleCreateGroupChat(name: string, memberIds: string[]) {
+    if (!userId) return
+    const allIds = [userId, ...memberIds]
+    if (allIds.length < 3) {
+      alert('A group needs at least 3 members.')
+      return
+    }
+    if (allIds.length > 10) {
+      alert('A group can have at most 10 members.')
+      return
+    }
+    const res = await fetch(`${API_URL}/api/chats`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        type: 'GROUP',
+        userIds: allIds
+      })
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      alert(err.error ?? 'Błąd tworzenia grupy')
+      return
+    }
+    const chat = await res.json()
+    // Nie dodajemy czatu ręcznie — serwer wyśle chat:created przez WS do wszystkich członków
+    setActiveChatId(chat.id)
+  }
 
-  // ── Powiadomienia dla nowych wiadomości od innych ──
-  // lastNotifiedMsgId zapobiega powiadomieniu przy pierwszym załadowaniu czatu
-  useEffect(() => {
-    if (!messages.length) {
-      lastNotifiedMsgId.current = null
+  // ── Zarządzanie grupą ──
+  async function handleRenameGroup(chatId: string, name: string) {
+    const res = await fetch(`${API_URL}/api/chats/${chatId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    })
+    if (!res.ok) {
+      alert('Błąd zmiany nazwy')
       return
     }
-    const last = messages[messages.length - 1]
-    // Ustaw punkt startowy przy pierwszym załadowaniu — nie powiadamiaj
-    if (lastNotifiedMsgId.current === null) {
-      lastNotifiedMsgId.current = last.id
+    const updated = await res.json()
+    setChats((prev) =>
+      prev.map((c) => (c.id === chatId ? { ...c, name: updated.name } : c))
+    )
+  }
+
+  async function handleDeleteGroup(chatId: string) {
+    if (!confirm('Na pewno usunąć grupę? Tej operacji nie można cofnąć.'))
+      return
+    const res = await fetch(`${API_URL}/api/chats/${chatId}`, {
+      method: 'DELETE'
+    })
+    if (!res.ok) {
+      alert('Błąd usuwania grupy')
       return
     }
-    // Powiadamiaj tylko o naprawdę nowych wiadomościach (nowe id, nie moje)
-    if (
-      last.id !== lastNotifiedMsgId.current &&
-      last.senderId !== userId &&
-      document.hidden
-    ) {
-      lastNotifiedMsgId.current = last.id
-      const senderName =
-        activeChat?.users.find((u) => u.userId === last.senderId)?.user
-          .nickname ?? 'Ktoś'
-      triggerNotification(senderName, last.content ?? '📎 Załącznik')
+    setChats((prev) => prev.filter((c) => c.id !== chatId))
+    if (activeChatId === chatId) setActiveChatId(null)
+  }
+
+  async function handleTransferOwner(chatId: string, newOwnerId: string) {
+    if (!userId) return
+    const res = await fetch(
+      `${API_URL}/api/chats/${chatId}/members/${newOwnerId}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'ADMIN' })
+      }
+    )
+    if (!res.ok) {
+      alert('Błąd przekazania własności')
+      return
     }
-  }, [messages])
+    // Downgrade current user to MEMBER
+    await fetch(`${API_URL}/api/chats/${chatId}/members/${userId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'MEMBER' })
+    })
+    setChats((prev) =>
+      prev.map((c) => {
+        if (c.id !== chatId) return c
+        return {
+          ...c,
+          users: c.users.map((u) => ({
+            ...u,
+            role:
+              u.userId === newOwnerId
+                ? 'ADMIN'
+                : u.userId === userId
+                  ? 'MEMBER'
+                  : u.role
+          }))
+        }
+      })
+    )
+  }
+
+  async function handleAddMember(chatId: string, memberId: string) {
+    const existingChat = chats.find((c) => c.id === chatId)
+    if (existingChat && existingChat.users.length >= 10) {
+      alert('This group has reached the maximum of 10 members.')
+      return
+    }
+    const res = await fetch(`${API_URL}/api/chats/${chatId}/members`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: memberId, role: 'MEMBER' })
+    })
+    if (!res.ok) {
+      alert('Błąd dodawania członka')
+      return
+    }
+    const updatedChat = await res.json().catch(() => null)
+    if (updatedChat) {
+      setChats((prev) =>
+        prev.map((c) =>
+          c.id === chatId ? { ...c, users: updatedChat.users ?? c.users } : c
+        )
+      )
+    }
+  }
+
+  async function handleUpgradeToGroup(
+    chatId: string,
+    name: string,
+    extraMemberIds: string[]
+  ) {
+    const existingChat = chats.find((c) => c.id === chatId)
+    if (!existingChat) return
+    const existingUserIds = existingChat.users.map((u) => u.userId)
+    const allMemberIds = [...new Set([...existingUserIds, ...extraMemberIds])]
+    if (allMemberIds.length < 3) {
+      alert('A group chat needs at least 3 members.')
+      return
+    }
+    if (allMemberIds.length > 10) {
+      alert('A group chat can have at most 10 members.')
+      return
+    }
+    const res = await fetch(`${API_URL}/api/chats`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, type: 'GROUP', userIds: allMemberIds })
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      alert(err.error ?? 'Błąd tworzenia grupy')
+      return
+    }
+    const chat = await res.json()
+    setActiveChatId(chat.id)
+  }
 
   return (
     <div className={styles.container}>
+      {/* Powiadomienie o zaproszeniu do znajomych */}
+      {friendRequestNotif && (
+        <div className={styles.FriendRequestToast}>
+          👥 {friendRequestNotif} {t('chat.friendRequestSent')}
+        </div>
+      )}
+
       {/* Input poza warunkowym renderem */}
       <input
         type="file"
@@ -886,15 +1274,21 @@ function ChatsInner() {
         newPeopleResults={newPeopleResults}
         sentInvites={sentInvites}
         loadingChats={loadingChats}
+        mutedChatIds={mutedChatIds}
+        onToggleMute={handleToggleMute}
         onSelectChat={(id) => {
           setActiveChatId(id)
+          setMobileChatOpen(true)
           setChats((prev) =>
             prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c))
           )
         }}
         onOpenProfile={setProfilePopupUserId}
+        onOpenGroupInfo={setGroupInfoPopupChatId}
         onSendInvite={handleSendInvite}
         onOpenChatWith={handleOpenChatWith}
+        onCreateGroupChat={handleCreateGroupChat}
+        isMobileHidden={isMobile && mobileChatOpen}
       />
 
       <ChatWindow
@@ -917,6 +1311,17 @@ function ChatsInner() {
         onReact={handleReact}
         onOpenProfile={setProfilePopupUserId}
         getChatDisplayName={getChatDisplayName}
+        onBack={isMobile ? () => setMobileChatOpen(false) : undefined}
+        isMobileChatVisible={!isMobile || mobileChatOpen}
+        onRenameGroup={handleRenameGroup}
+        onDeleteGroup={handleDeleteGroup}
+        onTransferOwner={handleTransferOwner}
+        onAddMember={handleAddMember}
+        onUpgradeToGroup={handleUpgradeToGroup}
+        friendIds={friendIds}
+        allChats={chats}
+        typingUsers={typingUsers}
+        onTypingChange={handleTypingChange}
       />
 
       {profilePopupUserId && (
@@ -927,6 +1332,26 @@ function ChatsInner() {
           onMessageUser={handleMessageFromProfile}
         />
       )}
+
+      {groupInfoPopupChatId &&
+        (() => {
+          const groupChat = chats.find((c) => c.id === groupInfoPopupChatId)
+          return groupChat ? (
+            <GroupInfoPopup
+              chat={groupChat}
+              viewerId={userId}
+              onClose={() => setGroupInfoPopupChatId(null)}
+              onOpenProfile={(uid) => {
+                setGroupInfoPopupChatId(null)
+                setProfilePopupUserId(uid)
+              }}
+              onOpenChat={(chatId) => {
+                setActiveChatId(chatId)
+                setGroupInfoPopupChatId(null)
+              }}
+            />
+          ) : null
+        })()}
     </div>
   )
 }

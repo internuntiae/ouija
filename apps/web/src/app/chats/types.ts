@@ -9,12 +9,13 @@ export type ReactionType =
   | 'THUMBS_UP'
   | 'THUMBS_DOWN'
 export type AttachmentType = 'IMAGE' | 'VIDEO' | 'FILE' | 'AUDIO'
-export type UserStatus = 'ONLINE' | 'OFFLINE' | 'AWAY' | 'BUSY'
+export type UserStatus = 'ONLINE' | 'OFFLINE' | 'AWAY' | 'BUSY' | 'INVISIBLE'
 
 export interface Reaction {
   messageId: string
   userId: string
   type: ReactionType
+  user?: { nickname: string; avatarUrl?: string | null }
 }
 export interface Attachment {
   id: string
@@ -50,6 +51,7 @@ export interface ChatUserEntry {
 export interface Chat {
   id: string
   name: string | null
+  avatarUrl?: string | null
   type: string
   createdAt: string
   updatedAt: string
@@ -57,6 +59,7 @@ export interface Chat {
   // Wzbogacone pola doklejane po stronie frontu
   lastMessage?: Message | null
   unreadCount?: number
+  muted?: boolean
 }
 
 export interface UserSearchResult {
@@ -87,20 +90,22 @@ export const STATUS_LABEL: Record<UserStatus, string> = {
   ONLINE: 'Aktywny',
   AWAY: 'Zaraz wracam',
   BUSY: 'Nie przeszkadzać',
-  OFFLINE: 'Offline'
+  OFFLINE: 'Offline',
+  INVISIBLE: 'Niewidoczny'
 }
 
 export const STATUS_COLOR: Record<UserStatus, string> = {
   ONLINE: '#2ecc71',
   AWAY: '#f39c12',
   BUSY: '#e74c3c',
-  OFFLINE: '#7f8c8d'
+  OFFLINE: '#7f8c8d',
+  INVISIBLE: '#7f8c8d'
 }
 
 export const PAGE_SIZE = 20
 
 export function avatarSrc(url?: string | null) {
-  return url ?? '/ouija_white.svg'
+  return url ?? '/ouija_white_logo_square.png'
 }
 
 // ─── Ustawienia powiadomień ────────────────────────────────────────────────────

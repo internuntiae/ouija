@@ -39,22 +39,22 @@ export const sendVerificationEmail = async (
   await transporter.sendMail({
     from: FROM,
     to,
-    subject: 'Verify your Ouija account',
-    text: `Welcome to Ouija!\n\nClick the link below to verify your email address.\nThe link expires in 24 hours.\n\n${link}\n\nIf you did not create an account, you can safely ignore this email.`,
+    subject: 'ouija is to be verified!',
+    text: `ouija welcomes you!\n\nclick the link below to verify your email address.\nthe link expires in 24 hours.\n\n${link}\n\nif you did not create an account, you can safely ignore this email.`,
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
-        <h2 style="color:#1a1a2e">Welcome to Ouija 👋</h2>
-        <p>Click the button below to verify your email address.</p>
-        <p style="color:#666;font-size:12px">The link expires in <strong>24 hours</strong>.</p>
+        <h2 style="color:#1a1a2e">welcome to ouija 👋</h2>
+        <p>click the button below to verify your email address.</p>
+        <p style="color:#666;font-size:12px">the link expires in <strong>24 hours</strong>.</p>
         <a href="${link}"
-           style="display:inline-block;margin:16px 0;padding:12px 24px;background:#7c3aed;color:#fff;text-decoration:none;border-radius:6px;font-weight:600">
-          Verify Email
+           style="display:inline-block;margin:16px 0;padding:12px 24px;background:#14110f;color:#fff;text-decoration:none;border-radius:6px;font-weight:600">
+          verify email
         </a>
         <p style="color:#999;font-size:12px">
-          Or copy this link:<br><code>${link}</code>
+          or copy this link:<br><code>${link}</code>
         </p>
         <hr style="border:none;border-top:1px solid #eee;margin-top:32px">
-        <p style="color:#bbb;font-size:11px">If you didn't create an account you can ignore this email.</p>
+        <p style="color:#bbb;font-size:11px">if you didn't create an account you can ignore this email.</p>
       </div>
     `
   })

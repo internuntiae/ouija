@@ -5,6 +5,7 @@ import './main-layout.scss'
 import Header from '@/app/components/Header/Header'
 import React from 'react'
 import { SettingsProvider } from '@/context/SettingsContext'
+import SwRegister from '@/app/sw-register'
 
 const kumbhSans = Kumbh_Sans({
   variable: '--font-kumbh-sans',
@@ -32,6 +33,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${kumbhSans.variable} ${plusJakartaSans.variable}`}>
         <SettingsProvider>
+          <SwRegister />
           <Header />
           <div className="container">{children}</div>
         </SettingsProvider>

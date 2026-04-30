@@ -1,6 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws'
 import { IncomingMessage } from 'http'
 import { Server } from 'http'
+import { prisma } from '@/lib'
 
 // Map of userId -> set of open sockets (one user can have multiple tabs/devices)
 const userSockets = new Map<string, Set<WebSocket>>()
@@ -18,6 +19,9 @@ export type WsEventType =
   | 'chat:created'
   | 'chat:updated'
   | 'chat:deleted'
+  | 'typing:start'
+  | 'typing:stop'
+  | 'user:status'
 
 export interface WsEvent {
   type: WsEventType
@@ -54,6 +58,33 @@ export function attachWebSocketServer(httpServer: Server): WebSocketServer {
       `[WS] User ${userId} connected (${userSockets.get(userId)!.size} sockets)`
     )
 
+    // Restore previous status on reconnect if it was set to INVISIBLE by disconnect
+    // We persist it in a separate map so we can restore it
+    const savedStatus = userPreviousStatus.get(userId)
+    if (savedStatus) {
+      prisma.user
+        .update({
+          where: { id: userId },
+          data: { status: savedStatus as never }
+        })
+        .then(() => {
+          userPreviousStatus.delete(userId)
+          broadcastStatusToFriends(userId, savedStatus)
+          // Also notify the reconnecting user themselves so their UI reflects the restored status
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(
+              JSON.stringify({
+                type: 'user:status',
+                payload: { userId, status: savedStatus, self: true }
+              })
+            )
+          }
+        })
+        .catch(() => {
+          /* ignore */
+        })
+    }
+
     // Keep-alive ping
     const pingInterval = setInterval(() => {
       if (socket.readyState === WebSocket.OPEN) {
@@ -65,11 +96,83 @@ export function attachWebSocketServer(httpServer: Server): WebSocketServer {
       // Connection is still alive — nothing to do
     })
 
+    // Handle messages sent FROM the client (typing indicators, etc.)
+    socket.on('message', (data) => {
+      try {
+        const msg = JSON.parse(data.toString()) as {
+          type: string
+          payload: Record<string, unknown>
+        }
+
+        if (msg.type === 'typing:start' || msg.type === 'typing:stop') {
+          const { chatId, nickname, avatarUrl } = msg.payload as {
+            chatId: string
+            nickname: string
+            avatarUrl?: string | null
+          }
+          if (!chatId) return
+          // Relay to all other members of that chat
+          prisma.chatUser
+            .findMany({ where: { chatId }, select: { userId: true } })
+            .then((members) => {
+              const otherIds = members
+                .map((m) => m.userId)
+                .filter((id) => id !== userId)
+              sendToUsers(otherIds, {
+                type: msg.type as WsEventType,
+                payload: { chatId, userId, nickname, avatarUrl }
+              })
+            })
+            .catch(() => {
+              /* ignore */
+            })
+        }
+
+        if (msg.type === 'user:status') {
+          const { status } = msg.payload as { status: string }
+          // The client is explicitly setting a status — clear any pending restore
+          userPreviousStatus.delete(userId)
+          broadcastStatusToFriends(userId, status)
+        }
+      } catch {
+        /* ignore malformed messages */
+      }
+    })
+
     socket.on('close', () => {
       clearInterval(pingInterval)
       userSockets.get(userId)?.delete(socket)
       if (userSockets.get(userId)?.size === 0) {
         userSockets.delete(userId)
+        // Save current status and set INVISIBLE (unless the user logged out
+        // explicitly and already set their status to OFFLINE — in that case
+        // keep OFFLINE so friends see the correct state and don't get a
+        // misleading INVISIBLE->ONLINE restore cycle on next login)
+        prisma.user
+          .findUnique({ where: { id: userId }, select: { status: true } })
+          .then((user) => {
+            if (!user) return
+            const currentStatus = user.status as string
+            if (currentStatus === 'OFFLINE') {
+              // User logged out intentionally — broadcast OFFLINE and stop
+              broadcastStatusToFriends(userId, 'OFFLINE')
+              return
+            }
+            if (currentStatus !== 'INVISIBLE') {
+              userPreviousStatus.set(userId, currentStatus)
+            }
+            return prisma.user
+              .update({
+                where: { id: userId },
+                data: { status: 'INVISIBLE' as never }
+              })
+              .then(() => {
+                broadcastStatusToFriends(userId, 'INVISIBLE')
+              })
+          })
+          .catch(() => {
+            /* ignore */
+          })
       }
       console.log(`[WS] User ${userId} disconnected`)
     })
@@ -123,4 +226,44 @@ export function broadcast(event: WsEvent, wss: WebSocketServer): void {
       client.send(payload)
     }
   })
+}
+
+// ─── Status tracking ──────────────────────────────────────────────────────────
+
+/** Stores the last explicit status for a user so we can restore it on reconnect */
+const userPreviousStatus = new Map<string, string>()
+
+/**
+ * Notify all friends (and chat members) of a user's new status.
+ * We broadcast to every connected socket of users who share a chat with this user.
+ */
+async function broadcastStatusToFriends(
+  userId: string,
+  status: string
+): Promise<void> {
+  try {
+    // Find all users who share at least one chat with this user
+    const chatUsers = await prisma.chatUser.findMany({
+      where: {
+        chatId: {
+          in: (
+            await prisma.chatUser.findMany({
+              where: { userId },
+              select: { chatId: true }
+            })
+          ).map((c) => c.chatId)
+        }
+      },
+      select: { userId: true }
+    })
+    const friendIds = [
+      ...new Set(chatUsers.map((cu) => cu.userId).filter((id) => id !== userId))
+    ]
+    sendToUsers(friendIds, {
+      type: 'user:status',
+      payload: { userId, status }
+    })
+  } catch {
+    /* ignore */
+  }
 }
