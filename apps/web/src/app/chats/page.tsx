@@ -135,15 +135,42 @@ function ChatsWithUser({ userId }: { userId: string }) {
 
   // ── Status z bazy ──
   useEffect(() => {
+    // If the user just logged back in after a previous session, restore their
+    // pre-logout status (e.g. DnD/BUSY) instead of defaulting to ONLINE/OFFLINE
+    const preLogout = localStorage.getItem(
+      'preLogoutStatus'
+    ) as UserStatus | null
+    if (preLogout) {
+      localStorage.removeItem('preLogoutStatus')
+      setMyStatus(preLogout)
+      localStorage.setItem('userStatus', preLogout)
+      // Push it to the server immediately
+      fetch(`${API_URL}/api/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: preLogout })
+      }).catch(console.error)
+      return
+    }
+
+    // Use cached status first (avoids showing INVISIBLE flash on reconnect)
     const cached = localStorage.getItem('userStatus') as UserStatus | null
-    if (cached) setMyStatus(cached)
+    if (cached && cached !== 'INVISIBLE') setMyStatus(cached)
 
     fetch(`${API_URL}/api/?id=${userId}`)
       .then((r) => r.json())
       .then((data: { status?: UserStatus }) => {
         if (data?.status) {
-          setMyStatus(data.status)
-          localStorage.setItem('userStatus', data.status)
+          // If DB has INVISIBLE it means we disconnected and the server hasn't
+          // restored our status yet. Use cached status so dropdown doesn't flicker.
+          const effectiveStatus =
+            data.status === 'INVISIBLE'
+              ? cached && cached !== 'INVISIBLE'
+                ? cached
+                : 'OFFLINE'
+              : data.status
+          setMyStatus(effectiveStatus as UserStatus)
+          localStorage.setItem('userStatus', effectiveStatus)
         }
       })
       .catch(console.error)
@@ -288,6 +315,26 @@ function ChatsWithUser({ userId }: { userId: string }) {
     const WS_URL = API_URL.replace(/^http/, 'ws')
     const ws = new WebSocket(`${WS_URL}/ws?userId=${userId}`)
     wsRef.current = ws
+
+    ws.onopen = () => {
+      // If the user had a non-default status before logging out, broadcast it
+      // to friends now that the WS connection is live
+      const statusToAnnounce = localStorage.getItem(
+        'userStatus'
+      ) as UserStatus | null
+      if (
+        statusToAnnounce &&
+        statusToAnnounce !== 'OFFLINE' &&
+        statusToAnnounce !== 'INVISIBLE'
+      ) {
+        ws.send(
+          JSON.stringify({
+            type: 'user:status',
+            payload: { status: statusToAnnounce }
+          })
+        )
+      }
+    }
 
     ws.onmessage = (event) => {
       try {
@@ -567,9 +614,20 @@ function ChatsWithUser({ userId }: { userId: string }) {
 
         // ── User status updates from others ──
         if (msg.type === 'user:status') {
-          const { userId: changedUserId, status } = msg.payload as {
+          const {
+            userId: changedUserId,
+            status,
+            self
+          } = msg.payload as {
             userId: string
             status: string
+            self?: boolean
+          }
+          // If this is our own status being restored after reconnect, update myStatus
+          if (self || changedUserId === userId) {
+            const restored = status as UserStatus
+            setMyStatus(restored)
+            localStorage.setItem('userStatus', restored)
           }
           setChats((prev) =>
             prev.map((c) => ({
@@ -823,6 +881,16 @@ function ChatsWithUser({ userId }: { userId: string }) {
     setMyStatus(status)
     setShowStatusMenu(false)
     localStorage.setItem('userStatus', status)
+    // Immediately update the current user's own entries in all chats so the
+    // navbar status dots reflect the change without waiting for a WS round-trip
+    setChats((prev) =>
+      prev.map((c) => ({
+        ...c,
+        users: c.users.map((u) =>
+          u.userId === userId ? { ...u, user: { ...u.user, status } } : u
+        )
+      }))
+    )
     // Notify server so it can persist and relay to friends
     wsRef.current?.send(
       JSON.stringify({ type: 'user:status', payload: { status } })

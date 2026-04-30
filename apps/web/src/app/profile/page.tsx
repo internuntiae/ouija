@@ -689,10 +689,33 @@ export default function Profile() {
               </h3>
               <button
                 className={styles.DangerBtn}
-                onClick={() => {
+                onClick={async () => {
                   if (confirm(t('profile.logoutConfirm'))) {
+                    const uid = localStorage.getItem('userId')
+                    if (uid) {
+                      // Save the current status so we can restore it on next login
+                      const currentStatus = localStorage.getItem('userStatus')
+                      if (
+                        currentStatus &&
+                        currentStatus !== 'OFFLINE' &&
+                        currentStatus !== 'INVISIBLE'
+                      ) {
+                        localStorage.setItem('preLogoutStatus', currentStatus)
+                      }
+                      // Set status to OFFLINE before disconnecting
+                      try {
+                        await fetch(`${API_URL}/api/${uid}`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ status: 'OFFLINE' })
+                        })
+                      } catch {
+                        /* best-effort */
+                      }
+                    }
                     localStorage.removeItem('userId')
                     localStorage.removeItem('userNickname')
+                    localStorage.removeItem('userStatus')
                     router.push('/login')
                   }
                 }}

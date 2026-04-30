@@ -70,6 +70,15 @@ export function attachWebSocketServer(httpServer: Server): WebSocketServer {
         .then(() => {
           userPreviousStatus.delete(userId)
           broadcastStatusToFriends(userId, savedStatus)
+          // Also notify the reconnecting user themselves so their UI reflects the restored status
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(
+              JSON.stringify({
+                type: 'user:status',
+                payload: { userId, status: savedStatus, self: true }
+              })
+            )
+          }
         })
         .catch(() => {
           /* ignore */
@@ -135,22 +144,31 @@ export function attachWebSocketServer(httpServer: Server): WebSocketServer {
       userSockets.get(userId)?.delete(socket)
       if (userSockets.get(userId)?.size === 0) {
         userSockets.delete(userId)
-        // Save current status and set INVISIBLE
+        // Save current status and set INVISIBLE (unless the user logged out
+        // explicitly and already set their status to OFFLINE — in that case
+        // keep OFFLINE so friends see the correct state and don't get a
+        // misleading INVISIBLE->ONLINE restore cycle on next login)
         prisma.user
           .findUnique({ where: { id: userId }, select: { status: true } })
           .then((user) => {
             if (!user) return
             const currentStatus = user.status as string
-            if (currentStatus !== 'INVISIBLE' && currentStatus !== 'OFFLINE') {
+            if (currentStatus === 'OFFLINE') {
+              // User logged out intentionally — broadcast OFFLINE and stop
+              broadcastStatusToFriends(userId, 'OFFLINE')
+              return
+            }
+            if (currentStatus !== 'INVISIBLE') {
               userPreviousStatus.set(userId, currentStatus)
             }
-            return prisma.user.update({
-              where: { id: userId },
-              data: { status: 'INVISIBLE' as never }
-            })
-          })
-          .then(() => {
-            broadcastStatusToFriends(userId, 'INVISIBLE')
+            return prisma.user
+              .update({
+                where: { id: userId },
+                data: { status: 'INVISIBLE' as never }
+              })
+              .then(() => {
+                broadcastStatusToFriends(userId, 'INVISIBLE')
+              })
           })
           .catch(() => {
             /* ignore */
