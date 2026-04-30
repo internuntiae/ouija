@@ -9,7 +9,7 @@
 }
 
 .Section {
-  width: 60%;
+  width: 80%;
   margin: 1rem auto;
   padding: 2rem 2.5rem;
   display: flex;
@@ -21,27 +21,88 @@
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
 }
 
+// ── Two-column layout ─────────────────────────────────────────────────────────
+
+.TwoColumnSection {
+  width: 80%;
+  margin: 1rem auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.TwoColumnLeft,
+.TwoColumnRight {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ColumnCard {
+  padding: 2rem 2rem;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+}
+
+// ── Profile header (avatar left, info right) ──────────────────────────────────
+
+.ProfileHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 2rem;
+  width: 100%;
+}
+
+.ProfileInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-top: 0.4rem;
+  text-align: left;
+}
+
+.ProfileNickname {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 0.4rem;
+}
+
+.StatusDotInline {
+  display: inline-block;
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+
 .First {
   margin-top: 0;
 }
 
 .SectionProfilePicture {
   border-radius: 50%;
-  margin-bottom: 1.2rem;
   border: 2px solid var(--border-mid);
   object-fit: cover;
+  flex-shrink: 0;
 }
 
 .SectionHeading {
-  font-size: 2rem;
+  font-size: 1.8rem;
   font-weight: 600;
   margin-bottom: 1rem;
   width: 100%;
-  text-align: center;
+  text-align: left;
   color: var(--text);
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 0.8rem;
 }
 
@@ -357,7 +418,7 @@
 
 .AvatarEditWrap {
   position: relative;
-  margin-bottom: 1.2rem;
+  flex-shrink: 0;
   width: 120px;
   height: 120px;
 }
@@ -386,6 +447,13 @@
 // ── MOBILE RESPONSIVE ─────────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════════
 
+@media (max-width: 1100px) {
+  .TwoColumnSection {
+    width: 92%;
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 768px) {
   .PageWrapper {
     padding: 2rem 0 4rem;
@@ -398,8 +466,28 @@
     margin: 0.6rem auto;
   }
 
+  .TwoColumnSection {
+    width: 92%;
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+    margin: 0.6rem auto;
+  }
+
+  .ColumnCard {
+    padding: 1.6rem 1.4rem;
+    border-radius: 1.2rem;
+  }
+
+  .ProfileHeader {
+    gap: 1.2rem;
+  }
+
+  .ProfileNickname {
+    font-size: 1.6rem;
+  }
+
   .SectionHeading {
-    font-size: 1.7rem;
+    font-size: 1.5rem;
   }
 
   // ── Formularz hasła ─────────────────────────────────────────────────────────
@@ -475,5 +563,15 @@
   .RejectBtn {
     flex: 1 1 auto;
     text-align: center;
+  }
+
+  .ProfileHeader {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .ProfileInfo {
+    text-align: center;
+    align-items: center;
   }
 }

@@ -109,16 +109,20 @@ export default function MessageBubble({ msg, isOwn, userId, onReact }: Props) {
           className={`${styles.ReactionBar} ${isOwn ? styles.ReactionBarOwn : ''}`}
         >
           {(Object.entries(reactionCounts) as [ReactionType, number][]).map(
-            ([type, count]) => (
-              <span
-                key={type}
-                className={`${styles.ReactionChip} ${myReaction === type ? styles.ReactionChipActive : ''}`}
-                onClick={() => onReact(msg.id, type)}
-                title={type}
-              >
-                {REACTION_EMOJI[type]} {count}
-              </span>
-            )
+            ([type, count]) => {
+              const emoji = REACTION_EMOJI[type]
+              if (!emoji) return null
+              return (
+                <span
+                  key={type}
+                  className={`${styles.ReactionChip} ${myReaction === type ? styles.ReactionChipActive : ''}`}
+                  onClick={() => onReact(msg.id, type)}
+                  title={type}
+                >
+                  {emoji} {count}
+                </span>
+              )
+            }
           )}
         </div>
       )}

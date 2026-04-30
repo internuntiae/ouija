@@ -172,6 +172,8 @@ export const translations = {
     'chat.friendRequestSent': 'wysłał(a) Ci zaproszenie do znajomych',
     'chat.friendAcceptedTitle': 'Zaproszenie zaakceptowane',
     'chat.friendAccepted': 'zaakceptował(a) Twoje zaproszenie',
+    'chat.reactionTitle': 'Nowa reakcja',
+    'chat.reactionBody': 'ktoś zareagował na Twoją wiadomość',
 
     // ── Status użytkownika ───────────────────────────────────────────────────
     'status.ONLINE': 'Aktywny',
@@ -219,6 +221,9 @@ export const translations = {
     'profile.passwordChanged': 'Hasło zmienione pomyślnie!',
     'profile.changeAvatar': 'Zmień zdjęcie',
     'profile.changePasswordRedirect': 'Zmień hasło przez e-mail',
+    'profile.accountCreated': 'Konto założone',
+    'profile.accountAge': 'Wiek konta',
+    'profile.accountAgeDays': 'dni',
     'profile.errorPasswordRequired': 'Hasło jest wymagane',
     'profile.errorPasswordShort': 'Hasło musi mieć co najmniej 8 znaków',
     'profile.errorPasswordUppercase':
@@ -237,6 +242,13 @@ export const translations = {
     'profilePopup.pendingSent': '⏳ Zaproszenie wysłane',
     'profilePopup.alreadyFriend': '✓ Znajomy',
     'profilePopup.loadError': 'Nie można załadować profilu',
+
+    // ── GroupInfoPopup ───────────────────────────────────────────────────────
+    'chat.groupChatLabel': 'Czat grupowy',
+    'groupPopup.members': 'członków',
+    'groupPopup.membersLabel': 'Członkowie',
+    'groupPopup.you': 'ty',
+    'groupPopup.openChat': 'Otwórz czat',
 
     // ── UserProfile (profil innego użytkownika) ──────────────────────────────
     'userProfile.loading': 'Ładowanie...',
@@ -403,6 +415,8 @@ export const translations = {
     'chat.friendRequestSent': 'sent you a friend request',
     'chat.friendAcceptedTitle': 'Friend request accepted',
     'chat.friendAccepted': 'accepted your friend request',
+    'chat.reactionTitle': 'New reaction',
+    'chat.reactionBody': 'someone reacted to your message',
 
     // ── User status ──────────────────────────────────────────────────────────
     'status.ONLINE': 'Online',
@@ -450,6 +464,9 @@ export const translations = {
     'profile.passwordChanged': 'Password changed successfully!',
     'profile.changeAvatar': 'Change photo',
     'profile.changePasswordRedirect': 'Change password via e-mail',
+    'profile.accountCreated': 'Account created',
+    'profile.accountAge': 'Account age',
+    'profile.accountAgeDays': 'days',
     'profile.errorPasswordRequired': 'Password is required',
     'profile.errorPasswordShort': 'Password must be at least 8 characters',
     'profile.errorPasswordUppercase':
@@ -468,6 +485,13 @@ export const translations = {
     'profilePopup.pendingSent': '⏳ Request sent',
     'profilePopup.alreadyFriend': '✓ Friends',
     'profilePopup.loadError': 'Could not load profile',
+
+    // ── GroupInfoPopup ───────────────────────────────────────────────────────
+    'chat.groupChatLabel': 'Group Chat',
+    'groupPopup.members': 'members',
+    'groupPopup.membersLabel': 'Members',
+    'groupPopup.you': 'you',
+    'groupPopup.openChat': 'Open chat',
 
     // ── UserProfile (other user's profile) ───────────────────────────────────
     'userProfile.loading': 'Loading...',

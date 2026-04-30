@@ -55,6 +55,19 @@
       border-color: var(--border-mid);
     }
 
+    // Override browser autofill yellow background
+    &:-webkit-autofill,
+    &:-webkit-autofill:hover,
+    &:-webkit-autofill:focus,
+    &:-webkit-autofill:active {
+      -webkit-box-shadow: 0 0 0 100px var(--bg-elevated) inset !important;
+      box-shadow: 0 0 0 100px var(--bg-elevated) inset !important;
+      -webkit-text-fill-color: var(--text-primary) !important;
+      caret-color: var(--text-primary);
+      border-color: var(--border-mid) !important;
+      transition: background-color 5000s ease-in-out 0s;
+    }
+
     &[aria-invalid='true'] {
       border-color: rgba(248, 113, 113, 0.5);
       background: rgba(248, 113, 113, 0.05);

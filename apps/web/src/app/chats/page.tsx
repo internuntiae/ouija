@@ -2,6 +2,7 @@
 
 import styles from './Chats.module.scss'
 import ProfilePopup from '../components/ProfilePopup/ProfilePopup'
+import GroupInfoPopup from '../components/GroupInfoPopup/GroupInfoPopup'
 import {
   useState,
   useEffect,
@@ -19,6 +20,7 @@ import {
   UserStatus,
   UserSearchResult,
   ReactionType,
+  REACTION_EMOJI,
   AttachmentType,
   API_URL,
   PAGE_SIZE
@@ -62,6 +64,9 @@ function ChatsWithUser({ userId }: { userId: string }) {
   const [profilePopupUserId, setProfilePopupUserId] = useState<string | null>(
     null
   )
+  const [groupInfoPopupChatId, setGroupInfoPopupChatId] = useState<
+    string | null
+  >(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchLoading, setSearchLoading] = useState(false)
@@ -378,6 +383,20 @@ function ChatsWithUser({ userId }: { userId: string }) {
               }
             })
           )
+          // Notify the message owner when someone else reacts to their message
+          if (msg.type === 'reaction:added' && rUserId !== userId) {
+            setMessages((prev) => {
+              const reactedMsg = prev.find((m) => m.id === messageId)
+              if (reactedMsg && reactedMsg.senderId === userId) {
+                const emoji = REACTION_EMOJI[rType] ?? '👍'
+                triggerNotification(
+                  t('chat.reactionTitle'),
+                  `${emoji} ${t('chat.reactionBody')}`
+                )
+              }
+              return prev
+            })
+          }
         }
 
         if (msg.type === 'chat:created') {
@@ -842,13 +861,22 @@ function ChatsWithUser({ userId }: { userId: string }) {
 
   async function handleCreateGroupChat(name: string, memberIds: string[]) {
     if (!userId) return
+    const allIds = [userId, ...memberIds]
+    if (allIds.length < 3) {
+      alert('A group needs at least 3 members.')
+      return
+    }
+    if (allIds.length > 10) {
+      alert('A group can have at most 10 members.')
+      return
+    }
     const res = await fetch(`${API_URL}/api/chats`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name,
         type: 'GROUP',
-        userIds: [userId, ...memberIds]
+        userIds: allIds
       })
     })
     if (!res.ok) {
@@ -931,6 +959,62 @@ function ChatsWithUser({ userId }: { userId: string }) {
     )
   }
 
+  async function handleAddMember(chatId: string, memberId: string) {
+    const existingChat = chats.find((c) => c.id === chatId)
+    if (existingChat && existingChat.users.length >= 10) {
+      alert('This group has reached the maximum of 10 members.')
+      return
+    }
+    const res = await fetch(`${API_URL}/api/chats/${chatId}/members`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: memberId, role: 'MEMBER' })
+    })
+    if (!res.ok) {
+      alert('Błąd dodawania członka')
+      return
+    }
+    const updatedChat = await res.json().catch(() => null)
+    if (updatedChat) {
+      setChats((prev) =>
+        prev.map((c) =>
+          c.id === chatId ? { ...c, users: updatedChat.users ?? c.users } : c
+        )
+      )
+    }
+  }
+
+  async function handleUpgradeToGroup(
+    chatId: string,
+    name: string,
+    extraMemberIds: string[]
+  ) {
+    const existingChat = chats.find((c) => c.id === chatId)
+    if (!existingChat) return
+    const existingUserIds = existingChat.users.map((u) => u.userId)
+    const allMemberIds = [...new Set([...existingUserIds, ...extraMemberIds])]
+    if (allMemberIds.length < 3) {
+      alert('A group chat needs at least 3 members.')
+      return
+    }
+    if (allMemberIds.length > 10) {
+      alert('A group chat can have at most 10 members.')
+      return
+    }
+    const res = await fetch(`${API_URL}/api/chats`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, type: 'GROUP', userIds: allMemberIds })
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      alert(err.error ?? 'Błąd tworzenia grupy')
+      return
+    }
+    const chat = await res.json()
+    setActiveChatId(chat.id)
+  }
+
   return (
     <div className={styles.container}>
       {/* Powiadomienie o zaproszeniu do znajomych */}
@@ -979,6 +1063,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
           )
         }}
         onOpenProfile={setProfilePopupUserId}
+        onOpenGroupInfo={setGroupInfoPopupChatId}
         onSendInvite={handleSendInvite}
         onOpenChatWith={handleOpenChatWith}
         onCreateGroupChat={handleCreateGroupChat}
@@ -1010,6 +1095,10 @@ function ChatsWithUser({ userId }: { userId: string }) {
         onRenameGroup={handleRenameGroup}
         onDeleteGroup={handleDeleteGroup}
         onTransferOwner={handleTransferOwner}
+        onAddMember={handleAddMember}
+        onUpgradeToGroup={handleUpgradeToGroup}
+        friendIds={friendIds}
+        allChats={chats}
       />
 
       {profilePopupUserId && (
@@ -1020,6 +1109,26 @@ function ChatsWithUser({ userId }: { userId: string }) {
           onMessageUser={handleMessageFromProfile}
         />
       )}
+
+      {groupInfoPopupChatId &&
+        (() => {
+          const groupChat = chats.find((c) => c.id === groupInfoPopupChatId)
+          return groupChat ? (
+            <GroupInfoPopup
+              chat={groupChat}
+              viewerId={userId}
+              onClose={() => setGroupInfoPopupChatId(null)}
+              onOpenProfile={(uid) => {
+                setGroupInfoPopupChatId(null)
+                setProfilePopupUserId(uid)
+              }}
+              onOpenChat={(chatId) => {
+                setActiveChatId(chatId)
+                setGroupInfoPopupChatId(null)
+              }}
+            />
+          ) : null
+        })()}
     </div>
   )
 }

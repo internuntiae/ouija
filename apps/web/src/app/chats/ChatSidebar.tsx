@@ -33,6 +33,7 @@ interface Props {
   onToggleMute: (chatId: string) => void
   onSelectChat: (id: string) => void
   onOpenProfile: (id: string) => void
+  onOpenGroupInfo: (chatId: string) => void
   onSendInvite: (id: string) => void
   onOpenChatWith: (id: string) => void
   isMobileHidden?: boolean
@@ -65,6 +66,7 @@ export default function ChatSidebar({
   onToggleMute,
   onSelectChat,
   onOpenProfile,
+  onOpenGroupInfo,
   onSendInvite,
   onOpenChatWith,
   isMobileHidden,
@@ -95,11 +97,15 @@ export default function ChatSidebar({
   }
 
   function toggleMember(person: UserSearchResult) {
-    setGroupMembers((prev) =>
-      prev.some((m) => m.id === person.id)
-        ? prev.filter((m) => m.id !== person.id)
-        : [...prev, person]
-    )
+    setGroupMembers((prev) => {
+      if (prev.some((m) => m.id === person.id))
+        return prev.filter((m) => m.id !== person.id)
+      if (prev.length >= 9) {
+        alert('A group can have at most 10 members (you + 9 others).')
+        return prev
+      }
+      return [...prev, person]
+    })
   }
 
   const handleGroupSearch = useCallback(
@@ -131,7 +137,13 @@ export default function ChatSidebar({
   )
 
   async function handleCreateGroup() {
-    if (!groupName.trim() || groupMembers.length === 0 || groupCreating) return
+    if (!groupName.trim() || groupCreating) return
+    if (groupMembers.length < 2) {
+      alert(
+        'A group chat needs at least 3 members (you + 2 others). Please add at least 2 people.'
+      )
+      return
+    }
     setGroupCreating(true)
     try {
       await onCreateGroupChat(
@@ -230,6 +242,13 @@ export default function ChatSidebar({
                 onChange={(e) => setGroupName(e.target.value)}
                 autoFocus
               />
+              <p
+                className={styles.ModalHint}
+                style={{ marginBottom: '0.4rem' }}
+              >
+                Dodaj min. 2 osoby (wymagane minimum 3 uczestników łącznie z
+                tobą)
+              </p>
 
               <input
                 type="text"
@@ -307,9 +326,7 @@ export default function ChatSidebar({
                 className={styles.ModalConfirmBtn}
                 onClick={handleCreateGroup}
                 disabled={
-                  !groupName.trim() ||
-                  groupMembers.length === 0 ||
-                  groupCreating
+                  !groupName.trim() || groupMembers.length < 2 || groupCreating
                 }
               >
                 {groupCreating ? 'Tworzę...' : 'Utwórz grupę'}
@@ -505,7 +522,11 @@ export default function ChatSidebar({
                 className={styles.AvatarWrap}
                 onClick={(e) => {
                   e.stopPropagation()
-                  if (other) onOpenProfile(other.id)
+                  if (chat.type === 'GROUP') {
+                    onOpenGroupInfo(chat.id)
+                  } else if (other) {
+                    onOpenProfile(other.id)
+                  }
                 }}
                 style={{ cursor: 'pointer' }}
               >
