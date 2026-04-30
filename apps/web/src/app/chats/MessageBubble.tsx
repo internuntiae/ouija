@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import styles from './Chats.module.scss'
 import { Message, ReactionType, REACTION_EMOJI } from './types'
 
@@ -15,6 +16,15 @@ interface Props {
   }[]
 }
 
+interface PickerPos {
+  top: number
+  left: number
+}
+interface TooltipPos {
+  top: number
+  left: number
+}
+
 export default function MessageBubble({
   msg,
   isOwn,
@@ -22,24 +32,73 @@ export default function MessageBubble({
   onReact,
   chatUsers = []
 }: Props) {
-  const [showPicker, setShowPicker] = useState(false)
+  const [pickerPos, setPickerPos] = useState<PickerPos | null>(null)
   const [hoveredReaction, setHoveredReaction] = useState<ReactionType | null>(
     null
   )
+  const [tooltipPos, setTooltipPos] = useState<TooltipPos | null>(null)
   const pickerRef = useRef<HTMLDivElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+
+  // Close picker on outside click
+  useEffect(() => {
+    if (!pickerPos) return
+    function handleClick(e: MouseEvent) {
+      if (
+        pickerRef.current &&
+        !pickerRef.current.contains(e.target as Node) &&
+        btnRef.current &&
+        !btnRef.current.contains(e.target as Node)
+      )
+        setPickerPos(null)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [pickerPos])
+
+  // Reposition picker on scroll/resize
+  const updatePickerPos = useCallback(() => {
+    if (!pickerPos || !btnRef.current) return
+    const r = btnRef.current.getBoundingClientRect()
+    setPickerPos({ top: r.top - 8, left: isOwn ? r.right : r.left })
+  }, [pickerPos, isOwn])
 
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (pickerRef.current && !pickerRef.current.contains(e.target as Node))
-        setShowPicker(false)
+    if (!pickerPos) return
+    window.addEventListener('scroll', updatePickerPos, true)
+    window.addEventListener('resize', updatePickerPos)
+    return () => {
+      window.removeEventListener('scroll', updatePickerPos, true)
+      window.removeEventListener('resize', updatePickerPos)
     }
-    if (showPicker) document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [showPicker])
+  }, [pickerPos, updatePickerPos])
+
+  function togglePicker() {
+    if (pickerPos) {
+      setPickerPos(null)
+      return
+    }
+    if (!btnRef.current) return
+    const r = btnRef.current.getBoundingClientRect()
+    setPickerPos({ top: r.top - 8, left: isOwn ? r.right : r.left })
+  }
+
+  function handleChipMouseEnter(
+    type: ReactionType,
+    e: React.MouseEvent<HTMLSpanElement>
+  ) {
+    const r = e.currentTarget.getBoundingClientRect()
+    setTooltipPos({ top: r.top, left: r.left + r.width / 2 })
+    setHoveredReaction(type)
+  }
+
+  function handleChipMouseLeave() {
+    setHoveredReaction(null)
+    setTooltipPos(null)
+  }
 
   const reactions = msg.reactions ?? []
 
-  // Group reactions by type, collecting reactors
   const reactionGroups = reactions.reduce<
     Partial<Record<ReactionType, { count: number; users: string[] }>>
   >((acc, r) => {
@@ -54,6 +113,63 @@ export default function MessageBubble({
   }, {})
 
   const myReaction = reactions.find((r) => r.userId === userId)?.type
+
+  // Picker rendered into a portal so it escapes every scroll/overflow ancestor
+  const pickerPortal =
+    pickerPos && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            ref={pickerRef}
+            className={styles.ReactionPickerFixed}
+            style={{
+              top: pickerPos.top,
+              left: pickerPos.left,
+              transform: isOwn
+                ? 'translate(-100%, -100%)'
+                : 'translate(0, -100%)'
+            }}
+          >
+            {(Object.keys(REACTION_EMOJI) as ReactionType[]).map((type) => (
+              <button
+                key={type}
+                className={`${styles.ReactionPickerBtn} ${myReaction === type ? styles.ReactionPickerBtnActive : ''}`}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  onReact(msg.id, type)
+                  setPickerPos(null)
+                }}
+                title={type}
+              >
+                {REACTION_EMOJI[type]}
+              </button>
+            ))}
+          </div>,
+          document.body
+        )
+      : null
+
+  // Tooltip also in a portal
+  const tooltipPortal =
+    hoveredReaction && tooltipPos && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            className={styles.ReactionTooltipFixed}
+            style={{ top: tooltipPos.top, left: tooltipPos.left }}
+          >
+            <span className={styles.ReactionTooltipEmoji}>
+              {REACTION_EMOJI[hoveredReaction]}
+            </span>
+            <span className={styles.ReactionTooltipUsers}>
+              {(reactionGroups[hoveredReaction]?.users ?? []).map((name, i) => (
+                <span key={i} className={styles.ReactionTooltipUser}>
+                  {name}
+                </span>
+              ))}
+            </span>
+          </div>,
+          document.body
+        )
+      : null
 
   return (
     <div
@@ -100,33 +216,13 @@ export default function MessageBubble({
         </span>
 
         <button
+          ref={btnRef}
           className={styles.MessageReactBtn}
-          onClick={() => setShowPicker((v) => !v)}
+          onClick={togglePicker}
           title="Dodaj reakcję"
         >
           {myReaction ? REACTION_EMOJI[myReaction] : '＋'}
         </button>
-
-        {showPicker && (
-          <div
-            ref={pickerRef}
-            className={`${styles.ReactionPicker} ${isOwn ? styles.ReactionPickerLeft : styles.ReactionPickerRight}`}
-          >
-            {(Object.keys(REACTION_EMOJI) as ReactionType[]).map((type) => (
-              <button
-                key={type}
-                className={`${styles.ReactionPickerBtn} ${myReaction === type ? styles.ReactionPickerBtnActive : ''}`}
-                onClick={() => {
-                  onReact(msg.id, type)
-                  setShowPicker(false)
-                }}
-                title={type}
-              >
-                {REACTION_EMOJI[type]}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {Object.keys(reactionGroups).length > 0 && (
@@ -138,7 +234,7 @@ export default function MessageBubble({
               ReactionType,
               { count: number; users: string[] }
             ][]
-          ).map(([type, { count, users }]) => {
+          ).map(([type, { count }]) => {
             const emoji = REACTION_EMOJI[type]
             if (!emoji) return null
             return (
@@ -146,28 +242,18 @@ export default function MessageBubble({
                 key={type}
                 className={`${styles.ReactionChip} ${myReaction === type ? styles.ReactionChipActive : ''}`}
                 onClick={() => onReact(msg.id, type)}
-                onMouseEnter={() => setHoveredReaction(type)}
-                onMouseLeave={() => setHoveredReaction(null)}
-                style={{ position: 'relative' }}
+                onMouseEnter={(e) => handleChipMouseEnter(type, e)}
+                onMouseLeave={handleChipMouseLeave}
               >
                 {emoji} {count}
-                {hoveredReaction === type && users.length > 0 && (
-                  <span className={styles.ReactionTooltip}>
-                    <span className={styles.ReactionTooltipEmoji}>{emoji}</span>
-                    <span className={styles.ReactionTooltipUsers}>
-                      {users.map((name, i) => (
-                        <span key={i} className={styles.ReactionTooltipUser}>
-                          {name}
-                        </span>
-                      ))}
-                    </span>
-                  </span>
-                )}
               </span>
             )
           })}
         </div>
       )}
+
+      {pickerPortal}
+      {tooltipPortal}
     </div>
   )
 }

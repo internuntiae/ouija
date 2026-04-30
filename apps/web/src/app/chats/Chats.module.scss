@@ -408,7 +408,7 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: visible;
+  overflow: hidden;
   background: var(--bg-base);
   position: relative;
 }
@@ -421,8 +421,6 @@
   align-items: center;
   padding: 0 1.5rem;
   background: var(--bg-base);
-  position: relative;
-  z-index: 10;
 }
 
 .ChatContactInfoLeft {
@@ -449,7 +447,6 @@
 .ChatMessageContainer {
   flex: 1;
   overflow-y: auto;
-  overflow-x: clip;
   display: flex;
   flex-direction: column;
   padding: 1.5rem;
@@ -679,23 +676,16 @@
   left: -3.4rem;
 }
 
-.ReactionPicker {
-  position: absolute;
-  bottom: calc(100% + 0.5rem);
+.ReactionPickerFixed {
+  position: fixed;
   display: flex;
   gap: 0.2rem;
   background: var(--bg-surface);
   border: 1px solid var(--border-mid);
   border-radius: 2rem;
   padding: 0.5rem 0.8rem;
-  z-index: 200;
+  z-index: 9999;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  &Left {
-    right: 0;
-  }
-  &Right {
-    left: 0;
-  }
 }
 
 .ReactionPickerBtn {
@@ -1473,12 +1463,10 @@
 
 // ── Reaction tooltip ────────────────────────────────────────────────────────
 
-.ReactionTooltip {
-  position: absolute;
-  bottom: calc(100% + 0.5rem);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 200;
+.ReactionTooltipFixed {
+  position: fixed;
+  transform: translate(-50%, -100%) translateY(-0.6rem);
+  z-index: 9999;
   background: var(--bg-elevated, #1e1e2e);
   border: 1px solid var(--border-mid, rgba(255, 255, 255, 0.1));
   border-radius: 0.8rem;
@@ -1493,7 +1481,6 @@
   pointer-events: none;
   animation: tooltipFadeIn 0.15s ease;
 
-  // Arrow pointing down
   &::after {
     content: '';
     position: absolute;
