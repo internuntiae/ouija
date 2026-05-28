@@ -15,9 +15,18 @@ import cors from 'cors'
 
 const app: Express = express()
 
+const ALLOWED_ORIGINS = (process.env.APP_URL ?? 'http://localhost:3000')
+  .split(',')
+  .map((o) => o.trim())
+
 app.use(
   cors({
-    origin: true, // reflect the request origin — allows web, mobile, and any client
+    origin: (origin, callback) => {
+      // Allow requests with no origin (curl, Postman, mobile apps, server-to-server)
+      if (!origin) return callback(null, true)
+      if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true)
+      callback(new Error(`CORS: origin ${origin} not allowed`))
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
   })

@@ -1,4 +1,5 @@
 import request from 'supertest'
+import { TEST_TOKEN } from './setup'
 import { app } from '@/app'
 import { prisma } from '@/lib'
 import { mockUser1, mockUser2, mockUser3 } from './fixtures'
@@ -14,7 +15,7 @@ describe('GET /api/', () => {
   it('returns all users', async () => {
     db.user.findMany.mockResolvedValueOnce([mockUser1, mockUser2, mockUser3])
 
-    const res = await request(app).get('/api/')
+    const res = await request(app).get('/api/').set('Authorization', `Bearer ${TEST_TOKEN}`)
 
     expect(res.status).toBe(200)
     expect(res.body).toHaveLength(3)
@@ -24,7 +25,7 @@ describe('GET /api/', () => {
   it('returns a user by id via ?id=', async () => {
     db.user.findUnique.mockResolvedValueOnce(mockUser1)
 
-    const res = await request(app).get('/api/?id=user_alice_001')
+    const res = await request(app).get('/api/?id=user_alice_001').set('Authorization', `Bearer ${TEST_TOKEN}`)
 
     expect(res.status).toBe(200)
     expect(res.body.email).toBe('alice@ouija.dev')
@@ -33,7 +34,7 @@ describe('GET /api/', () => {
   it('returns a user by email via ?email=', async () => {
     db.user.findUnique.mockResolvedValueOnce(mockUser2)
 
-    const res = await request(app).get('/api/?email=bob@ouija.dev')
+    const res = await request(app).get('/api/?email=bob@ouija.dev').set('Authorization', `Bearer ${TEST_TOKEN}`)
 
     expect(res.status).toBe(200)
     expect(res.body.nickname).toBe('bob')
@@ -42,7 +43,7 @@ describe('GET /api/', () => {
   it('returns a user by nickname via ?nickname=', async () => {
     db.user.findUnique.mockResolvedValueOnce(mockUser3)
 
-    const res = await request(app).get('/api/?nickname=carol')
+    const res = await request(app).get('/api/?nickname=carol').set('Authorization', `Bearer ${TEST_TOKEN}`)
 
     expect(res.status).toBe(200)
     expect(res.body.id).toBe('user_carol_003')
@@ -54,7 +55,7 @@ describe('POST /api/', () => {
     db.user.findUnique.mockResolvedValueOnce(null) // no existing user
     db.user.create.mockResolvedValueOnce(mockUser1)
 
-    const res = await request(app).post('/api/').send({
+    const res = await request(app).post('/api/').set('Authorization', `Bearer ${TEST_TOKEN}`).send({
       email: 'alice@ouija.dev',
       password: 'secret123',
       nickname: 'alice'
@@ -67,7 +68,7 @@ describe('POST /api/', () => {
   it('returns 500 if user already exists', async () => {
     db.user.findUnique.mockResolvedValueOnce(mockUser1) // already exists
 
-    const res = await request(app).post('/api/').send({
+    const res = await request(app).post('/api/').set('Authorization', `Bearer ${TEST_TOKEN}`).send({
       email: 'alice@ouija.dev',
       password: 'secret123',
       nickname: 'alice'
@@ -80,6 +81,7 @@ describe('POST /api/', () => {
   it('returns 500 if required fields are missing', async () => {
     const res = await request(app)
       .post('/api/')
+      .set('Authorization', `Bearer ${TEST_TOKEN}`)
       .send({ email: 'alice@ouija.dev' }) // missing password and nickname
 
     expect(res.status).toBe(500)
@@ -97,6 +99,7 @@ describe('PUT /api/:id', () => {
 
     const res = await request(app)
       .put('/api/user_alice_001')
+      .set('Authorization', `Bearer ${TEST_TOKEN}`)
       .send({ nickname: 'alice_updated' })
 
     expect(res.status).toBe(200)
@@ -108,6 +111,7 @@ describe('PUT /api/:id', () => {
 
     const res = await request(app)
       .put('/api/nonexistent_id')
+      .set('Authorization', `Bearer ${TEST_TOKEN}`)
       .send({ nickname: 'ghost' })
 
     expect(res.status).toBe(500)
@@ -120,7 +124,7 @@ describe('DELETE /api/:id', () => {
     db.user.findUnique.mockResolvedValueOnce(mockUser1)
     db.user.delete.mockResolvedValueOnce(mockUser1)
 
-    const res = await request(app).delete('/api/user_alice_001')
+    const res = await request(app).delete('/api/user_alice_001').set('Authorization', `Bearer ${TEST_TOKEN}`)
 
     expect(res.status).toBe(204)
   })
@@ -128,7 +132,7 @@ describe('DELETE /api/:id', () => {
   it('returns 500 if user does not exist', async () => {
     db.user.findUnique.mockResolvedValueOnce(null)
 
-    const res = await request(app).delete('/api/nonexistent_id')
+    const res = await request(app).delete('/api/nonexistent_id').set('Authorization', `Bearer ${TEST_TOKEN}`)
 
     expect(res.status).toBe(500)
     expect(res.body.error).toMatch(/does not exist/)

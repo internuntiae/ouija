@@ -41,7 +41,8 @@ export const createChat = async (
     if (!(await userRepo.getUserById(uid)))
       throw new Error(`User ${uid} not found`)
   }
-  return chatRepo.createChat(name, type, userIds)
+  const chat = await chatRepo.createChat(name, type, userIds)
+  return rehydrateChat(chat)
 }
 
 export const updateChat = async (

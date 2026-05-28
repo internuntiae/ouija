@@ -1,4 +1,5 @@
 import request from 'supertest'
+import { TEST_TOKEN } from './setup'
 import { app } from '@/app'
 import { prisma } from '@/lib'
 import { redis } from '@/lib'
@@ -18,8 +19,8 @@ beforeEach(() => jest.clearAllMocks())
 
 describe('GET /api/chats/:chatId/messages', () => {
   it('returns messages from postgres when lastId=0', async () => {
-    // lastId=0 → service skips redis findMessage and goes straight to postgres getAllMessages
-    // No findFirst mock needed here
+    // lastId="0" is a truthy string → service calls redis.findMessage first (cache miss),
+    // then falls back to postgres getAllMessages
     db.message.findMany.mockResolvedValueOnce([mockMessage2, mockMessage1])
 
     const res = await request(app).get(
@@ -38,6 +39,7 @@ describe('POST /api/chats/:chatId/messages', () => {
 
     const res = await request(app)
       .post('/api/chats/chat_private_001/messages')
+      .set('Authorization', `Bearer ${TEST_TOKEN}`)
       .send({ userId: 'user_alice_001', content: 'Hey Bob, how are you?' })
 
     expect(res.status).toBe(201)
@@ -48,6 +50,7 @@ describe('POST /api/chats/:chatId/messages', () => {
 
     const res = await request(app)
       .post('/api/chats/chat_group_002/messages')
+      .set('Authorization', `Bearer ${TEST_TOKEN}`)
       .send({
         userId: 'user_alice_001',
         content: 'Check this out',
@@ -62,6 +65,7 @@ describe('POST /api/chats/:chatId/messages', () => {
   it('returns 500 if content is null', async () => {
     const res = await request(app)
       .post('/api/chats/chat_private_001/messages')
+      .set('Authorization', `Bearer ${TEST_TOKEN}`)
       .send({ userId: 'user_alice_001', content: null })
 
     expect(res.status).toBe(500)
@@ -81,7 +85,8 @@ describe('PUT /api/chats/:chatId/messages/:messageId', () => {
     redisMock.lSet.mockResolvedValueOnce('OK')
 
     const res = await request(app)
-      .put('/api/chats/chat_private_001/messages/1')
+      .put('/api/chats/chat_private_001/messages/msg_001')
+      .set('Authorization', `Bearer ${TEST_TOKEN}`)
       .send({ content: 'Edited content' })
 
     expect(res.status).toBe(200)
@@ -93,6 +98,7 @@ describe('PUT /api/chats/:chatId/messages/:messageId', () => {
 
     const res = await request(app)
       .put('/api/chats/chat_private_001/messages/999')
+      .set('Authorization', `Bearer ${TEST_TOKEN}`)
       .send({ content: 'Ghost edit' })
 
     expect(res.status).toBe(500)
@@ -109,7 +115,7 @@ describe('DELETE /api/chats/:chatId/messages/:messageId', () => {
     redisMock.lRem.mockResolvedValueOnce(1)
 
     const res = await request(app).delete(
-      '/api/chats/chat_private_001/messages/1'
+      '/api/chats/chat_private_001/messages/msg_001'
     )
 
     expect(res.status).toBe(204)

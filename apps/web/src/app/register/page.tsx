@@ -217,6 +217,7 @@ export default function Register() {
           name="username"
           id="username"
           className={styles.FormInput}
+          maxLength={32}
           onBlur={(e) => handleBlur('username', e.target.value)}
           aria-invalid={touched.username && !!errors.username}
         />

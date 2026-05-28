@@ -1,6 +1,7 @@
 import * as userRepo from '@repositories/user.repository'
 import { emailService, tokenService, features } from '@/lib'
 import { sha256 } from '@utils/hash'
+import { stripPassword } from '@services/session.service'
 
 /**
  * Register a new user.
@@ -27,17 +28,12 @@ export const register = async (data: {
 
   const hashed = sha256(data.password)
 
-  console.log(
-    'DEBUG: REQUIRE_EMAIL_VERIFICATION value is:',
-    features.REQUIRE_EMAIL_VERIFICATION
-  )
-
   if (features.REQUIRE_EMAIL_VERIFICATION) {
     // Create unverified account and send verification email
     const user = await userRepo.createUser({ ...data, password: hashed })
     const token = await tokenService.createVerificationToken(user.id)
     await emailService.sendVerificationEmail(user.email, token)
-    return { user, requiresVerification: true }
+    return { user: stripPassword(user), requiresVerification: true }
   } else {
     // Create account already marked as verified — no email needed
     const user = await userRepo.createUser({
@@ -45,7 +41,7 @@ export const register = async (data: {
       password: hashed,
       emailVerified: true
     })
-    return { user, requiresVerification: false }
+    return { user: stripPassword(user), requiresVerification: false }
   }
 }
 

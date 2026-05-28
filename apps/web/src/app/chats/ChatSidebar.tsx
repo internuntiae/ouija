@@ -10,6 +10,7 @@ import {
   avatarSrc
 } from './types'
 import { useTranslation } from '@/i18n/translations'
+import { apiFetch } from '@utils/auth'
 
 interface Props {
   userId: string
@@ -121,7 +122,7 @@ export default function ChatSidebar({
         try {
           const API_URL =
             process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
-          const res = await fetch(`${API_URL}/api/?q=${encodeURIComponent(q)}`)
+          const res = await apiFetch(`${API_URL}/api/?q=${encodeURIComponent(q)}`)
           if (res.ok) {
             const data: UserSearchResult[] = await res.json()
             setGroupSearchResults(data.filter((u) => u.id !== userId))
@@ -209,13 +210,6 @@ export default function ChatSidebar({
         </div>
       )}
 
-      {/* ── Nowa grupa ── */}
-      <div className={styles.NewGroupSection}>
-        <button className={styles.NewGroupBtn} onClick={openGroupModal}>
-          <span>👥</span> Nowa grupa
-        </button>
-      </div>
-
       {/* ── Modal tworzenia grupy ── */}
       {groupModalOpen && (
         <div
@@ -237,11 +231,15 @@ export default function ChatSidebar({
               <input
                 type="text"
                 className={styles.ModalInput}
-                placeholder="Nazwa grupy"
+                placeholder="Nazwa grupy (maks. 50 znaków)"
                 value={groupName}
-                onChange={(e) => setGroupName(e.target.value)}
+                onChange={(e) => setGroupName(e.target.value.slice(0, 50))}
+                maxLength={50}
                 autoFocus
               />
+              <p className={styles.ModalHint} style={{ textAlign: 'right', marginBottom: '0.4rem' }}>
+                {groupName.length}/50
+              </p>
               <p
                 className={styles.ModalHint}
                 style={{ marginBottom: '0.4rem' }}
@@ -338,7 +336,8 @@ export default function ChatSidebar({
 
       {/* ── Wyszukiwarka ── */}
       <div className={styles.SearchSection}>
-        <div className={styles.SearchWrap}>
+        <div className={styles.SearchRow}>
+          <div className={`${styles.SearchWrap} ${styles.SearchRowSearch}`}>
           <input
             ref={searchInputRef}
             type="text"
@@ -363,6 +362,14 @@ export default function ChatSidebar({
               ✕
             </button>
           )}
+          </div>
+          <button
+            className={styles.NewGroupIconBtn}
+            onClick={openGroupModal}
+            title="Nowa grupa"
+          >
+            👥
+          </button>
         </div>
 
         {searchOpen && searchQuery.trim() && (

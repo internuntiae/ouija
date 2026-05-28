@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useSettings } from '@/context/SettingsContext'
 import { useTranslation } from '@/i18n/translations'
+import { apiFetch } from '@utils/auth'
 
 export default function Header() {
   const pathname = usePathname()
@@ -49,7 +50,7 @@ export default function Header() {
       }
       // Set status to OFFLINE before disconnecting so friends see the correct state
       try {
-        await fetch(`${API_URL}/api/${userId}`, {
+        await apiFetch(`${API_URL}/api/${userId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: 'OFFLINE' })
@@ -75,7 +76,7 @@ export default function Header() {
           width={1275}
           height={690}
           className={styles.HeaderLogo}
-          style={{ width: 'auto', height: '8vh' }}
+          style={{ width: 'auto', height: 'clamp(3.2rem, 5vh, 5.6rem)' }}
           priority
         />
       </Link>

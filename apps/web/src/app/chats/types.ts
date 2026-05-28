@@ -117,6 +117,7 @@ export interface AppSettings {
   notificationsEnabled: boolean
   notificationSound: boolean
   notificationDesktop: boolean
+  notificationSoundUrl: string
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -125,7 +126,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   fontSize: 'medium',
   notificationsEnabled: true,
   notificationSound: true,
-  notificationDesktop: false
+  notificationDesktop: false,
+  notificationSoundUrl: ''
 }
 
 export function getSettings(): AppSettings {

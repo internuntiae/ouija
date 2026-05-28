@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import styles from './ProfilePopup.module.scss'
 import { useTranslation } from '@/i18n/translations'
+import { apiFetch } from '@utils/auth'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -64,11 +65,11 @@ export default function ProfilePopup({
     setLoading(true)
     try {
       const [userRes, myFriendsRes, targetFriendsRes] = await Promise.all([
-        fetch(`${API_URL}/api/?id=${userId}`),
+        apiFetch(`${API_URL}/api/?id=${userId}`),
         viewerId
-          ? fetch(`${API_URL}/api/users/${viewerId}/friends`)
+          ? apiFetch(`${API_URL}/api/users/${viewerId}/friends`)
           : Promise.resolve(null),
-        fetch(`${API_URL}/api/users/${userId}/friends?status=ACCEPTED`)
+        apiFetch(`${API_URL}/api/users/${userId}/friends?status=ACCEPTED`)
       ])
 
       if (userRes.ok) {
@@ -144,7 +145,7 @@ export default function ProfilePopup({
   async function handleAddFriend() {
     setActionLoading(true)
     try {
-      const res = await fetch(`${API_URL}/api/users/${viewerId}/friends`, {
+      const res = await apiFetch(`${API_URL}/api/users/${viewerId}/friends`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ friendId: userId })

@@ -28,6 +28,7 @@ import {
 import { useSettings } from '@/context/SettingsContext'
 import { updateSwNameCache } from '@/app/sw-register'
 import { useTranslation } from '@/i18n/translations'
+import { apiFetch, getToken, clearSession } from '@utils/auth'
 
 // ─── Główny komponent ─────────────────────────────────────────────────────────
 
@@ -94,6 +95,12 @@ function ChatsWithUser({ userId }: { userId: string }) {
   )
   const [friendIds, setFriendIds] = useState<Set<string>>(new Set())
 
+  // ── In-app notifications ──
+  const [inAppNotifs, setInAppNotifs] = useState<
+    { id: string; title: string; body: string; avatarUrl?: string | null; chatId?: string | null }[]
+  >([])
+  const notifIdCounter = useRef(0)
+
   // ── Mobile state ──
   const [isMobile, setIsMobile] = useState(false)
   const [mobileChatOpen, setMobileChatOpen] = useState(
@@ -122,7 +129,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
 
   // ── Załaduj znajomych ──
   useEffect(() => {
-    fetch(`${API_URL}/api/users/${userId}/friends?status=ACCEPTED`)
+    apiFetch(`${API_URL}/api/users/${userId}/friends?status=ACCEPTED`)
       .then((r) => r.json())
       .then((data: { userId: string; friendId: string }[]) => {
         const ids = new Set(
@@ -145,7 +152,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
       setMyStatus(preLogout)
       localStorage.setItem('userStatus', preLogout)
       // Push it to the server immediately
-      fetch(`${API_URL}/api/${userId}`, {
+      apiFetch(`${API_URL}/api/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: preLogout })
@@ -157,7 +164,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
     const cached = localStorage.getItem('userStatus') as UserStatus | null
     if (cached && cached !== 'INVISIBLE') setMyStatus(cached)
 
-    fetch(`${API_URL}/api/?id=${userId}`)
+    apiFetch(`${API_URL}/api/?id=${userId}`)
       .then((r) => r.json())
       .then((data: { status?: UserStatus }) => {
         if (data?.status) {
@@ -183,7 +190,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
 
   // ── Pobierz czaty ──
   useEffect(() => {
-    fetch(`${API_URL}/api/users/${userId}/chats`)
+    apiFetch(`${API_URL}/api/users/${userId}/chats`)
       .then((r) => r.json())
       .then((data: Chat[]) =>
         Promise.all(
@@ -237,7 +244,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
     searchDebounceRef.current = setTimeout(async () => {
       setSearchLoading(true)
       try {
-        const res = await fetch(`${API_URL}/api/?q=${encodeURIComponent(q)}`)
+        const res = await apiFetch(`${API_URL}/api/?q=${encodeURIComponent(q)}`)
         if (res.ok)
           setSearchUsers(
             (await res.json()).filter((u: UserSearchResult) => u.id !== userId)
@@ -267,7 +274,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
       prev.map((c) => (c.id === activeChatId ? { ...c, unreadCount: 0 } : c))
     )
 
-    fetch(`${API_URL}/api/chats/${activeChatId}/messages?limit=${PAGE_SIZE}`)
+    apiFetch(`${API_URL}/api/chats/${activeChatId}/messages?limit=${PAGE_SIZE}`)
       .then((r) => r.json())
       .then((data: Message[]) => {
         const sorted = [...data].reverse()
@@ -313,7 +320,13 @@ function ChatsWithUser({ userId }: { userId: string }) {
   const wsRef = useRef<WebSocket | null>(null)
   useEffect(() => {
     const WS_URL = API_URL.replace(/^http/, 'ws')
-    const ws = new WebSocket(`${WS_URL}/ws?userId=${userId}`)
+    const token = getToken()
+    if (!token) {
+      clearSession()
+      window.location.href = '/login'
+      return
+    }
+    const ws = new WebSocket(`${WS_URL}/ws?token=${encodeURIComponent(token)}`)
     wsRef.current = ws
 
     ws.onopen = () => {
@@ -380,14 +393,14 @@ function ChatsWithUser({ userId }: { userId: string }) {
             const updated = prev.map((c) =>
               c.id === newMsg.chatId
                 ? {
-                    ...c,
-                    lastMessage: newMsg,
-                    unreadCount:
-                      newMsg.chatId !== activeChatIdRef.current &&
-                      newMsg.senderId !== userId
-                        ? (c.unreadCount ?? 0) + 1
-                        : c.unreadCount
-                  }
+                  ...c,
+                  lastMessage: newMsg,
+                  unreadCount:
+                    newMsg.chatId !== activeChatIdRef.current &&
+                    newMsg.senderId !== userId
+                      ? (c.unreadCount ?? 0) + 1
+                      : c.unreadCount
+                }
                 : c
             )
             const idx = updated.findIndex((c) => c.id === newMsg.chatId)
@@ -485,20 +498,55 @@ function ChatsWithUser({ userId }: { userId: string }) {
         }
 
         if (msg.type === 'chat:updated') {
-          const { chatId, chat } = msg.payload as {
+          const { chatId, chat, event, userId: eventUserId } = msg.payload as {
             chatId: string
             chat?: Chat
+            event?: string
+            userId?: string
           }
-          if (chat) {
+          if (event === 'member_removed' && eventUserId) {
+            if (eventUserId === userId) {
+              setChats((prev) => prev.filter((c) => c.id !== chatId))
+              setActiveChatId((prev) => (prev === chatId ? null : prev))
+            } else {
+              apiFetch(`${API_URL}/api/chats/${chatId}`)
+                .then((r) => (r.ok ? r.json() : null))
+                .then((updated: Chat | null) => {
+                  if (!updated) return
+                  setChats((prev) =>
+                    prev.map((c) =>
+                      c.id === chatId
+                        ? { ...updated, lastMessage: c.lastMessage, unreadCount: c.unreadCount }
+                        : c
+                    )
+                  )
+                })
+                .catch(() => {})
+            }
+          } else if (event === 'member_added') {
+            apiFetch(`${API_URL}/api/chats/${chatId}`)
+              .then((r) => (r.ok ? r.json() : null))
+              .then((updated: Chat | null) => {
+                if (!updated) return
+                setChats((prev) =>
+                  prev.map((c) =>
+                    c.id === chatId
+                      ? { ...updated, lastMessage: c.lastMessage, unreadCount: c.unreadCount }
+                      : c
+                  )
+                )
+              })
+              .catch(() => {})
+          } else if (chat) {
             setChats((prev) =>
               prev.map((c) =>
                 c.id === chatId
                   ? {
-                      ...c,
-                      ...chat,
-                      lastMessage: c.lastMessage,
-                      unreadCount: c.unreadCount
-                    }
+                    ...c,
+                    ...chat,
+                    lastMessage: c.lastMessage,
+                    unreadCount: c.unreadCount
+                  }
                   : c
               )
             )
@@ -707,19 +755,41 @@ function ChatsWithUser({ userId }: { userId: string }) {
   }, [loadMoreMessages])
 
   // ── Powiadomienia ──
-  function triggerNotification(title: string, body: string) {
+  function triggerNotification(
+    title: string,
+    body: string,
+    opts?: { avatarUrl?: string | null; chatId?: string | null }
+  ) {
     if (!settings.notificationsEnabled) return
+
+    // In-app toast
+    const notifId = `notif-${++notifIdCounter.current}`
+    setInAppNotifs((prev) => [
+      ...prev,
+      { id: notifId, title, body, avatarUrl: opts?.avatarUrl, chatId: opts?.chatId ?? null }
+    ])
+    setTimeout(() => {
+      setInAppNotifs((prev) => prev.filter((n) => n.id !== notifId))
+    }, 5000)
+
     if (settings.notificationSound) {
       try {
-        const ctx = new AudioContext()
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
-        osc.connect(gain)
-        gain.connect(ctx.destination)
-        osc.frequency.value = 880
-        gain.gain.value = 0.1
-        osc.start()
-        osc.stop(ctx.currentTime + 0.1)
+        const customSound = settings.notificationSoundUrl
+        if (customSound) {
+          const audio = new Audio(customSound)
+          audio.volume = 0.5
+          audio.play().catch(() => {})
+        } else {
+          const ctx = new AudioContext()
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+          osc.connect(gain)
+          gain.connect(ctx.destination)
+          osc.frequency.value = 880
+          gain.gain.value = 0.1
+          osc.start()
+          osc.stop(ctx.currentTime + 0.1)
+        }
       } catch {
         /* ignoruj */
       }
@@ -758,7 +828,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
         const form = new FormData()
         form.append('ownerId', userId)
         pendingFiles.forEach((f) => form.append('files', f))
-        const uploadRes = await fetch(`${API_URL}/api/media/upload`, {
+        const uploadRes = await apiFetch(`${API_URL}/api/media/upload`, {
           method: 'POST',
           body: form
         })
@@ -780,7 +850,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
                 : 'FILE'
         }))
       }
-      const res = await fetch(`${API_URL}/api/chats/${activeChatId}/messages`, {
+      const res = await apiFetch(`${API_URL}/api/chats/${activeChatId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -827,9 +897,9 @@ function ChatsWithUser({ userId }: { userId: string }) {
           prev.map((m) =>
             m.id === messageId
               ? {
-                  ...m,
-                  reactions: m.reactions.filter((r) => r.userId !== userId)
-                }
+                ...m,
+                reactions: m.reactions.filter((r) => r.userId !== userId)
+              }
               : m
           )
         )
@@ -846,16 +916,16 @@ function ChatsWithUser({ userId }: { userId: string }) {
           prev.map((m) =>
             m.id === messageId
               ? {
-                  ...m,
-                  reactions: m.reactions.map((r) =>
-                    r.userId === userId ? { ...r, type } : r
-                  )
-                }
+                ...m,
+                reactions: m.reactions.map((r) =>
+                  r.userId === userId ? { ...r, type } : r
+                )
+              }
               : m
           )
         )
       } else {
-        await fetch(`${API_URL}/api/messages/${messageId}/reactions`, {
+        await apiFetch(`${API_URL}/api/messages/${messageId}/reactions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId, type })
@@ -896,7 +966,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
       JSON.stringify({ type: 'user:status', payload: { status } })
     )
     try {
-      await fetch(`${API_URL}/api/${userId}`, {
+      await apiFetch(`${API_URL}/api/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
@@ -966,7 +1036,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
       return
     }
     try {
-      const res = await fetch(`${API_URL}/api/chats`, {
+      const res = await apiFetch(`${API_URL}/api/chats`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -993,7 +1063,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
   // ── Wyślij zaproszenie ──
   async function handleSendInvite(targetUserId: string) {
     try {
-      const res = await fetch(`${API_URL}/api/users/${userId}/friends`, {
+      const res = await apiFetch(`${API_URL}/api/users/${userId}/friends`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ friendId: targetUserId })
@@ -1066,8 +1136,8 @@ function ChatsWithUser({ userId }: { userId: string }) {
 
   const filteredChats = searchQuery.trim()
     ? visibleChats.filter((c) =>
-        getChatDisplayName(c).toLowerCase().includes(searchQuery.toLowerCase())
-      )
+      getChatDisplayName(c).toLowerCase().includes(searchQuery.toLowerCase())
+    )
     : visibleChats
 
   // For "new people" in search: exclude anyone who is already a friend
@@ -1091,7 +1161,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
       alert('A group can have at most 10 members.')
       return
     }
-    const res = await fetch(`${API_URL}/api/chats`, {
+    const res = await apiFetch(`${API_URL}/api/chats`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1112,7 +1182,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
 
   // ── Zarządzanie grupą ──
   async function handleRenameGroup(chatId: string, name: string) {
-    const res = await fetch(`${API_URL}/api/chats/${chatId}`, {
+    const res = await apiFetch(`${API_URL}/api/chats/${chatId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name })
@@ -1130,7 +1200,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
   async function handleDeleteGroup(chatId: string) {
     if (!confirm('Na pewno usunąć grupę? Tej operacji nie można cofnąć.'))
       return
-    const res = await fetch(`${API_URL}/api/chats/${chatId}`, {
+    const res = await apiFetch(`${API_URL}/api/chats/${chatId}`, {
       method: 'DELETE'
     })
     if (!res.ok) {
@@ -1139,6 +1209,17 @@ function ChatsWithUser({ userId }: { userId: string }) {
     }
     setChats((prev) => prev.filter((c) => c.id !== chatId))
     if (activeChatId === chatId) setActiveChatId(null)
+  }
+
+  async function handleRemoveFromGroup(chatId: string, memberId: string) {
+    const res = await fetch(
+      `${API_URL}/api/chats/${chatId}/members/${memberId}`,
+      { method: 'DELETE' }
+    )
+    if (!res.ok) {
+      alert('Błąd usuwania użytkownika z grupy')
+    }
+    // UI update comes via WS chat:updated → member_removed
   }
 
   async function handleTransferOwner(chatId: string, newOwnerId: string) {
@@ -1156,7 +1237,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
       return
     }
     // Downgrade current user to MEMBER
-    await fetch(`${API_URL}/api/chats/${chatId}/members/${userId}`, {
+    await apiFetch(`${API_URL}/api/chats/${chatId}/members/${userId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ role: 'MEMBER' })
@@ -1186,7 +1267,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
       alert('This group has reached the maximum of 10 members.')
       return
     }
-    const res = await fetch(`${API_URL}/api/chats/${chatId}/members`, {
+    const res = await apiFetch(`${API_URL}/api/chats/${chatId}/members`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: memberId, role: 'MEMBER' })
@@ -1222,7 +1303,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
       alert('A group chat can have at most 10 members.')
       return
     }
-    const res = await fetch(`${API_URL}/api/chats`, {
+    const res = await apiFetch(`${API_URL}/api/chats`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, type: 'GROUP', userIds: allMemberIds })
@@ -1237,7 +1318,38 @@ function ChatsWithUser({ userId }: { userId: string }) {
   }
 
   return (
-    <div className={styles.container}>
+    <div className={styles.containerOuter}>
+      {/* ── In-app powiadomienia ── */}
+      <div className={styles.InAppNotifContainer}>
+        {inAppNotifs.map((n) => (
+          <div
+            key={n.id}
+            className={styles.InAppNotif}
+            onClick={() => {
+              if (n.chatId) setActiveChatId(n.chatId)
+              setInAppNotifs((prev) => prev.filter((x) => x.id !== n.id))
+            }}
+          >
+            <img
+              src={n.avatarUrl ?? '/ouija_white_logo_square.png'}
+              className={styles.InAppNotifAvatar}
+              alt=""
+            />
+            <div className={styles.InAppNotifBody}>
+              <div className={styles.InAppNotifTitle}>{n.title}</div>
+              <div className={styles.InAppNotifMsg}>{n.body}</div>
+            </div>
+            <button
+              className={styles.InAppNotifClose}
+              onClick={(e) => {
+                e.stopPropagation()
+                setInAppNotifs((prev) => prev.filter((x) => x.id !== n.id))
+              }}
+            >✕</button>
+          </div>
+        ))}
+      </div>
+
       {/* Powiadomienie o zaproszeniu do znajomych */}
       {friendRequestNotif && (
         <div className={styles.FriendRequestToast}>
@@ -1322,6 +1434,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
         allChats={chats}
         typingUsers={typingUsers}
         onTypingChange={handleTypingChange}
+        onPasteFile={(file) => setPendingFiles((prev) => [...prev, file])}
       />
 
       {profilePopupUserId && (
@@ -1349,11 +1462,12 @@ function ChatsWithUser({ userId }: { userId: string }) {
                 setActiveChatId(chatId)
                 setGroupInfoPopupChatId(null)
               }}
+              onRemoveMember={handleRemoveFromGroup}
             />
           ) : null
         })()}
     </div>
-  )
+)
 }
 
 export default function Chats() {

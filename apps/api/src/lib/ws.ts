@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws'
 import { IncomingMessage } from 'http'
 import { Server } from 'http'
-import { prisma } from '@/lib'
+import { prisma, tokenService } from '@/lib'
 
 // Map of userId -> set of open sockets (one user can have multiple tabs/devices)
 const userSockets = new Map<string, Set<WebSocket>>()
@@ -32,19 +32,25 @@ export interface WsEvent {
  * Attach a WebSocket server to an existing HTTP server.
  *
  * Clients connect with:
- *   ws://host/ws?userId=<userId>
+ *   ws://host/ws?token=<sessionToken>
  *
  * The server keeps the connection alive with ping/pong every 30 s.
  */
 export function attachWebSocketServer(httpServer: Server): WebSocketServer {
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' })
 
-  wss.on('connection', (socket: WebSocket, req: IncomingMessage) => {
+  wss.on('connection', async (socket: WebSocket, req: IncomingMessage) => {
     const url = new URL(req.url ?? '', 'http://localhost')
-    const userId = url.searchParams.get('userId')
+    const token = url.searchParams.get('token')
 
+    if (!token) {
+      socket.close(1008, 'token query parameter is required')
+      return
+    }
+
+    const userId = await tokenService.validateSessionToken(token)
     if (!userId) {
-      socket.close(1008, 'userId query parameter is required')
+      socket.close(1008, 'invalid or expired session token')
       return
     }
 
@@ -114,10 +120,10 @@ export function attachWebSocketServer(httpServer: Server): WebSocketServer {
           // Relay to all other members of that chat
           prisma.chatUser
             .findMany({ where: { chatId }, select: { userId: true } })
-            .then((members) => {
+            .then((members: { userId: string }[]) => {
               const otherIds = members
                 .map((m) => m.userId)
-                .filter((id) => id !== userId)
+                .filter((id: string) => id !== userId)
               sendToUsers(otherIds, {
                 type: msg.type as WsEventType,
                 payload: { chatId, userId, nickname, avatarUrl }
@@ -150,7 +156,7 @@ export function attachWebSocketServer(httpServer: Server): WebSocketServer {
         // misleading INVISIBLE->ONLINE restore cycle on next login)
         prisma.user
           .findUnique({ where: { id: userId }, select: { status: true } })
-          .then((user) => {
+          .then((user: { status: string } | null) => {
             if (!user) return
             const currentStatus = user.status as string
             if (currentStatus === 'OFFLINE') {
@@ -251,14 +257,18 @@ async function broadcastStatusToFriends(
               where: { userId },
               select: { chatId: true }
             })
-          ).map((c) => c.chatId)
+          ).map((c: { chatId: string }) => c.chatId)
         }
       },
       select: { userId: true }
     })
     const friendIds = [
-      ...new Set(chatUsers.map((cu) => cu.userId).filter((id) => id !== userId))
-    ]
+      ...new Set(
+        chatUsers
+          .map((cu: { userId: string }) => cu.userId)
+          .filter((id: string) => id !== userId)
+      )
+    ] as string[]
     sendToUsers(friendIds, {
       type: 'user:status',
       payload: { userId, status }

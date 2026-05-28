@@ -10,6 +10,8 @@ interface Props {
   isOwn: boolean
   userId: string
   onReact: (messageId: string, type: ReactionType) => void
+  onOpenProfile?: (id: string) => void
+  searchHighlight?: string
   chatUsers?: {
     userId: string
     user: { nickname: string; avatarUrl?: string | null }
@@ -30,6 +32,8 @@ export default function MessageBubble({
   isOwn,
   userId,
   onReact,
+  onOpenProfile,
+  searchHighlight,
   chatUsers = []
 }: Props) {
   const [pickerPos, setPickerPos] = useState<PickerPos | null>(null)
@@ -171,14 +175,54 @@ export default function MessageBubble({
         )
       : null
 
+  /** Wraps matching substrings in a <mark> for search highlight */
+  function highlightText(text: string, query: string) {
+    if (!query) return <>{text}</>
+    const parts = text.split(
+      new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+    )
+    return (
+      <>
+        {parts.map((part, i) =>
+          part.toLowerCase() === query.toLowerCase() ? (
+            <mark key={i} className={styles.SearchHighlight}>
+              {part}
+            </mark>
+          ) : (
+            part
+          )
+        )}
+      </>
+    )
+  }
+
+  const senderEntry = !isOwn
+    ? chatUsers.find((cu) => cu.userId === msg.senderId)
+    : null
+
   return (
     <div
       className={`${styles.MessageWrapper} ${isOwn ? styles.MessageWrapperOwn : ''}`}
     >
+      {senderEntry && (
+        <span
+          className={styles.MessageSender}
+          onClick={() => onOpenProfile?.(msg.senderId)}
+          style={onOpenProfile ? { cursor: 'pointer' } : undefined}
+        >
+          {senderEntry.user.nickname}
+        </span>
+      )}
       <div
         className={`${styles.MessageBubble} ${isOwn ? styles.MessageBubbleOwn : styles.MessageBubbleOther}`}
       >
-        {msg.content && <p className={styles.MessageText}>{msg.content}</p>}
+        {msg.content && (
+          <p className={styles.MessageText}>
+            {searchHighlight
+              ? highlightText(msg.content, searchHighlight)
+              : msg.content}
+          </p>
+        )}
 
         {(msg.attachments ?? []).map((att) => (
           <div key={att.id} className={styles.MessageAttachment}>

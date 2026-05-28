@@ -105,4 +105,7 @@ authRouter.post('/auth/forgot-password', authController.forgotPassword)
  */
 authRouter.post('/auth/reset-password', authController.resetPassword)
 
+authRouter.post('/auth/login', authController.login)
+authRouter.post('/auth/logout', authController.logout)
+
 export { authRouter }

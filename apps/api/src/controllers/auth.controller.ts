@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import * as authService from '@services/auth.service'
+import * as sessionService from '@services/session.service'
 import { features } from '@/lib'
 
 /**
@@ -91,4 +92,31 @@ export const resetPassword = async (req: Request, res: Response) => {
   } catch (error) {
     res.status(400).json({ error: (error as Error).message })
   }
+}
+
+/**
+ * POST /api/auth/login
+ * Body: { nickname, password }
+ * Returns: { token, user }
+ */
+export const login = async (req: Request, res: Response) => {
+  try {
+    const { nickname, password } = req.body
+    const result = await sessionService.login(nickname, password)
+    res.status(200).json(result)
+  } catch (error) {
+    const msg = (error as Error).message
+    const status = msg === 'email not verified' ? 403 : 401
+    res.status(status).json({ error: msg })
+  }
+}
+
+/**
+ * POST /api/auth/logout
+ * Header: Authorization: Bearer <token>
+ */
+export const logout = async (req: Request, res: Response) => {
+  const token = req.headers.authorization?.slice(7) ?? ''
+  await sessionService.logout(token)
+  res.status(204).send()
 }

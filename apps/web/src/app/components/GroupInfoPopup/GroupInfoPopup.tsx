@@ -11,6 +11,7 @@ interface Props {
   onClose: () => void
   onOpenProfile: (userId: string) => void
   onOpenChat: (chatId: string) => void
+  onRemoveMember?: (chatId: string, userId: string) => Promise<void>
 }
 
 export default function GroupInfoPopup({
@@ -18,7 +19,8 @@ export default function GroupInfoPopup({
   viewerId,
   onClose,
   onOpenProfile,
-  onOpenChat
+  onOpenChat,
+  onRemoveMember
 }: Props) {
   const { t } = useTranslation()
 
@@ -32,6 +34,7 @@ export default function GroupInfoPopup({
 
   const memberCount = chat.users.length
   const adminUser = chat.users.find((u) => u.role === 'ADMIN')
+  const isAdmin = adminUser?.userId === viewerId
 
   return (
     <div className={styles.Overlay}>
@@ -158,6 +161,20 @@ export default function GroupInfoPopup({
                   </div>
                   {u.role === 'ADMIN' && (
                     <span className={styles.AdminBadge}>Admin</span>
+                  )}
+                  {isAdmin && u.userId !== viewerId && onRemoveMember && (
+                    <button
+                      className={styles.RemoveBtn}
+                      title="Usuń z grupy"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (confirm(`Usunąć ${u.user.nickname} z grupy?`)) {
+                          onRemoveMember(chat.id, u.userId)
+                        }
+                      }}
+                    >
+                      ✕
+                    </button>
                   )}
                 </div>
               ))}

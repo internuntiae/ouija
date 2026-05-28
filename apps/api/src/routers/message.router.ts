@@ -1,18 +1,12 @@
 import { Router } from 'express'
 import * as msgController from '@controllers/message.controller'
+import { requireAuth } from '@middleware/auth.middleware'
 
 const msgRouter = Router()
 
-// GET    /api/chats/:chatId/messages              - fetch messages (paginated via ?limit=&lastId=)
-msgRouter.get('/chats/:chatId/messages', msgController.getAllMessages)
-
-// POST   /api/chats/:chatId/messages              - create a message   body: { userId, content, attachments?, reactions? }
-msgRouter.post('/chats/:chatId/messages', msgController.createMessage)
-
-// PUT    /api/chats/:chatId/messages/:messageId   - edit a message   body: { content?, attachments?, reactions? }
-msgRouter.put('/chats/:chatId/messages/:messageId', msgController.updateMessage)
-
-// DELETE /api/chats/:chatId/messages/:messageId   - delete a message
-msgRouter.delete('/chats/:chatId/messages/:messageId', msgController.deleteMessage)
+msgRouter.get('/chats/:chatId/messages', requireAuth, msgController.getAllMessages)
+msgRouter.post('/chats/:chatId/messages', requireAuth, msgController.createMessage)
+msgRouter.put('/chats/:chatId/messages/:messageId', requireAuth, msgController.updateMessage)
+msgRouter.delete('/chats/:chatId/messages/:messageId', requireAuth, msgController.deleteMessage)
 
 export { msgRouter }
