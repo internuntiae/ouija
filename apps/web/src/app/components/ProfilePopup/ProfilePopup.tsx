@@ -162,6 +162,29 @@ export default function ProfilePopup({
     }
   }
 
+  async function handleAcceptFriend() {
+    setActionLoading(true)
+    try {
+      const res = await apiFetch(
+        `${API_URL}/api/users/${viewerId}/friends/${userId}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'ACCEPTED' })
+        }
+      )
+      if (!res.ok) {
+        alert('Błąd')
+        return
+      }
+      setFriendStatus('ACCEPTED')
+    } catch {
+      alert('Błąd')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   return (
     <div className={styles.Overlay}>
       <div className={styles.Backdrop} onClick={onClose} />
@@ -399,6 +422,21 @@ export default function ProfilePopup({
                         disabled
                       >
                         {t('profilePopup.pendingSent')}
+                      </button>
+                    )}
+
+                    {friendStatus === 'PENDING_RECEIVED' && (
+                      <button
+                        className={`${styles.ActionBtn} ${styles.ActionBtnSecondary}`}
+                        onClick={handleAcceptFriend}
+                        disabled={actionLoading}
+                      >
+                        <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+                          <circle cx="8" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" />
+                          <path d="M1 17c0-3.3 3.1-6 7-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                          <path d="M13 14l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        {t('profilePopup.acceptFriend')}
                       </button>
                     )}
 

@@ -90,7 +90,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
       return new Set()
     }
   })
-  const [friendRequestNotif, setFriendRequestNotif] = useState<string | null>(
+  const [friendRequestNotif, setFriendRequestNotif] = useState<{ nick: string; senderId: string | null } | null>(
     null
   )
   const [friendIds, setFriendIds] = useState<Set<string>>(new Set())
@@ -127,20 +127,48 @@ function ChatsWithUser({ userId }: { userId: string }) {
   const { settings } = useSettings()
   const { t } = useTranslation()
 
-  // ── Załaduj znajomych ──
+  // ── Załaduj znajomych i czaty razem ──
   useEffect(() => {
-    apiFetch(`${API_URL}/api/users/${userId}/friends?status=ACCEPTED`)
-      .then((r) => r.json())
-      .then((data: { userId: string; friendId: string }[]) => {
-        const ids = new Set(
-          data.map((f) => (f.userId === userId ? f.friendId : f.userId))
+    Promise.all([
+      apiFetch(`${API_URL}/api/users/${userId}/friends?status=ACCEPTED`)
+        .then((r) => r.json())
+        .then((data: { userId: string; friendId: string }[]) =>
+          new Set(data.map((f) => (f.userId === userId ? f.friendId : f.userId)))
+        ),
+      apiFetch(`${API_URL}/api/users/${userId}/chats`)
+        .then((r) => r.json())
+        .then((data: Chat[]) =>
+          Promise.all(
+            data.map(async (chat) => {
+              const res = await fetch(
+                `${API_URL}/api/chats/${chat.id}/messages?limit=1`
+              )
+              if (!res.ok) return chat
+              const msgs: Message[] = await res.json()
+              return { ...chat, lastMessage: msgs[0] ?? null }
+            })
+          )
         )
+    ])
+      .then(([ids, enriched]) => {
         setFriendIds(ids)
+        const sorted = enriched.sort((a, b) => {
+          const ta = a.lastMessage?.sentAt ?? a.updatedAt
+          const tb = b.lastMessage?.sentAt ?? b.updatedAt
+          return new Date(tb).getTime() - new Date(ta).getTime()
+        })
+        setChats(sorted)
+        // Ustaw aktywny czat tylko na widoczny (znajomy lub grupa)
+        const firstVisible = sorted.find((c) => {
+          if (c.type !== 'PRIVATE') return true
+          const otherId = c.users.find((u) => u.userId !== userId)?.userId
+          return otherId ? ids.has(otherId) : true
+        })
+        setActiveChatId((prev) => prev ?? (firstVisible?.id ?? null))
       })
       .catch(console.error)
+      .finally(() => setLoadingChats(false))
   }, [userId])
-
-  // ── Status z bazy ──
   useEffect(() => {
     // If the user just logged back in after a previous session, restore their
     // pre-logout status (e.g. DnD/BUSY) instead of defaulting to ONLINE/OFFLINE
@@ -187,37 +215,6 @@ function ChatsWithUser({ userId }: { userId: string }) {
   useEffect(() => {
     myStatusRef.current = myStatus
   }, [myStatus])
-
-  // ── Pobierz czaty ──
-  useEffect(() => {
-    apiFetch(`${API_URL}/api/users/${userId}/chats`)
-      .then((r) => r.json())
-      .then((data: Chat[]) =>
-        Promise.all(
-          data.map(async (chat) => {
-            const res = await fetch(
-              `${API_URL}/api/chats/${chat.id}/messages?limit=1`
-            )
-            if (!res.ok) return chat
-            const msgs: Message[] = await res.json()
-            return { ...chat, lastMessage: msgs[0] ?? null }
-          })
-        )
-      )
-      .then((enriched) => {
-        const sorted = enriched.sort((a, b) => {
-          const ta = a.lastMessage?.sentAt ?? a.updatedAt
-          const tb = b.lastMessage?.sentAt ?? b.updatedAt
-          return new Date(tb).getTime() - new Date(ta).getTime()
-        })
-        setChats(sorted)
-        setActiveChatId(
-          (prev) => prev ?? (sorted.length > 0 ? sorted[0].id : null)
-        )
-      })
-      .catch(console.error)
-      .finally(() => setLoadingChats(false))
-  }, [userId])
 
   // ── Zamknij dropdown ──
   useEffect(() => {
@@ -566,9 +563,10 @@ function ChatsWithUser({ userId }: { userId: string }) {
           const senderNick =
             (friendship as { userId: string; user?: { nickname?: string } })
               ?.user?.nickname ?? t('chat.someone')
-          setFriendRequestNotif(senderNick)
+          const senderId = friendship.userId
+          setFriendRequestNotif({ nick: senderNick, senderId })
           triggerNotification(t('chat.friendRequestTitle'), senderNick)
-          setTimeout(() => setFriendRequestNotif(null), 5000)
+          setTimeout(() => setFriendRequestNotif(null), 10000)
         }
 
         if (msg.type === 'friendship:deleted') {
@@ -608,9 +606,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
                   .flatMap((c) => c.users)
                   .find((u) => u.userId === newFriendId)?.user.nickname ??
                 t('chat.someone')
-              setFriendRequestNotif(`✅ ${nick} ${t('chat.friendAccepted')}`)
               triggerNotification(t('chat.friendAcceptedTitle'), nick)
-              setTimeout(() => setFriendRequestNotif(null), 5000)
               return prev
             })
           }
@@ -1078,6 +1074,20 @@ function ChatsWithUser({ userId }: { userId: string }) {
     }
   }
 
+  // ── Zaakceptuj zaproszenie ──
+  async function handleAcceptFriend(senderId: string) {
+    try {
+      await apiFetch(`${API_URL}/api/users/${userId}/friends/${senderId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'ACCEPTED' })
+      })
+      setFriendRequestNotif(null)
+    } catch {
+      // silence — WS will update state anyway
+    }
+  }
+
   // ── Wycisz / odcisz czat ──
   function handleToggleMute(chatId: string) {
     setMutedChatIds((prev) => {
@@ -1353,7 +1363,15 @@ function ChatsWithUser({ userId }: { userId: string }) {
       {/* Powiadomienie o zaproszeniu do znajomych */}
       {friendRequestNotif && (
         <div className={styles.FriendRequestToast}>
-          👥 {friendRequestNotif} {t('chat.friendRequestSent')}
+          <span>👥 {friendRequestNotif.nick}{friendRequestNotif.senderId ? ` ${t('chat.friendRequestSent')}` : ''}</span>
+          {friendRequestNotif.senderId && (
+            <button
+              className={styles.FriendRequestAcceptBtn}
+              onClick={() => handleAcceptFriend(friendRequestNotif.senderId!)}
+            >
+              {t('chat.accept')}
+            </button>
+          )}
         </div>
       )}
 
@@ -1370,7 +1388,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
 
       <ChatSidebar
         userId={userId}
-        chats={chats}
+        chats={visibleChats}
         activeChatId={activeChatId}
         myStatus={myStatus}
         showStatusMenu={showStatusMenu}

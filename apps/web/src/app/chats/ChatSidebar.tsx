@@ -164,10 +164,16 @@ export default function ChatSidebar({
     if (!msg) return ''
     const isOwn = msg.senderId === userId
     const attachment = t('chat.attachment')
-    if (isOwn) return `${t('chat.sentByMe')}: ${msg.content ?? attachment}`
+    const content = msg.content ?? attachment
+    // Private chats: no sender name, just "Ty: " prefix for own messages
+    if (chat.type === 'PRIVATE') {
+      return isOwn ? `${t('chat.sentByMe')}: ${content}` : content
+    }
+    // Group chats: keep sender name prefix
+    if (isOwn) return `${t('chat.sentByMe')}: ${content}`
     const sender =
       chat.users.find((u) => u.userId === msg.senderId)?.user.nickname ?? ''
-    return `${sender}: ${msg.content ?? attachment}`
+    return `${sender}: ${content}`
   }
 
   // Lokalizacja czasu — pl-PL albo en-GB zależnie od języka

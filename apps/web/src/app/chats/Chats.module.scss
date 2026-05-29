@@ -3,7 +3,7 @@
 
 .container {
   width: 100%;
-  height: 90vh;
+  height: calc(100vh - 7.2rem);
   display: flex;
   overflow: hidden;
   background-color: var(--bg-base);
@@ -13,7 +13,7 @@
 
 .containerOuter {
   width: 100%;
-  height: 90vh;
+  height: calc(100vh - 7.2rem);
   display: flex;
   justify-content: center;
   align-items: stretch;
@@ -23,7 +23,7 @@
   > .container {
     max-width: 1920px;
     width: 100%;
-    height: 90vh;
+    height: calc(100vh - 7.2rem);
   }
 }
 
@@ -401,6 +401,9 @@
   font-size: 1.2rem;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
   animation: slideIn 0.25s ease;
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
 
   @keyframes slideIn {
     from {
@@ -411,6 +414,24 @@
       transform: translateY(0);
       opacity: 1;
     }
+  }
+}
+
+.FriendRequestAcceptBtn {
+  background: var(--accent);
+  color: var(--accent-text);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  font-family: var(--font-sans), sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity var(--transition);
+
+  &:hover {
+    opacity: 0.8;
   }
 }
 
@@ -1652,7 +1673,7 @@
 
 .InAppNotifContainer {
   position: fixed;
-  top: 1.2rem;
+  bottom: 1.2rem;
   right: 1.2rem;
   z-index: 9999;
   display: flex;
@@ -1724,8 +1745,8 @@
 }
 
 @keyframes notifSlideIn {
-  from { opacity: 0; transform: translateX(2rem); }
-  to   { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; transform: translateY(1rem); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 // ── Chat message search (in-window) ──────────────────────────────────────────

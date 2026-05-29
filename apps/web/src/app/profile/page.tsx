@@ -180,14 +180,9 @@ export default function Profile() {
   async function handleRemoveFriend(friendId: string) {
     if (!userId) return
     try {
-      await Promise.all([
-        apiFetch(`${API_URL}/api/users/${userId}/friends/${friendId}`, {
-          method: 'DELETE'
-        }),
-        apiFetch(`${API_URL}/api/users/${friendId}/friends/${userId}`, {
-          method: 'DELETE'
-        })
-      ])
+      await apiFetch(`${API_URL}/api/users/${userId}/friends/${friendId}`, {
+        method: 'DELETE'
+      })
       setFriends((prev) =>
         prev.filter((f) => f.friendId !== friendId && f.userId !== friendId)
       )
@@ -234,7 +229,7 @@ export default function Profile() {
   async function handleAcceptInvite(inviterId: string) {
     if (!userId) return
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `${API_URL}/api/users/${inviterId}/friends/${userId}`,
         {
           method: 'PUT',
@@ -279,7 +274,7 @@ export default function Profile() {
   async function handleRejectInvite(inviterId: string) {
     if (!userId) return
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `${API_URL}/api/users/${inviterId}/friends/${userId}`,
         { method: 'DELETE' }
       )
@@ -296,7 +291,7 @@ export default function Profile() {
   async function handleCancelInvite(friendId: string) {
     if (!userId) return
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `${API_URL}/api/users/${userId}/friends/${friendId}`,
         { method: 'DELETE' }
       )
