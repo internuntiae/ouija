@@ -266,6 +266,10 @@
   transition: background 0.12s;
   &:hover {
     background: var(--bg-surface);
+
+    .MuteBtn {
+      opacity: 1;
+    }
   }
 
   &ProfilePicture {
@@ -376,10 +380,6 @@
   opacity: 0;
   transition: opacity 0.15s;
   line-height: 1;
-
-  .ContactsChatPreview:hover & {
-    opacity: 1;
-  }
 }
 
 .MutedIcon {
@@ -1380,6 +1380,7 @@
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  flex-wrap: wrap;
 }
 
 .GroupPanelNameInput {

@@ -5,6 +5,7 @@ import styles from './Chats.module.scss'
 import MessageBubble from './MessageBubble'
 import { Chat, Message, ReactionType, STATUS_COLOR, avatarSrc } from './types'
 import { useTranslation } from '@/i18n/translations'
+import { apiFetch } from '@utils/auth'
 
 interface Props {
   activeChat: Chat | null
@@ -36,6 +37,7 @@ interface Props {
   onRenameGroup: (chatId: string, name: string) => Promise<void>
   onDeleteGroup: (chatId: string) => Promise<void>
   onTransferOwner: (chatId: string, newOwnerId: string) => Promise<void>
+  onRemoveMember: (chatId: string, memberId: string) => Promise<void>
   onAddMember: (chatId: string, userId: string) => Promise<void>
   onUpgradeToGroup: (
     chatId: string,
@@ -78,6 +80,7 @@ export default function ChatWindow({
   onRenameGroup,
   onDeleteGroup,
   onTransferOwner,
+  onRemoveMember,
   onAddMember,
   onUpgradeToGroup,
   typingUsers = [],
@@ -195,7 +198,7 @@ export default function ChatWindow({
     addMemberTimer.current = setTimeout(async () => {
       setAddMemberLoading(true)
       try {
-        const res = await fetch(
+        const res = await apiFetch(
           `${API_URL}/api/users/${userId}/friends?status=ACCEPTED`
         )
         if (res.ok) {
@@ -235,7 +238,7 @@ export default function ChatWindow({
     upgradeSearchTimer.current = setTimeout(async () => {
       setUpgradeSearchLoading(true)
       try {
-        const res = await fetch(
+        const res = await apiFetch(
           `${API_URL}/api/users/${userId}/friends?status=ACCEPTED`
         )
         if (res.ok) {
@@ -747,6 +750,18 @@ export default function ChatWindow({
                     }}
                   >
                     👑
+                  </button>
+                )}
+                {isGroupAdmin && u.userId !== userId && (
+                  <button
+                    className={styles.GroupPanelBtnDanger}
+                    title={`Usuń ${u.user.nickname} z grupy`}
+                    onClick={() => {
+                      if (confirm(`Usunąć ${u.user.nickname} z grupy?`))
+                        onRemoveMember(activeChat.id, u.userId)
+                    }}
+                  >
+                    ✕
                   </button>
                 )}
               </div>

@@ -51,6 +51,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
     searchParams.get('chatId')
   )
   const activeChatIdRef = useRef<string | null>(searchParams.get('chatId'))
+  const chatsRef = useRef<Chat[]>([])
   const [messages, setMessages] = useState<Message[]>([])
   const [messageText, setMessageText] = useState('')
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
@@ -90,9 +91,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
       return new Set()
     }
   })
-  const [friendRequestNotif, setFriendRequestNotif] = useState<{ nick: string; senderId: string | null } | null>(
-    null
-  )
+  const mutedChatIdsRef = useRef<Set<string>>(new Set())
   const [friendIds, setFriendIds] = useState<Set<string>>(new Set())
 
   // ── In-app notifications ──
@@ -140,7 +139,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
         .then((data: Chat[]) =>
           Promise.all(
             data.map(async (chat) => {
-              const res = await fetch(
+              const res = await apiFetch(
                 `${API_URL}/api/chats/${chat.id}/messages?limit=1`
               )
               if (!res.ok) return chat
@@ -292,6 +291,11 @@ function ChatsWithUser({ userId }: { userId: string }) {
     setTypingUsers([])
   }, [activeChatId])
 
+  // ── Sync chatsRef so WS handlers can read latest chats ──
+  useEffect(() => {
+    chatsRef.current = chats
+  }, [chats])
+
   // ── Keep SW name cache in sync so background notifications show nicknames ──
   useEffect(() => {
     const users = chats.flatMap((c) =>
@@ -302,8 +306,9 @@ function ChatsWithUser({ userId }: { userId: string }) {
     updateSwNameCache(users)
   }, [chats])
 
-  // ── Sync muted chats to localStorage and SW ──
+  // ── Sync muted chats to localStorage, SW, and ref ──
   useEffect(() => {
+    mutedChatIdsRef.current = mutedChatIds
     localStorage.setItem('mutedChats', JSON.stringify([...mutedChatIds]))
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
       navigator.serviceWorker.controller.postMessage({
@@ -370,7 +375,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
           if (newMsg.senderId !== userId) {
             setChats((prev) => {
               const chat = prev.find((c) => c.id === newMsg.chatId)
-              const isMuted = mutedChatIds.has(newMsg.chatId)
+              const isMuted = mutedChatIdsRef.current.has(newMsg.chatId)
               const senderName =
                 chat?.users.find((u) => u.userId === newMsg.senderId)?.user
                   .nickname ?? 'Ktoś'
@@ -558,15 +563,12 @@ function ChatsWithUser({ userId }: { userId: string }) {
 
         if (msg.type === 'friendship:requested') {
           const { friendship } = msg.payload as {
-            friendship: { userId: string; nickname?: string }
+            friendship: { userId: string; user?: { nickname?: string; avatarUrl?: string | null } }
           }
           const senderNick =
-            (friendship as { userId: string; user?: { nickname?: string } })
-              ?.user?.nickname ?? t('chat.someone')
-          const senderId = friendship.userId
-          setFriendRequestNotif({ nick: senderNick, senderId })
-          triggerNotification(t('chat.friendRequestTitle'), senderNick)
-          setTimeout(() => setFriendRequestNotif(null), 10000)
+            friendship?.user?.nickname ?? t('chat.someone')
+          const senderAvatar = friendship?.user?.avatarUrl ?? null
+          triggerNotification(senderNick, t('chat.friendRequestSent'), { avatarUrl: senderAvatar })
         }
 
         if (msg.type === 'friendship:deleted') {
@@ -580,17 +582,28 @@ function ChatsWithUser({ userId }: { userId: string }) {
             next.delete(removedId)
             return next
           })
-          // If the removed friend's chat was active, deselect it
-          setActiveChatId((prev) => {
-            if (!prev) return prev
-            // We'll let the visibility filter hide it; clear active if needed
-            return prev
-          })
+          // If the removed friend's private chat is currently active, deselect it
+          const currentChatId = activeChatIdRef.current
+          if (currentChatId) {
+            const activeChat = chatsRef.current.find((c) => c.id === currentChatId)
+            const isPrivateChatWithRemovedFriend =
+              activeChat?.type === 'PRIVATE' &&
+              activeChat.users.some((u) => u.userId === removedId)
+            if (isPrivateChatWithRemovedFriend) {
+              setActiveChatId(null)
+            }
+          }
         }
 
         if (msg.type === 'friendship:updated') {
           const { friendship } = msg.payload as {
-            friendship: { userId: string; friendId: string; status: string }
+            friendship: {
+              userId: string
+              friendId: string
+              status: string
+              user?: { nickname?: string; avatarUrl?: string | null }
+              friend?: { nickname?: string; avatarUrl?: string | null }
+            }
           }
           if (friendship.status === 'ACCEPTED') {
             const newFriendId =
@@ -599,16 +612,12 @@ function ChatsWithUser({ userId }: { userId: string }) {
                 : friendship.userId
             setFriendIds((prev) => new Set(prev).add(newFriendId))
 
-            // Find the friend's nickname from existing chats or fall back
-            setChats((prev) => {
-              const nick =
-                prev
-                  .flatMap((c) => c.users)
-                  .find((u) => u.userId === newFriendId)?.user.nickname ??
-                t('chat.someone')
-              triggerNotification(t('chat.friendAcceptedTitle'), nick)
-              return prev
-            })
+            // The acceptor is the other party — read directly from payload
+            const acceptorData =
+              friendship.userId === userId ? friendship.friend : friendship.user
+            const nick = acceptorData?.nickname ?? t('chat.someone')
+            const avatarUrl = acceptorData?.avatarUrl ?? null
+            triggerNotification(nick, t('chat.friendAcceptedTitle'), { avatarUrl })
           }
         }
 
@@ -714,7 +723,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
     const prevScrollHeight = container?.scrollHeight ?? 0
 
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `${API_URL}/api/chats/${activeChatId}/messages?limit=${PAGE_SIZE}&lastId=${lastIdRef.current}`
       )
       const older: Message[] = await res.json()
@@ -885,7 +894,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
       ?.reactions.find((r) => r.userId === userId)
     try {
       if (existing?.type === type) {
-        await fetch(
+        await apiFetch(
           `${API_URL}/api/messages/${messageId}/reactions/${userId}`,
           { method: 'DELETE' }
         )
@@ -900,7 +909,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
           )
         )
       } else if (existing) {
-        await fetch(
+        await apiFetch(
           `${API_URL}/api/messages/${messageId}/reactions/${userId}`,
           {
             method: 'PUT',
@@ -1075,18 +1084,6 @@ function ChatsWithUser({ userId }: { userId: string }) {
   }
 
   // ── Zaakceptuj zaproszenie ──
-  async function handleAcceptFriend(senderId: string) {
-    try {
-      await apiFetch(`${API_URL}/api/users/${userId}/friends/${senderId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'ACCEPTED' })
-      })
-      setFriendRequestNotif(null)
-    } catch {
-      // silence — WS will update state anyway
-    }
-  }
 
   // ── Wycisz / odcisz czat ──
   function handleToggleMute(chatId: string) {
@@ -1222,7 +1219,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
   }
 
   async function handleRemoveFromGroup(chatId: string, memberId: string) {
-    const res = await fetch(
+    const res = await apiFetch(
       `${API_URL}/api/chats/${chatId}/members/${memberId}`,
       { method: 'DELETE' }
     )
@@ -1234,7 +1231,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
 
   async function handleTransferOwner(chatId: string, newOwnerId: string) {
     if (!userId) return
-    const res = await fetch(
+    const res = await apiFetch(
       `${API_URL}/api/chats/${chatId}/members/${newOwnerId}`,
       {
         method: 'PUT',
@@ -1359,22 +1356,6 @@ function ChatsWithUser({ userId }: { userId: string }) {
           </div>
         ))}
       </div>
-
-      {/* Powiadomienie o zaproszeniu do znajomych */}
-      {friendRequestNotif && (
-        <div className={styles.FriendRequestToast}>
-          <span>👥 {friendRequestNotif.nick}{friendRequestNotif.senderId ? ` ${t('chat.friendRequestSent')}` : ''}</span>
-          {friendRequestNotif.senderId && (
-            <button
-              className={styles.FriendRequestAcceptBtn}
-              onClick={() => handleAcceptFriend(friendRequestNotif.senderId!)}
-            >
-              {t('chat.accept')}
-            </button>
-          )}
-        </div>
-      )}
-
       {/* Input poza warunkowym renderem */}
       <input
         type="file"
@@ -1446,6 +1427,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
         onRenameGroup={handleRenameGroup}
         onDeleteGroup={handleDeleteGroup}
         onTransferOwner={handleTransferOwner}
+        onRemoveMember={handleRemoveFromGroup}
         onAddMember={handleAddMember}
         onUpgradeToGroup={handleUpgradeToGroup}
         friendIds={friendIds}

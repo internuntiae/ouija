@@ -31,7 +31,8 @@ export const getFriendshipsByStatus = async (
 
 export const createFriendship = async (userId: string, friendId: string) => {
   return prisma.friendship.create({
-    data: { userId, friendId, status: FriendStatus.PENDING }
+    data: { userId, friendId, status: FriendStatus.PENDING },
+    include: { user: true, friend: true }
   })
 }
 
@@ -42,7 +43,8 @@ export const updateFriendshipStatus = async (
 ) => {
   return prisma.friendship.update({
     where: { userId_friendId: { userId, friendId } },
-    data: { status }
+    data: { status },
+    include: { user: true, friend: true }
   })
 }
 

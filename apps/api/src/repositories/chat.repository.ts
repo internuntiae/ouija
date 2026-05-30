@@ -43,7 +43,8 @@ export const updateChat = async (
 ) => {
   return prisma.chat.update({
     where: { id: chatId },
-    data
+    data,
+    include: { users: { include: { user: true } } }
   })
 }
 

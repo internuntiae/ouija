@@ -98,7 +98,7 @@ export default function ProfilePopup({
         const [targetFriendsData, myFriendsData2] = await Promise.all([
           targetFriendsRes.json(),
           // We already consumed myFriendsRes above — re-fetch
-          fetch(
+          apiFetch(
             `${API_URL}/api/users/${viewerId}/friends?status=ACCEPTED`
           ).then((r) => (r.ok ? r.json() : []))
         ])
