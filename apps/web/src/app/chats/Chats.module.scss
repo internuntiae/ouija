@@ -395,7 +395,7 @@
   z-index: 9999;
   background: var(--bg-surface, #1e1e2e);
   color: var(--text, #fff);
-  border: 1px solid var(--text-muted, #555);
+  border: 1px solid var(--text-muted);
   border-radius: 0.8rem;
   padding: 1rem 1.6rem;
   font-size: 1.2rem;
@@ -833,7 +833,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--text);
+  color: var(--text-primary);
   text-decoration: none;
   background: var(--bg-elevated);
   padding: 0.6rem 1.2rem;
@@ -841,7 +841,7 @@
   font-size: 1.3rem;
   transition: background 0.12s;
   &:hover {
-    background: var(--bg-hover);
+    background: var(--bg-hover, #353230);
   }
 }
 
@@ -1826,6 +1826,23 @@
   flex: 1;
 }
 
+.AddFriendIconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: 0.8rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 1.6rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+  &:hover { background: var(--bg-hover, var(--bg-surface)); }
+}
+
 .NewGroupIconBtn {
   display: flex;
   align-items: center;
@@ -1867,6 +1884,398 @@
   color: var(--text-primary, #fff);
   font-size: 1.2rem;
   font-weight: 600;
-  background: var(--bg-elevated, #2a2826);
+  background: var(--bg-elevated);
   pointer-events: none;
+}
+
+// ── Image Lightbox ───────────────────────────────────────────────────────────
+.LightboxOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+  animation: fadeIn 0.15s ease;
+}
+
+.LightboxImg {
+  max-width: 92vw;
+  max-height: 90vh;
+  border-radius: 0.6rem;
+  object-fit: contain;
+  box-shadow: 0 8px 48px rgba(0, 0, 0, 0.6);
+  cursor: default;
+  user-select: none;
+  animation: scaleIn 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.LightboxClose {
+  position: fixed;
+  top: 1.4rem;
+  right: 1.8rem;
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  color: #fff;
+  font-size: 1.6rem;
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s;
+  z-index: 1001;
+  &:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+}
+
+// ── File Viewer (PDF / Text editor) ─────────────────────────────────────────
+.FileViewerOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.15s ease;
+  padding: 2rem;
+}
+
+.FileViewerOverlayFullscreen {
+  padding: 0;
+}
+
+.FileViewerPanel {
+  width: min(92vw, 96rem);
+  height: min(88vh, 76rem);
+  background: var(--bg-base);
+  border-radius: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 64px rgba(0, 0, 0, 0.6);
+  animation: scaleIn 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: 1px solid var(--border);
+}
+
+.FileViewerPanelFullscreen {
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+  border: none;
+}
+
+// ── Header ──
+.FileViewerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 1rem 0.7rem 1.4rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  gap: 1rem;
+  background: var(--bg-elevated);
+}
+
+.FileViewerTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.FileViewerTypeTag {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 0.4rem;
+  background: var(--accent, #7c6fa0);
+  color: #f5f5f5;
+  flex-shrink: 0;
+
+  :global([data-theme='light']) & {
+    color: #1a1a1a;
+  }
+
+  :global([data-theme='dark']) & {
+    color: #f5f5f5;
+  }
+}
+
+.FileViewerTitle {
+  font-size: 1.3rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.FileViewerHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.FileViewerToolBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 0.6rem;
+  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background 0.12s, color 0.12s;
+  &:hover {
+    background: rgba(255, 255, 255, 0.14);
+  }
+}
+
+.FileViewerToolBtnActive {
+  background: var(--accent, #7c6fa0) !important;
+  color: #fff !important;
+}
+
+.FileViewerToolBtnSave {
+  background: #2e7d32 !important;
+  &:hover { background: #388e3c !important; }
+}
+
+.FileViewerCloseBtn {
+  &:hover { background: rgba(231, 76, 60, 0.5) !important; }
+}
+
+// ── Body ──
+.FileViewerBody {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-base);
+}
+
+.FileViewerIframe {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #fff;
+}
+
+.FileViewerEditorWrap {
+  flex: 1;
+  display: flex;
+  overflow: auto;
+  min-height: 0;
+}
+
+.FileViewerLineNums {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 1.4rem 0.8rem 1.4rem 1.2rem;
+  background: var(--bg-elevated);
+  border-right: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: 'Fira Mono', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 1.25rem;
+  line-height: 1.75;
+  user-select: none;
+  flex-shrink: 0;
+  min-width: 3.6rem;
+  pointer-events: none;
+
+  span {
+    display: block;
+    line-height: 1.75;
+  }
+}
+
+.FileViewerPre {
+  flex: 1;
+  overflow: visible;
+  margin: 0;
+  padding: 1.4rem 1.6rem;
+  font-family: 'Fira Mono', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 1.25rem;
+  line-height: 1.75;
+  color: var(--text-primary);
+  white-space: pre;
+  tab-size: 2;
+}
+
+.FileViewerTextarea {
+  flex: 1;
+  overflow: visible;
+  margin: 0;
+  padding: 1.4rem 1.6rem;
+  font-family: 'Fira Mono', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 1.25rem;
+  line-height: 1.75;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  white-space: pre;
+  tab-size: 2;
+  caret-color: var(--accent, #7c6fa0);
+}
+
+.FileViewerLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  flex: 1;
+  color: var(--text-muted);
+  font-size: 1.3rem;
+}
+
+.FileViewerSpinner {
+  width: 1.8rem;
+  height: 1.8rem;
+  border: 2px solid var(--border, #333);
+  border-top-color: var(--accent, #7c6fa0);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+// ── Footer ──
+.FileViewerFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 1rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg-elevated);
+  flex-shrink: 0;
+  gap: 1rem;
+}
+
+.FileViewerFooterInfo {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+}
+
+.FileViewerFooterActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+// ── Attachment file tile ──
+.MessageAttachmentFileTile {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.8rem 1.2rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border, #333);
+  border-radius: 0.9rem;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.12s, border-color 0.12s;
+  max-width: 28rem;
+  text-align: left;
+  &:hover {
+    background: var(--bg-hover, #353230);
+    border-color: var(--accent, #7c6fa0);
+  }
+}
+
+.MessageAttachmentFileIcon {
+  font-size: 2.2rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.MessageAttachmentFileName {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
+
+.MessageAttachmentFileHint {
+  font-size: 1.05rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+// ── Attachment file row (link + eye button) ──────────────────────────────────
+.MessageAttachmentFileRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.MessageAttachmentViewBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border, #333);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s, border-color 0.12s;
+  &:hover {
+    background: var(--accent, #7c6fa0);
+    border-color: var(--accent, #7c6fa0);
+    color: #fff;
+  }
+}
+
+.FileViewerSaveError {
+  padding: 0.5rem 1rem;
+  background: rgba(231, 76, 60, 0.15);
+  border-top: 1px solid rgba(231, 76, 60, 0.4);
+  color: #e74c3c;
+  font-size: 1.1rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+// ── Shared keyframes ─────────────────────────────────────────────────────────
+@keyframes fadeIn {
+  from { opacity: 0 }
+  to   { opacity: 1 }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.9); opacity: 0 }
+  to   { transform: scale(1);   opacity: 1 }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg) }
 }

@@ -81,6 +81,7 @@ model Attachment {
   messageId String
   url       String
   type      AttachmentType
+  name      String?
 }
 
 model Reaction {

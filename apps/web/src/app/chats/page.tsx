@@ -165,13 +165,8 @@ function ChatsWithUser({ userId }: { userId: string }) {
           return new Date(tb).getTime() - new Date(ta).getTime()
         })
         setChats(sorted)
-        // Ustaw aktywny czat tylko na widoczny (znajomy lub grupa)
-        const firstVisible = sorted.find((c) => {
-          if (c.type !== 'PRIVATE') return true
-          const otherId = c.users.find((u) => u.userId !== userId)?.userId
-          return otherId ? ids.has(otherId) : true
-        })
-        setActiveChatId((prev) => prev ?? (firstVisible?.id ?? null))
+        // Only restore a chat from URL param (?chatId=...), never auto-select
+        setActiveChatId((prev) => prev ?? null)
       })
       .catch(console.error)
       .finally(() => setLoadingChats(false))
@@ -340,24 +335,54 @@ function ChatsWithUser({ userId }: { userId: string }) {
     wsRef.current = ws
 
     ws.onopen = () => {
-      // If the user had a non-default status before logging out, broadcast it
-      // to friends now that the WS connection is live
-      const statusToAnnounce = localStorage.getItem(
-        'userStatus'
-      ) as UserStatus | null
-      if (
-        statusToAnnounce &&
-        statusToAnnounce !== 'OFFLINE' &&
-        statusToAnnounce !== 'INVISIBLE'
-      ) {
+      // On app start: restore the previous non-offline status, or default to ONLINE
+      const cached = localStorage.getItem('userStatus') as UserStatus | null
+      const statusToAnnounce: UserStatus =
+        cached && cached !== 'OFFLINE' && cached !== 'INVISIBLE'
+          ? cached
+          : 'ONLINE'
+      setMyStatus(statusToAnnounce)
+      localStorage.setItem('userStatus', statusToAnnounce)
+      ws.send(
+        JSON.stringify({
+          type: 'user:status',
+          payload: { status: statusToAnnounce }
+        })
+      )
+      apiFetch(`${API_URL}/api/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: statusToAnnounce })
+      }).catch(console.error)
+    }
+
+    // ── Set status to OFFLINE when the user closes/leaves the app ──
+    const handleBeforeUnload = () => {
+      const currentStatus = myStatusRef.current
+      // Restore last active status next session (don't overwrite with OFFLINE)
+      if (currentStatus !== 'OFFLINE' && currentStatus !== 'INVISIBLE') {
+        localStorage.setItem('userStatus', currentStatus)
+      }
+      // Broadcast OFFLINE via WS (best-effort, synchronous send)
+      if (ws.readyState === WebSocket.OPEN) {
         ws.send(
-          JSON.stringify({
-            type: 'user:status',
-            payload: { status: statusToAnnounce }
-          })
+          JSON.stringify({ type: 'user:status', payload: { status: 'OFFLINE' } })
+        )
+      }
+      // Persist OFFLINE to server via sendBeacon for reliability on page close
+      const token = getToken()
+      if (token) {
+        const blob = new Blob(
+          [JSON.stringify({ status: 'OFFLINE' })],
+          { type: 'application/json' }
+        )
+        navigator.sendBeacon(
+          `${API_URL}/api/${userId}?_method=PUT&token=${encodeURIComponent(token)}`,
+          blob
         )
       }
     }
+    window.addEventListener('beforeunload', handleBeforeUnload)
 
     ws.onmessage = (event) => {
       try {
@@ -709,6 +734,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
     ws.onerror = (err) => console.error('[WS] błąd:', err)
 
     return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
       ws.close()
       wsRef.current = null
     }
@@ -717,8 +743,11 @@ function ChatsWithUser({ userId }: { userId: string }) {
   // ── Scroll do dołu przy pierwszym ładowaniu ──
   useEffect(() => {
     if (messages.length > 0 && isFirstLoad.current) {
-      bottomRef.current?.scrollIntoView({ behavior: 'auto' })
-      isFirstLoad.current = false
+      // Use setTimeout to ensure the DOM has painted before scrolling
+      setTimeout(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'auto' })
+        isFirstLoad.current = false
+      }, 50)
     }
   }, [messages])
 
@@ -836,7 +865,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
     }
 
     try {
-      let attachments: { url: string; type: AttachmentType }[] = []
+      let attachments: { url: string; type: AttachmentType; name?: string }[] = []
       if (pendingFiles.length > 0) {
         const form = new FormData()
         form.append('ownerId', userId)
@@ -850,10 +879,11 @@ function ChatsWithUser({ userId }: { userId: string }) {
           setSending(false)
           return
         }
-        const mediaFiles: { url: string; mimeType: string }[] =
+        const mediaFiles: { url: string; mimeType: string; filename: string }[] =
           await uploadRes.json()
-        attachments = mediaFiles.map((mf) => ({
+        attachments = mediaFiles.map((mf, i) => ({
           url: mf.url,
+          name: mf.filename ?? pendingFiles[i]?.name ?? undefined,
           type: mf.mimeType.startsWith('image/')
             ? 'IMAGE'
             : mf.mimeType.startsWith('video/')
@@ -1036,43 +1066,6 @@ function ChatsWithUser({ userId }: { userId: string }) {
     }
   }
 
-  // ── Otwórz lub utwórz czat ──
-  async function handleOpenChatWith(targetUserId: string) {
-    const existing = chats.find(
-      (c) =>
-        c.type === 'PRIVATE' && c.users.some((u) => u.userId === targetUserId)
-    )
-    if (existing) {
-      setActiveChatId(existing.id)
-      setSearchQuery('')
-      setSearchOpen(false)
-      return
-    }
-    try {
-      const res = await apiFetch(`${API_URL}/api/chats`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'PRIVATE',
-          userIds: [userId, targetUserId]
-        })
-      })
-      if (!res.ok) {
-        alert(t('chat.errorCreate'))
-        return
-      }
-      const newChat: Chat = await res.json()
-      setChats((prev) =>
-        prev.some((c) => c.id === newChat.id) ? prev : [newChat, ...prev]
-      )
-      setTimeout(() => setActiveChatId(newChat.id), 0)
-      setSearchQuery('')
-      setSearchOpen(false)
-    } catch (err) {
-      alert(err instanceof Error ? err.message : t('chat.errorCreate'))
-    }
-  }
-
   // ── Wyślij zaproszenie ──
   async function handleSendInvite(targetUserId: string) {
     try {
@@ -1101,12 +1094,6 @@ function ChatsWithUser({ userId }: { userId: string }) {
       else next.add(chatId)
       return next
     })
-  }
-
-  // ── Otwórz czat z ProfilePopup ──
-  async function handleMessageFromProfile(targetUserId: string) {
-    await handleOpenChatWith(targetUserId)
-    setProfilePopupUserId(null)
   }
 
   // ── Natywny listener dla file input ──
@@ -1156,7 +1143,6 @@ function ChatsWithUser({ userId }: { userId: string }) {
     : visibleChats
 
   // For "new people" in search: exclude anyone who is already a friend
-  // (they already have a chat with us — onOpenChatWith handles that path).
   const newPeopleResults = searchQuery.trim()
     ? searchUsers.filter((u) => !friendIds.has(u.id))
     : []
@@ -1371,7 +1357,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
         ref={fileInputRef}
         onChange={handleFileChange}
         multiple
-        accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,audio/mpeg,audio/ogg,application/pdf"
+        accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,audio/mpeg,audio/ogg,application/pdf,text/plain,text/csv,text/markdown,application/json,application/zip,.txt,.csv,.md,.log,.json,.zip"
         style={{ display: 'none' }}
       />
 
@@ -1405,7 +1391,6 @@ function ChatsWithUser({ userId }: { userId: string }) {
         onOpenProfile={setProfilePopupUserId}
         onOpenGroupInfo={setGroupInfoPopupChatId}
         onSendInvite={handleSendInvite}
-        onOpenChatWith={handleOpenChatWith}
         onCreateGroupChat={handleCreateGroupChat}
         isMobileHidden={isMobile && mobileChatOpen}
       />
@@ -1450,7 +1435,6 @@ function ChatsWithUser({ userId }: { userId: string }) {
           userId={profilePopupUserId}
           viewerId={userId}
           onClose={() => setProfilePopupUserId(null)}
-          onMessageUser={handleMessageFromProfile}
         />
       )}
 

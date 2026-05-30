@@ -23,7 +23,13 @@ const ALLOWED_MIME: Record<string, string> = {
   'video/webm': '.webm',
   'audio/mpeg': '.mp3',
   'audio/ogg': '.ogg',
-  'application/pdf': '.pdf'
+  'application/pdf': '.pdf',
+  'text/plain': '.txt',
+  'text/csv': '.csv',
+  'text/markdown': '.md',
+  'text/x-log': '.log',
+  'application/json': '.json',
+  'application/zip': '.zip'
 }
 
 const MAX_SIZE_BYTES = 10 * 1024 * 1024 // 10 MB

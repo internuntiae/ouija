@@ -26,13 +26,19 @@ export function clearSession() {
 
 /**
  * Wrapper around fetch that automatically injects the session token header.
- * Use this for every authenticated API call.
+ * If any request gets a 401 back, the stale session is cleared and the user
+ * is redirected to the login page — this handles DB resets gracefully.
  */
-export function apiFetch(url: string, init: RequestInit = {}): Promise<Response> {
+export async function apiFetch(url: string, init: RequestInit = {}): Promise<Response> {
   const token = getToken()
   const headers = new Headers(init.headers)
   if (token) {
     headers.set('Authorization', `Bearer ${token}`)
   }
-  return fetch(url, { ...init, headers })
+  const res = await fetch(url, { ...init, headers })
+  if (res.status === 401) {
+    clearSession()
+    window.location.href = '/login'
+  }
+  return res
 }

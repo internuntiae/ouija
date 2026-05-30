@@ -894,6 +894,7 @@ export default function ChatWindow({
                 userId={userId}
                 onReact={onReact}
                 onOpenProfile={onOpenProfile}
+                chatId={activeChat?.id}
                 chatUsers={activeChat?.users ?? []}
                 searchHighlight={isSearchMatch ? chatSearchQuery : undefined}
               />

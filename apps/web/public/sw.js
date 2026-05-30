@@ -103,7 +103,8 @@ function connectWebSocket() {
 
   socket.onclose = () => {
     socket = null
-    // Reconnect after 5 s
+    // Only reconnect if we still have a valid config
+    if (!wsUrl || !userId) return
     if (reconnectTimer) clearTimeout(reconnectTimer)
     reconnectTimer = setTimeout(connectWebSocket, 5000)
   }

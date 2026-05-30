@@ -36,7 +36,6 @@ interface Props {
   onOpenProfile: (id: string) => void
   onOpenGroupInfo: (chatId: string) => void
   onSendInvite: (id: string) => void
-  onOpenChatWith: (id: string) => void
   isMobileHidden?: boolean
   onCreateGroupChat: (name: string, memberIds: string[]) => Promise<void>
 }
@@ -56,7 +55,6 @@ export default function ChatSidebar({
   onStatusChange,
   searchQuery,
   setSearchQuery,
-  searchOpen,
   setSearchOpen,
   searchLoading,
   filteredChats,
@@ -69,13 +67,11 @@ export default function ChatSidebar({
   onOpenProfile,
   onOpenGroupInfo,
   onSendInvite,
-  onOpenChatWith,
   isMobileHidden,
   onCreateGroupChat
 }: Props) {
   const { t, lang } = useTranslation()
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const searchDropdownRef = useRef<HTMLDivElement>(null)
 
   // ── Czat grupowy ──
   const [groupModalOpen, setGroupModalOpen] = useState(false)
@@ -88,6 +84,15 @@ export default function ChatSidebar({
   const [groupMembers, setGroupMembers] = useState<UserSearchResult[]>([])
   const [groupCreating, setGroupCreating] = useState(false)
   const groupSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // ── Add Friend Modal ──
+  const [addFriendModalOpen, setAddFriendModalOpen] = useState(false)
+  const [addFriendSearch, setAddFriendSearch] = useState('')
+
+  function openAddFriendModal() {
+    setAddFriendModalOpen(true)
+    setAddFriendSearch('')
+  }
 
   function openGroupModal() {
     setGroupModalOpen(true)
@@ -340,6 +345,103 @@ export default function ChatSidebar({
         </div>
       )}
 
+      {/* ── Modal dodawania znajomego ── */}
+      {addFriendModalOpen && (
+        <div
+          className={styles.ModalOverlay}
+          onClick={() => setAddFriendModalOpen(false)}
+        >
+          <div className={styles.Modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.ModalHeader}>
+              <h3 className={styles.ModalTitle}>Dodaj znajomego</h3>
+              <button
+                className={styles.ModalClose}
+                onClick={() => setAddFriendModalOpen(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className={styles.ModalBody}>
+              <input
+                type="text"
+                className={styles.ModalInput}
+                placeholder="Szukaj użytkowników..."
+                value={addFriendSearch}
+                autoFocus
+                onChange={(e) => {
+                  const q = e.target.value
+                  setAddFriendSearch(q)
+                  setSearchQuery(q)
+                  setSearchOpen(true)
+                }}
+              />
+
+              {searchLoading && (
+                <p className={styles.ModalHint}>Szukam...</p>
+              )}
+
+              {newPeopleResults.length > 0 && (
+                <div className={styles.ModalSearchResults}>
+                  {newPeopleResults.map((person) => (
+                    <div key={person.id} className={styles.ModalSearchItem}>
+                      <img
+                        src={avatarSrc(person.avatarUrl)}
+                        alt="avatar"
+                        width={28}
+                        height={28}
+                        className={styles.ContactsChatPreviewProfilePicture}
+                      />
+                      <span
+                        className={styles.ModalSearchItemName}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          onOpenProfile(person.id)
+                          setAddFriendModalOpen(false)
+                          setSearchQuery('')
+                          setSearchOpen(false)
+                        }}
+                      >
+                        {person.nickname}
+                      </span>
+                      <button
+                          className={`${styles.SearchActionBtn} ${sentInvites.has(person.id) ? styles.SearchActionBtnSent : ''}`}
+                          onClick={() => onSendInvite(person.id)}
+                          disabled={sentInvites.has(person.id)}
+                          title={
+                            sentInvites.has(person.id)
+                              ? t('chat.sentInvite')
+                              : t('chat.addFriend')
+                          }
+                        >
+                          {sentInvites.has(person.id) ? '✓' : '+'}
+                        </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!searchLoading && addFriendSearch.trim() && newPeopleResults.length === 0 && (
+                <p className={styles.ModalHint}>Nie znaleziono nowych użytkowników.</p>
+              )}
+            </div>
+
+            <div className={styles.ModalFooter}>
+              <button
+                className={styles.ModalCancelBtn}
+                onClick={() => {
+                  setAddFriendModalOpen(false)
+                  setSearchQuery('')
+                  setSearchOpen(false)
+                }}
+              >
+                Zamknij
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Wyszukiwarka ── */}
       <div className={styles.SearchSection}>
         <div className={styles.SearchRow}>
@@ -350,25 +452,25 @@ export default function ChatSidebar({
             className={styles.SearchInput}
             placeholder={t('chat.searchPlaceholder')}
             value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value)
-              setSearchOpen(true)
-            }}
-            onFocus={() => setSearchOpen(true)}
+            onChange={(e) => setSearchQuery(e.target.value)}
             data-search-input
           />
           {searchQuery && (
             <button
               className={styles.SearchClear}
-              onClick={() => {
-                setSearchQuery('')
-                setSearchOpen(false)
-              }}
+              onClick={() => setSearchQuery('')}
             >
               ✕
             </button>
           )}
           </div>
+          <button
+            className={styles.AddFriendIconBtn}
+            onClick={openAddFriendModal}
+            title="Dodaj znajomego"
+          >
+            ➕
+          </button>
           <button
             className={styles.NewGroupIconBtn}
             onClick={openGroupModal}
@@ -378,139 +480,7 @@ export default function ChatSidebar({
           </button>
         </div>
 
-        {searchOpen && searchQuery.trim() && (
-          <div
-            ref={searchDropdownRef}
-            className={styles.SearchDropdown}
-            data-search-dropdown
-          >
-            {searchLoading && (
-              <p className={styles.SearchDropdownLoading}>
-                {t('chat.searchLoading')}
-              </p>
-            )}
 
-            {filteredChats.length > 0 && (
-              <>
-                <p className={styles.SearchDropdownSection}>
-                  {t('chat.searchSectionChats')}
-                </p>
-                {filteredChats.map((chat) => {
-                  const other = chat.users.find(
-                    (u) => u.userId !== userId
-                  )?.user
-                  return (
-                    <div
-                      key={chat.id}
-                      className={styles.SearchDropdownItem}
-                      onClick={() => {
-                        onSelectChat(chat.id)
-                        setSearchQuery('')
-                        setSearchOpen(false)
-                      }}
-                    >
-                      <div
-                        className={styles.AvatarWrap}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (other) onOpenProfile(other.id)
-                        }}
-                      >
-                        <img
-                          src={avatarSrc(other?.avatarUrl)}
-                          alt="avatar"
-                          height={32}
-                          width={32}
-                          className={styles.ContactsChatPreviewProfilePicture}
-                        />
-                        {other && (
-                          <span
-                            className={styles.StatusDotSmall}
-                            style={{ background: STATUS_COLOR[other.status] }}
-                          />
-                        )}
-                      </div>
-                      <span className={styles.SearchDropdownItemName}>
-                        {getChatDisplayName(chat, userId)}
-                      </span>
-                    </div>
-                  )
-                })}
-              </>
-            )}
-
-            {newPeopleResults.length > 0 && (
-              <>
-                <p className={styles.SearchDropdownSection}>
-                  {t('chat.searchSectionPeople')}
-                </p>
-                {newPeopleResults.map((person) => (
-                  <div key={person.id} className={styles.SearchDropdownItem}>
-                    <div
-                      className={styles.AvatarWrap}
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => {
-                        onOpenProfile(person.id)
-                        setSearchOpen(false)
-                      }}
-                    >
-                      <img
-                        src={avatarSrc(person.avatarUrl)}
-                        alt="avatar"
-                        height={32}
-                        width={32}
-                        className={styles.ContactsChatPreviewProfilePicture}
-                      />
-                      <span
-                        className={styles.StatusDotSmall}
-                        style={{ background: STATUS_COLOR[person.status] }}
-                      />
-                    </div>
-                    <span
-                      className={styles.SearchDropdownItemName}
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => {
-                        onOpenProfile(person.id)
-                        setSearchOpen(false)
-                      }}
-                    >
-                      {person.nickname}
-                    </span>
-                    <div className={styles.SearchDropdownActions}>
-                      <button
-                        className={styles.SearchActionBtn}
-                        onClick={() => onOpenChatWith(person.id)}
-                        title={t('chat.writeMessage')}
-                      >
-                        💬
-                      </button>
-                      <button
-                        className={`${styles.SearchActionBtn} ${sentInvites.has(person.id) ? styles.SearchActionBtnSent : ''}`}
-                        onClick={() => onSendInvite(person.id)}
-                        disabled={sentInvites.has(person.id)}
-                        title={
-                          sentInvites.has(person.id)
-                            ? t('chat.sentInvite')
-                            : t('chat.addFriend')
-                        }
-                      >
-                        {sentInvites.has(person.id) ? '✓' : '+'}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </>
-            )}
-
-            {!searchLoading &&
-              filteredChats.length === 0 &&
-              newPeopleResults.length === 0 && (
-                <p className={styles.SearchDropdownEmpty}>
-                  {t('chat.searchNoResults')}
-                </p>
-              )}
-          </div>
-        )}
       </div>
 
       {/* ── Lista czatów ── */}
@@ -518,8 +488,7 @@ export default function ChatSidebar({
         <p className={styles.LoadingText}>{t('chat.loading')}</p>
       )}
 
-      {!searchQuery.trim() &&
-        chats.map((chat) => {
+      {(searchQuery.trim() ? filteredChats : chats).map((chat) => {
           const other = chat.users.find((u) => u.userId !== userId)?.user
           const lastMsg = getLastMessagePreview(chat)
           const unread = chat.unreadCount ?? 0

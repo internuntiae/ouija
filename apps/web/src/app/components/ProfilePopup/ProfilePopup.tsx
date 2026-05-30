@@ -37,7 +37,6 @@ interface ProfilePopupProps {
   userId: string // the target user's id
   viewerId: string // the logged-in user's id
   onClose: () => void
-  onMessageUser?: (userId: string) => void
 }
 
 function avatarSrc(url?: string | null) {
@@ -48,7 +47,6 @@ export default function ProfilePopup({
   userId,
   viewerId,
   onClose,
-  onMessageUser
 }: ProfilePopupProps) {
   const [user, setUser] = useState<ProfileUser | null>(null)
   const [mutuals, setMutuals] = useState<MutualFriend[]>([])
@@ -178,6 +176,26 @@ export default function ProfilePopup({
         return
       }
       setFriendStatus('ACCEPTED')
+      // Automatically create a private chat with the new friend
+      try {
+        const chatsRes = await apiFetch(`${API_URL}/api/users/${viewerId}/chats`)
+        if (chatsRes.ok) {
+          const chats = await chatsRes.json()
+          const existing = chats.find(
+            (c: { type: string; users: { userId: string }[] }) =>
+              c.type === 'PRIVATE' && c.users.some((u: { userId: string }) => u.userId === userId)
+          )
+          if (!existing) {
+            await apiFetch(`${API_URL}/api/chats`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ type: 'PRIVATE', userIds: [viewerId, userId] })
+            })
+          }
+        }
+      } catch {
+        /* best-effort: chat creation failure shouldn't block friend accept */
+      }
     } catch {
       alert('Błąd')
     } finally {
@@ -356,30 +374,6 @@ export default function ProfilePopup({
                 <>
                   <div className={styles.Divider} />
                   <div className={styles.Actions}>
-                    <button
-                      className={`${styles.ActionBtn} ${styles.ActionBtnPrimary}`}
-                      onClick={() => {
-                        onMessageUser?.(userId)
-                        onClose()
-                      }}
-                      disabled={actionLoading}
-                    >
-                      <svg
-                        width="15"
-                        height="15"
-                        viewBox="0 0 20 20"
-                        fill="none"
-                      >
-                        <path
-                          d="M18 2H2a1 1 0 00-1 1v12a1 1 0 001 1h4l3 3 3-3h6a1 1 0 001-1V3a1 1 0 00-1-1z"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                      {t('profilePopup.sendMessage')}
-                    </button>
-
                     {friendStatus === 'NONE' && (
                       <button
                         className={`${styles.ActionBtn} ${styles.ActionBtnSecondary}`}

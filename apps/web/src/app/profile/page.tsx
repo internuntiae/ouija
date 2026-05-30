@@ -101,6 +101,14 @@ export default function Profile() {
 
   const [settingsSaved, setSettingsSaved] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
+  const [passwordResetEnabled, setPasswordResetEnabled] = useState(false)
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/auth/config`)
+      .then((r) => r.json())
+      .then((cfg) => setPasswordResetEnabled(cfg.enablePasswordReset ?? false))
+      .catch(() => {})
+  }, [])
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -222,10 +230,6 @@ export default function Profile() {
     }
   }
 
-  async function handleMessageFromProfile(friendId: string) {
-    await handleMessageFriend(friendId)
-  }
-
   async function handleAcceptInvite(inviterId: string) {
     if (!userId) return
     try {
@@ -266,6 +270,26 @@ export default function Profile() {
       }
       setFriends((prev) => [...prev, newFriend])
       setPendingInvites((prev) => prev.filter((i) => i.userId !== inviterId))
+      // Automatically create a private chat with the new friend
+      try {
+        const chatsRes = await apiFetch(`${API_URL}/api/users/${userId}/chats`)
+        if (chatsRes.ok) {
+          const chats = await chatsRes.json()
+          const existing = chats.find(
+            (c: { type: string; users: { userId: string }[] }) =>
+              c.type === 'PRIVATE' && c.users.some((u) => u.userId === inviterId)
+          )
+          if (!existing) {
+            await apiFetch(`${API_URL}/api/chats`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ type: 'PRIVATE', userIds: [userId, inviterId] })
+            })
+          }
+        }
+      } catch {
+        /* best-effort */
+      }
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Błąd')
     }
@@ -384,15 +408,17 @@ export default function Profile() {
                 {accountAgeMinutes}m
               </p>
             )}
-            <p className={styles.SectionText}>
-              {t('profile.passwordLabel')}{' '}
-              <a
-                style={{ cursor: 'pointer' }}
-                onClick={() => router.push('/forgot-password')}
-              >
-                {t('profile.changePasswordRedirect')}
-              </a>
-            </p>
+            {passwordResetEnabled && (
+              <p className={styles.SectionText}>
+                {t('profile.passwordLabel')}{' '}
+                <a
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => router.push('/forgot-password')}
+                >
+                  {t('profile.changePasswordRedirect')}
+                </a>
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -403,7 +429,6 @@ export default function Profile() {
           userId={profilePopupUserId}
           viewerId={userId}
           onClose={() => setProfilePopupUserId(null)}
-          onMessageUser={handleMessageFromProfile}
         />
       )}
 

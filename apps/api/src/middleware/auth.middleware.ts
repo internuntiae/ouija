@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express'
 import { tokenService } from '@/lib'
+import { getUserById } from '@repositories/user.repository'
 
 /**
  * Extends Express Request with the authenticated userId.
@@ -15,7 +16,8 @@ export interface AuthRequest extends Request {
  * Reads `Authorization: Bearer <token>` header, validates the session token
  * against Redis, and attaches `req.userId` to the request.
  *
- * Returns 401 if the header is missing or the token is invalid/expired.
+ * Returns 401 if the header is missing, the token is invalid/expired,
+ * or the user no longer exists in the database (e.g. after a DB reset).
  */
 export const requireAuth = async (
   req: Request,
@@ -33,6 +35,12 @@ export const requireAuth = async (
 
   if (!userId) {
     res.status(401).json({ error: 'invalid or expired session' })
+    return
+  }
+
+  const user = await getUserById(userId)
+  if (!user) {
+    res.status(401).json({ error: 'user no longer exists' })
     return
   }
 
