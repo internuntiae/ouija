@@ -89,6 +89,7 @@ export default function ChatWindow({
 }: Props) {
   const { t } = useTranslation()
   const [groupPanelOpen, setGroupPanelOpen] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
   const [addMemberSearch, setAddMemberSearch] = useState('')
@@ -162,6 +163,38 @@ export default function ChatWindow({
     }
     document.addEventListener('paste', handlePaste)
     return () => document.removeEventListener('paste', handlePaste)
+  }, [activeChat, onPasteFile])
+
+  // ── Drag & drop files onto the chat window ──
+  useEffect(() => {
+    function handleDragOver(e: DragEvent) {
+      if (!activeChat) return
+      const hasFiles = Array.from(e.dataTransfer?.items ?? []).some(
+        (i) => i.kind === 'file'
+      )
+      if (!hasFiles) return
+      e.preventDefault()
+      setIsDragging(true)
+    }
+    function handleDragLeave(e: DragEvent) {
+      // Only clear when leaving the window entirely
+      if (e.relatedTarget == null) setIsDragging(false)
+    }
+    function handleDrop(e: DragEvent) {
+      e.preventDefault()
+      setIsDragging(false)
+      if (!activeChat || !onPasteFile) return
+      const files = Array.from(e.dataTransfer?.files ?? [])
+      files.forEach((file) => onPasteFile(file))
+    }
+    window.addEventListener('dragover', handleDragOver)
+    window.addEventListener('dragleave', handleDragLeave)
+    window.addEventListener('drop', handleDrop)
+    return () => {
+      window.removeEventListener('dragover', handleDragOver)
+      window.removeEventListener('dragleave', handleDragLeave)
+      window.removeEventListener('drop', handleDrop)
+    }
   }, [activeChat, onPasteFile])
 
   // ── Ctrl+F — szukaj w czacie ──
@@ -317,8 +350,15 @@ export default function ChatWindow({
 
   return (
     <div
-      className={`${styles.Chat}${isMobileChatVisible ? ` ${styles.ChatVisible}` : ''}`}
+      className={`${styles.Chat}${isMobileChatVisible ? ` ${styles.ChatVisible}` : ''}${isDragging ? ` ${styles.ChatDragOver}` : ''}`}
     >
+      {isDragging && (
+        <div className={styles.DragOverlay}>
+          <div className={styles.DragOverlayInner}>
+            📎 Upuść plik tutaj
+          </div>
+        </div>
+      )}
       {/* ── Nagłówek ── */}
       <div className={styles.ChatContactInfo}>
         {onBack && (

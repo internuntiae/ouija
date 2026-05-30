@@ -7,10 +7,13 @@ import { MediaPurpose } from '@prisma/client'
 
 // ─── Base URL helper ───────────────────────────────────────────────────────────
 // In production set the CDN_BASE_URL env variable to the public hostname.
-const BASE_URL = process.env.CDN_BASE_URL ?? 'http://localhost:3001'
+// Read dynamically (not at module load time) so that env vars injected after
+// the module is first imported (e.g. via dotenv in tests or container secrets)
+// are always picked up without requiring a process restart.
+const getBaseUrl = () => process.env.CDN_BASE_URL ?? 'http://localhost:3001'
 
 /** Full URL used in API responses so clients can fetch the file directly. */
-const buildUrl = (storedName: string) => `${BASE_URL}/${storedName}`
+const buildUrl = (storedName: string) => `${getBaseUrl()}/${storedName}`
 
 /** Rehydrate a DB record — url column stores just the storedName. */
 function withFullUrl<T extends { url: string; storedName: string }>(

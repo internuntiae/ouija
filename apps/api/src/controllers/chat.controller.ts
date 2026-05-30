@@ -86,12 +86,22 @@ export const addUserToChat = async (req: Request, res: Response) => {
     )
     res.status(201).json(chatUser)
 
-    // Tell existing members someone joined; tell the new user they're now in this chat
+    // Tell existing members someone joined; tell the new user they're now in this chat.
+    // The new user doesn't have this chat in their sidebar yet, so sending chat:updated
+    // would be a no-op for them. Instead send chat:created with the full chat object.
     const memberIds = await getChatMemberIds(chatId)
-    sendToUsers(memberIds, {
+    const existingMemberIds = memberIds.filter((id) => id !== userId)
+    sendToUsers(existingMemberIds, {
       type: 'chat:updated',
       payload: { chatId, event: 'member_added', userId }
     })
+    const fullChat = await chatService.getChatById(chatId).catch(() => null)
+    if (fullChat) {
+      sendToUser(userId, {
+        type: 'chat:created',
+        payload: { chat: fullChat }
+      })
+    }
   } catch (error) {
     res.status(500).json({ error: (error as Error).message })
   }

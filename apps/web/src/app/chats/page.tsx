@@ -28,6 +28,7 @@ import {
 import { useSettings } from '@/context/SettingsContext'
 import { updateSwNameCache } from '@/app/sw-register'
 import { useTranslation } from '@/i18n/translations'
+import { notFound } from 'next/navigation'
 import { apiFetch, getToken, clearSession } from '@utils/auth'
 
 // ─── Główny komponent ─────────────────────────────────────────────────────────
@@ -38,7 +39,14 @@ function ChatsInner() {
       ? (localStorage.getItem('userId') ?? null)
       : null
 
-  if (!userId) return null
+  if (!userId) {
+    // Not logged in — show 404. We only call notFound() on the client where
+    // we can be certain the value is truly absent (not just SSR with no localStorage).
+    if (typeof window !== 'undefined') {
+      notFound()
+    }
+    return null
+  }
   return <ChatsWithUser userId={userId} />
 }
 
