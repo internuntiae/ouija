@@ -75,9 +75,20 @@ describe('chatService.getChatById', () => {
 describe('chatService.createChat', () => {
   it('creates a private chat', async () => {
     mockUserRepo.getUserById.mockResolvedValue(user1)
-      .mockResolvedValueOnce(user1)
-      .mockResolvedValueOnce(user2)
-    mockChatRepo.createChat.mockResolvedValue(privateChat)
+        .mockResolvedValueOnce(user1)
+        .mockResolvedValueOnce(user2)
+
+    // chat.service creates private chats inside prisma.$transaction via tx.chat.create,
+    // not via chatRepo.createChat — so we must mock the transaction to return the chat.
+    const { prisma } = await import('@/lib')
+    ;(prisma.$transaction as jest.Mock).mockImplementationOnce(
+        (fn: (tx: unknown) => unknown) => fn({
+          chat: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue(privateChat)
+          }
+        })
+    )
 
     const chat = await chatService.createChat(undefined, ChatType.PRIVATE, ['u1', 'u2'])
     expect(chat.type).toBe(ChatType.PRIVATE)
@@ -85,13 +96,13 @@ describe('chatService.createChat', () => {
 
   it('throws when fewer than 2 userIds', async () => {
     await expect(
-      chatService.createChat(undefined, ChatType.PRIVATE, ['u1'])
+        chatService.createChat(undefined, ChatType.PRIVATE, ['u1'])
     ).rejects.toThrow('At least two users are required')
   })
 
   it('throws when GROUP chat has no name', async () => {
     await expect(
-      chatService.createChat(undefined, ChatType.GROUP, ['u1', 'u2', 'u3'])
+        chatService.createChat(undefined, ChatType.GROUP, ['u1', 'u2', 'u3'])
     ).rejects.toThrow('Group chats require a name')
   })
 
@@ -99,7 +110,7 @@ describe('chatService.createChat', () => {
     mockUserRepo.getUserById.mockResolvedValueOnce(user1).mockResolvedValueOnce(null)
 
     await expect(
-      chatService.createChat(undefined, ChatType.PRIVATE, ['u1', 'ghost'])
+        chatService.createChat(undefined, ChatType.PRIVATE, ['u1', 'ghost'])
     ).rejects.toThrow('User ghost not found')
   })
 })
@@ -148,7 +159,7 @@ describe('chatService.addUserToChat', () => {
     })
 
     await expect(chatService.addUserToChat('chat1', 'u1')).rejects.toThrow(
-      'User already in chat'
+        'User already in chat'
     )
   })
 })
@@ -171,7 +182,7 @@ describe('chatService.removeUserFromChat', () => {
   it('throws when user not in chat', async () => {
     mockChatRepo.getChatUser.mockResolvedValue(null)
     await expect(chatService.removeUserFromChat('chat1', 'ghost')).rejects.toThrow(
-      'User is not in this chat'
+        'User is not in this chat'
     )
   })
 })
