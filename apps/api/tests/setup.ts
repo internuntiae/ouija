@@ -70,9 +70,20 @@ jest.mock('../src/lib/prisma', () => ({
   }
 }))
 
+// Mock requireAuth so it never touches the DB.
+// It simply stamps req.userId with the test session user and calls next(),
+// which means every prisma.user.findUnique mock in individual tests is
+// consumed by the service / repository layer — exactly where tests expect it.
+jest.mock('../src/middleware/auth.middleware', () => ({
+  requireAuth: (req: any, _res: any, next: any) => {
+    req.userId = 'user_alice_001'
+    next()
+  }
+}))
+
 // Mock redis so no real Redis connection is made.
-// validateSessionToken always resolves to a valid userId so requireAuth
-// middleware passes in every test without needing a real token.
+// (Redis is still mocked because other parts of the code — e.g. message
+//  caching — read from it directly, independent of requireAuth.)
 jest.mock('../src/lib/redis', () => ({
   redis: {
     isReady: true,
