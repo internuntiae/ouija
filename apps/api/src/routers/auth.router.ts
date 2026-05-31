@@ -34,7 +34,14 @@ const forgotPasswordLimiter = rateLimit({
   message: { error: 'too many password reset requests, please try again later' }
 })
 
-// ── Zod schemas ───────────────────────────────────────────────────────────────
+/** Prevents token-bruteforce on reset-password */
+const resetPasswordLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'too many password reset attempts, please try again later' }
+})
 
 const registerSchema = z.object({
   email: z.string().email('invalid email address'),
@@ -67,7 +74,8 @@ function validate(schema: ZodSchema) {
     const result = schema.safeParse(req.body)
     if (!result.success) {
       res.status(400).json({
-        error: result.error.errors[0]?.message ?? 'invalid request body'
+        // Swapped .errors[0] to .issues[0]
+        error: result.error.issues[0]?.message ?? 'invalid request body'
       })
       return
     }
@@ -178,7 +186,7 @@ authRouter.post('/auth/forgot-password', forgotPasswordLimiter, validate(forgotP
  *       200: { description: Password reset }
  *       400: { description: Invalid or expired token }
  */
-authRouter.post('/auth/reset-password', validate(resetPasswordSchema), authController.resetPassword)
+authRouter.post('/auth/reset-password', resetPasswordLimiter, validate(resetPasswordSchema), authController.resetPassword)
 
 authRouter.post('/auth/login', loginLimiter, validate(loginSchema), authController.login)
 authRouter.post('/auth/logout', authController.logout)

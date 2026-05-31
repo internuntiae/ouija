@@ -5,12 +5,17 @@ import * as msgService from '@services/message.service'
 import { sendToUsers } from '@/lib/ws'
 import { getChatMemberIds } from '@/lib/chat-members'
 import { AuthRequest } from '@middleware/auth.middleware'
+import { ReactionType } from '@prisma/client'
 
 export const getAllMessages = async (req: Request, res: Response) => {
   try {
     const { chatId } = req.params
-    const limit = parseInt((req.query.limit as string) ?? '50')
-    const lastId = (req.query.lastId as string) ?? ''
+    // req.query has already been coerced by validateQuery(getMessagesQuerySchema)
+    const { limit, lastId } = req.query as unknown as {
+      limit: number
+      lastId: string
+    }
+
     const messages = await msgService.getAllMessages(chatId, limit, lastId)
     res.status(200).json(messages)
   } catch (error) {
@@ -25,12 +30,21 @@ export const createMessage = async (req: Request, res: Response) => {
     const { chatId } = req.params
     const userId = (req as AuthRequest).userId
     const { content, attachments = [], reactions = [] } = req.body
+    // Stamp every reaction with the authenticated user — ignore any userId the
+    // client may have included (stripped by the Zod schema).
+    const stampedReactions = (reactions as { type: ReactionType }[]).map(
+      (r) => ({
+        ...r,
+        userId
+      })
+    )
+
     const message = await msgService.createMessage(
       chatId,
       userId,
       content,
       attachments,
-      reactions
+      stampedReactions
     )
     res.status(201).json(message)
 

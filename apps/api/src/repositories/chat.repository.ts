@@ -46,7 +46,7 @@ export const createChat = async (
 
 export const updateChat = async (
   chatId: string,
-  data: Partial<{ name: string; type: ChatType }>
+  data: Partial<{ name: string }>
 ) => {
   return prisma.chat.update({
     where: { id: chatId },

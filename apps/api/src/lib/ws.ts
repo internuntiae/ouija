@@ -5,6 +5,48 @@ import { UserStatus } from '@prisma/client'
 
 const userSockets = new Map<string, Set<WebSocket>>()
 
+// ── Per-user token-bucket rate limiter ─────────────────────────────────────────
+// Limits client-initiated events (typing, status changes) to prevent unbounded
+// DB queries from a spamming or misbehaving client.
+//
+// Each user gets RATE_BUCKET_CAPACITY tokens that refill at RATE_REFILL_PER_MS.
+// Every client-initiated event costs one token; when empty the frame is dropped.
+
+const RATE_BUCKET_CAPACITY = 20          // max burst
+const RATE_REFILL_PER_MS   = 20 / 2000  // 20 tokens per 2 s → 10 events/s sustained
+
+interface RateBucket {
+  tokens: number
+  lastRefill: number
+}
+
+const rateBuckets = new Map<string, RateBucket>()
+
+function consumeToken(userId: string): boolean {
+  const now = Date.now()
+  let bucket = rateBuckets.get(userId)
+  if (!bucket) {
+    bucket = { tokens: RATE_BUCKET_CAPACITY, lastRefill: now }
+    rateBuckets.set(userId, bucket)
+  }
+
+  // Refill proportionally to elapsed time
+  const elapsed = now - bucket.lastRefill
+  bucket.tokens = Math.min(
+    RATE_BUCKET_CAPACITY,
+    bucket.tokens + elapsed * RATE_REFILL_PER_MS
+  )
+  bucket.lastRefill = now
+
+  if (bucket.tokens < 1) return false
+  bucket.tokens -= 1
+  return true
+}
+
+function cleanupRateBucket(userId: string): void {
+  rateBuckets.delete(userId)
+}
+
 export type WsEventType =
   | 'message:created'
   | 'message:updated'
@@ -123,23 +165,37 @@ export function attachWebSocketServer(httpServer: Server): WebSocketServer {
             payload: Record<string, unknown>
           }
 
+          // Drop client-initiated frames that exceed the per-user rate limit.
+          // Safe-reads (server-to-client events) are never counted here.
+          const clientInitiated = ['typing:start', 'typing:stop', 'user:status']
+          if (clientInitiated.includes(msg.type) && !consumeToken(userId)) {
+            return // silently drop; client is spamming
+          }
+
           if (msg.type === 'typing:start' || msg.type === 'typing:stop') {
-            const { chatId, nickname, avatarUrl } = msg.payload as {
-              chatId: string
-              nickname: string
-              avatarUrl?: string | null
-            }
+            const { chatId } = msg.payload as { chatId: string }
             if (!chatId) return
-            prisma.chatUser
-              .findMany({ where: { chatId }, select: { userId: true } })
-              .then((members: { userId: string }[]) => {
-                const otherIds = members
-                  .map((m) => m.userId)
-                  .filter((id: string) => id !== userId)
-                sendToUsers(otherIds, {
-                  type: msg.type as WsEventType,
-                  payload: { chatId, userId, nickname, avatarUrl }
-                })
+            // Fetch user identity from DB — never trust nickname/avatarUrl from the client payload
+            prisma.user
+              .findUnique({ where: { id: userId }, select: { nickname: true, avatarUrl: true } })
+              .then((user) => {
+                if (!user) return
+                return prisma.chatUser
+                  .findMany({ where: { chatId }, select: { userId: true } })
+                  .then((members: { userId: string }[]) => {
+                    // Verify the sender is actually a member of this chat.
+                    // Without this check any authenticated user can inject typing
+                    // indicators into chats they don't belong to.
+                    const isMember = members.some((m) => m.userId === userId)
+                    if (!isMember) return
+                    const otherIds = members
+                      .map((m) => m.userId)
+                      .filter((id: string) => id !== userId)
+                    sendToUsers(otherIds, {
+                      type: msg.type as WsEventType,
+                      payload: { chatId, userId, nickname: user.nickname, avatarUrl: user.avatarUrl }
+                    })
+                  })
               })
               .catch(() => { /* ignore */ })
           }
@@ -162,6 +218,7 @@ export function attachWebSocketServer(httpServer: Server): WebSocketServer {
         userSockets.get(userId)?.delete(socket)
         if (userSockets.get(userId)?.size === 0) {
           userSockets.delete(userId)
+          cleanupRateBucket(userId)
           prisma.user
             .findUnique({ where: { id: userId }, select: { status: true } })
             .then((user: { status: UserStatus } | null) => {

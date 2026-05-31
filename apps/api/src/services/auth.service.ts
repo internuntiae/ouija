@@ -1,5 +1,6 @@
 import * as userRepo from '@repositories/user.repository'
 import { emailService, tokenService, features } from '@/lib'
+import { invalidateAllUserSessions } from '@/lib/tokens'
 import { hashPassword } from '@utils/hash'
 import { stripPassword } from '@services/session.service'
 
@@ -16,6 +17,7 @@ export const register = async (data: {
   nickname: string
 }) => {
   data.nickname = data.nickname.toLowerCase()
+  data.email = data.email.toLowerCase().trim()
 
   if ((await userRepo.getUserByEmail(data.email)) !== null)
     throw new Error('email already exists')
@@ -94,5 +96,7 @@ export const resetPassword = async (token: string, newPassword: string) => {
   if (!user) throw new Error('user not found')
 
   const hashed = await hashPassword(newPassword)
-  return userRepo.updateUser(userId, { password: hashed })
+  await userRepo.updateUser(userId, { password: hashed })
+  // Invalidate all existing sessions — a password reset means the account may have been compromised
+  await invalidateAllUserSessions(userId)
 }

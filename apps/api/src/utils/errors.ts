@@ -44,15 +44,22 @@ const CLIENT_SAFE_MESSAGES = new Set([
   'userId and friendId are required',
   'status is required',
   'Friend not found',
+  'only the recipient can accept or decline a friend request',
   // media
   'No files were uploaded',
   'No avatar file was uploaded',
-  'requesterId is required',
   'File not found',
   // middleware
   'you are not a member of this chat',
   'admin role required',
   'you can only modify your own messages',
+  'you can only update your own profile',
+  'you can only delete your own account',
+  'you can only update your own avatar',
+  'you can only remove your own avatar',
+  'forbidden: you can only list your own files',
+  'forbidden: you can only perform this action for yourself',
+  'admin role required to remove other members',
   'message not found',
   'authentication required',
   'invalid or expired session',
@@ -84,7 +91,16 @@ export function errorStatus(message: string): number {
     message === 'email not verified' ||
     message === 'you are not a member of this chat' ||
     message === 'admin role required' ||
-    message === 'you can only modify your own messages'
+    message === 'admin role required to remove other members' ||
+    message === 'you can only modify your own messages' ||
+    message === 'you can only update your own profile' ||
+    message === 'you can only delete your own account' ||
+    message === 'you can only update your own avatar' ||
+    message === 'you can only remove your own avatar' ||
+    message === 'forbidden: you can only list your own files' ||
+    message === 'forbidden: you can only perform this action for yourself' ||
+    message === 'forbidden: you do not own this file' ||
+    message === 'only the recipient can accept or decline a friend request'
   ) return 403
   if (
     message === 'email already exists' ||

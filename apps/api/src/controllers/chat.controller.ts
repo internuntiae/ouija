@@ -5,6 +5,8 @@ import * as chatService from '@services/chat.service'
 import { ChatType, ChatRole } from '@prisma/client'
 import { sendToUser, sendToUsers } from '@/lib/ws'
 import { getChatMemberIds } from '@/lib/chat-members'
+import { AuthRequest } from '@middleware/auth.middleware'
+import { prisma } from '@/lib'
 
 export const getChatById = async (req: Request, res: Response) => {
   try {
@@ -31,11 +33,16 @@ export const getChatsByUserId = async (req: Request, res: Response) => {
 export const createChat = async (req: Request, res: Response) => {
   try {
     const { name, type, userIds } = req.body
-    const chat = await chatService.createChat(name, type as ChatType, userIds)
+    const creatorId = (req as AuthRequest).userId
+
+    // Guarantee the creator is always a member, deduplicating if they included themselves
+    const memberIds: string[] = Array.from(new Set([creatorId, ...(userIds as string[])]))
+
+    const chat = await chatService.createChat(name, type as ChatType, memberIds)
     res.status(201).json(chat)
 
     // Notify every member that a new chat was created (so their chat list updates)
-    sendToUsers(userIds as string[], {
+    sendToUsers(memberIds, {
       type: 'chat:created',
       payload: { chat }
     })
@@ -49,7 +56,7 @@ export const createChat = async (req: Request, res: Response) => {
 export const updateChat = async (req: Request, res: Response) => {
   try {
     const { chatId } = req.params
-    const data: Partial<{ name: string; type: ChatType }> = req.body
+    const data: Partial<{ name: string }> = req.body
     // Fetch members before update so we have them even if data changes
     const memberIds = await getChatMemberIds(chatId)
     const chat = await chatService.updateChat(chatId, data)
@@ -124,6 +131,18 @@ export const addUserToChat = async (req: Request, res: Response) => {
 export const removeUserFromChat = async (req: Request, res: Response) => {
   try {
     const { chatId, userId } = req.params
+    const requesterId = (req as AuthRequest).userId
+
+    // A member may remove themselves (leave). Removing someone else requires ADMIN.
+    if (userId !== requesterId) {
+      const membership = await prisma.chatUser.findUnique({
+        where: { chatId_userId: { chatId, userId: requesterId } }
+      })
+      if (!membership || membership.role !== ChatRole.ADMIN) {
+        return res.status(403).json({ error: 'admin role required to remove other members' })
+      }
+    }
+
     // Snapshot members while the user is still in the chat
     const memberIds = await getChatMemberIds(chatId)
     await chatService.removeUserFromChat(chatId, userId)

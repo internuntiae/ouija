@@ -20,8 +20,9 @@ export function validateBody(schema: ZodSchema) {
   return (req: Request, res: Response, next: NextFunction): void => {
     const result = schema.safeParse(req.body)
     if (!result.success) {
+      // Use .issues instead of .errors
       res.status(400).json({
-        error: result.error.errors[0]?.message ?? 'invalid request body'
+        error: result.error.issues[0]?.message ?? 'invalid request body'
       })
       return
     }
@@ -37,13 +38,19 @@ export function validateQuery(schema: ZodSchema) {
   return (req: Request, res: Response, next: NextFunction): void => {
     const result = schema.safeParse(req.query)
     if (!result.success) {
+      // Use .issues instead of .errors
       res.status(400).json({
-        error: result.error.errors[0]?.message ?? 'invalid query parameters'
+        error: result.error.issues[0]?.message ?? 'invalid query parameters'
       })
       return
     }
-    // Safe-cast: query params are read-only on the type but writeable at runtime
-    ;(req as Request & { query: Record<string, unknown> }).query = result.data
+    type SafeParsedQuery = Record<string, string | string[] | undefined>
+
+    type ExpressQueryOverride = Request & { query: SafeParsedQuery }
+
+    ;(req as unknown as ExpressQueryOverride).query =
+      result.data as unknown as SafeParsedQuery
+
     next()
   }
 }
@@ -57,8 +64,10 @@ export const createChatSchema = z.object({
 })
 
 export const updateChatSchema = z.object({
-  name: z.string().min(1).max(64).optional(),
-  type: z.nativeEnum(ChatType).optional()
+  // `type` is intentionally excluded — a chat's type (PRIVATE/GROUP) is immutable
+  // after creation.  Allowing it to change would let an admin convert a private
+  // 1-to-1 conversation into a group chat and add arbitrary members to it.
+  name: z.string().min(1).max(64).optional()
 }).refine((d) => Object.keys(d).length > 0, { message: 'No update data provided' })
 
 export const addChatMemberSchema = z.object({
@@ -78,8 +87,9 @@ const attachmentSchema = z.object({
   name: z.string().max(255).optional()
 })
 
+// userId is intentionally absent — reactions are always attributed to the authenticated
+// session user, never to a client-supplied value.  The controller injects req.userId.
 const reactionSchema = z.object({
-  userId: z.string().cuid(),
   type: z.enum(['LIKE', 'LOVE', 'LAUGH', 'SAD', 'ANGRY', 'THUMBS_UP', 'THUMBS_DOWN'])
 })
 
@@ -146,7 +156,6 @@ export const updateUserSchema = z
   .refine((d) => Object.keys(d).length > 0, { message: 'No update data provided' })
 
 // ── Media schemas ─────────────────────────────────────────────────────────────
-
-export const deleteFileSchema = z.object({
-  requesterId: z.string().cuid()
-})
+// requesterId is intentionally absent — the controller derives it from the session,
+// never from client-supplied input.
+z.object({})
