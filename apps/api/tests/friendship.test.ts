@@ -16,17 +16,21 @@ const db = prisma as Mocked<PrismaClient>
 
 beforeEach(() => {
   jest.clearAllMocks()
+
   db.user.findUnique.mockImplementation(async (args: any) => {
     const w = args?.where || {}
     if (w.id === 'user_alice_001') return mockUser1 as any
     if (w.id === 'user_bob_002') return mockUser2 as any
     if (w.id === 'user_carol_003') return mockUser3 as any
+    if (w.email === 'alice@ouija.dev') return mockUser1 as any
+    if (w.email === 'bob@ouija.dev') return mockUser2 as any
     return null
   })
 })
 
 describe('GET /api/users/:userId/friends', () => {
   it('returns all friendships for a user', async () => {
+    db.user.findUnique.mockResolvedValueOnce(mockUser1 as any)
     db.friendship.findMany.mockResolvedValueOnce([
       mockFriendshipPending,
       mockFriendshipAccepted
@@ -41,6 +45,7 @@ describe('GET /api/users/:userId/friends', () => {
   })
 
   it('filters by status=PENDING', async () => {
+    db.user.findUnique.mockResolvedValueOnce(mockUser1 as any)
     db.friendship.findMany.mockResolvedValueOnce([mockFriendshipPending] as any)
 
     const res = await request(app)
@@ -51,22 +56,21 @@ describe('GET /api/users/:userId/friends', () => {
     expect(res.body[0].status).toBe('PENDING')
   })
 
-  it('returns 404 if user does not exist', async () => {
-    db.user.findUnique
-        .mockResolvedValueOnce(mockUser1 as any) // Middleware auth passes
-        .mockResolvedValueOnce(null)             // Controller fails to find user
-
+  it('returns 403 when trying to view another user\'s friendships', async () => {
     const res = await request(app)
-        .get('/api/users/user_alice_001/friends')
+        .get('/api/users/user_bob_002/friends')
         .set('Authorization', `Bearer ${TEST_TOKEN}`)
 
-    expect(res.status).toBe(404)
-    expect(res.body.error).toMatch(/not found/i)
+    expect(res.status).toBe(403)
+    expect(res.body.error).toMatch(/forbidden: you can only perform this action for yourself/)
   })
 })
 
 describe('POST /api/users/:userId/friends', () => {
   it('sends a friend request', async () => {
+    db.user.findUnique
+        .mockResolvedValueOnce(mockUser1 as any)
+        .mockResolvedValueOnce(mockUser2 as any)
     db.friendship.findFirst.mockResolvedValueOnce(null)
     db.friendship.create.mockResolvedValueOnce(mockFriendshipPending as any)
 
@@ -80,6 +84,9 @@ describe('POST /api/users/:userId/friends', () => {
   })
 
   it('returns 409 if friendship already exists', async () => {
+    db.user.findUnique
+        .mockResolvedValueOnce(mockUser1 as any)
+        .mockResolvedValueOnce(mockUser2 as any)
     db.friendship.findFirst.mockResolvedValueOnce(mockFriendshipPending as any)
 
     const res = await request(app)
@@ -99,6 +106,16 @@ describe('POST /api/users/:userId/friends', () => {
 
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/yourself/)
+  })
+
+  it('returns 403 when trying to send friend request from another user', async () => {
+    const res = await request(app)
+        .post('/api/users/user_bob_002/friends')
+        .set('Authorization', `Bearer ${TEST_TOKEN}`)
+        .send({ friendId: 'user_carol_003' })
+
+    expect(res.status).toBe(403)
+    expect(res.body.error).toMatch(/forbidden: you can only perform this action for yourself/)
   })
 })
 
@@ -133,12 +150,33 @@ describe('PUT /api/users/:userId/friends/:friendId', () => {
     expect(res.status).toBe(200)
     expect(res.body.status).toBe('BLOCKED')
   })
+
+  it('returns 403 when non-recipient tries to accept a request', async () => {
+    const res = await request(app)
+        .put('/api/users/user_bob_002/friends/user_alice_001')
+        .set('Authorization', `Bearer ${TEST_TOKEN}`)
+        .send({ status: 'ACCEPTED' })
+
+    expect(res.status).toBe(403)
+  })
 })
 
 describe('DELETE /api/users/:userId/friends/:friendId', () => {
   it('removes a friendship and returns 204', async () => {
-    db.friendship.findFirst.mockResolvedValueOnce(mockFriendshipAccepted as any)
-    db.friendship.delete.mockResolvedValueOnce(mockFriendshipAccepted as any)
+    // Create a friendship between alice and carol
+    const existingFriendship = {
+      userId: 'user_alice_001',
+      friendId: 'user_carol_003',
+      status: 'ACCEPTED',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      user: mockUser1,
+      friend: mockUser3
+    }
+
+    // Mock findFirst to return the friendship
+    db.friendship.findFirst.mockResolvedValue(existingFriendship as any)
+    db.friendship.delete.mockResolvedValue(existingFriendship as any)
 
     const res = await request(app)
         .delete('/api/users/user_alice_001/friends/user_carol_003')
@@ -156,5 +194,14 @@ describe('DELETE /api/users/:userId/friends/:friendId', () => {
 
     expect(res.status).toBe(404)
     expect(res.body.error).toMatch(/not found/)
+  })
+
+  it('returns 403 when trying to delete another user\'s friendship', async () => {
+    const res = await request(app)
+        .delete('/api/users/user_bob_002/friends/user_carol_003')
+        .set('Authorization', `Bearer ${TEST_TOKEN}`)
+
+    expect(res.status).toBe(403)
+    expect(res.body.error).toMatch(/forbidden: you can only perform this action for yourself/)
   })
 })

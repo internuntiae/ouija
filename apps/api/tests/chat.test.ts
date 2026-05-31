@@ -15,13 +15,12 @@ import { Mocked } from 'jest-mock'
 const db = prisma as Mocked<PrismaClient>
 
 const SESSION_USER = 'user_alice_001'
-const aliceMemberPrivate = { chatId: mockPrivateChat.id, userId: SESSION_USER, role: ChatRole.ADMIN,  joinedAt: new Date() }
-const aliceMemberGroup   = { chatId: mockGroupChat.id,   userId: SESSION_USER, role: ChatRole.ADMIN,  joinedAt: new Date() }
+const aliceMemberPrivate = { chatId: mockPrivateChat.id, userId: SESSION_USER, role: ChatRole.ADMIN, joinedAt: new Date() }
+const aliceMemberGroup = { chatId: mockGroupChat.id, userId: SESSION_USER, role: ChatRole.ADMIN, joinedAt: new Date() }
 
 beforeEach(() => {
   jest.clearAllMocks()
 
-  // Smart mock to handle both Auth Middleware and Controller checks
   db.user.findUnique.mockImplementation(async (args: any) => {
     const w = args?.where || {}
     if (w.id === 'user_alice_001') return mockUser1 as any
@@ -210,10 +209,37 @@ describe('PUT /api/chats/:chatId/members/:userId', () => {
 
 describe('DELETE /api/chats/:chatId/members/:userId', () => {
   it('removes a member from a chat and returns 204', async () => {
+    // Mock the admin check - requester is admin
     db.chatUser.findUnique
-        .mockResolvedValueOnce(aliceMemberGroup as any)
-        .mockResolvedValueOnce({ chatId: mockGroupChat.id, userId: mockUser2.id, role: ChatRole.MEMBER, joinedAt: new Date() } as any)
-    db.chatUser.delete.mockResolvedValueOnce({ chatId: mockGroupChat.id, userId: mockUser2.id, role: ChatRole.MEMBER, joinedAt: new Date() } as any)
+        .mockImplementation(async (args: any) => {
+          const { chatId_userId } = args.where
+          // First call: check if requester (alice) is admin
+          if (chatId_userId.chatId === 'chat_group_002' && chatId_userId.userId === 'user_alice_001') {
+            return {
+              chatId: 'chat_group_002',
+              userId: 'user_alice_001',
+              role: ChatRole.ADMIN,
+              joinedAt: new Date()
+            } as any
+          }
+          // Second call: check if member to remove exists
+          if (chatId_userId.chatId === 'chat_group_002' && chatId_userId.userId === 'user_bob_002') {
+            return {
+              chatId: 'chat_group_002',
+              userId: 'user_bob_002',
+              role: ChatRole.MEMBER,
+              joinedAt: new Date()
+            } as any
+          }
+          return null
+        })
+
+    db.chatUser.delete.mockResolvedValueOnce({
+      chatId: 'chat_group_002',
+      userId: 'user_bob_002',
+      role: ChatRole.MEMBER,
+      joinedAt: new Date()
+    } as any)
 
     const res = await request(app)
         .delete('/api/chats/chat_group_002/members/user_bob_002')
