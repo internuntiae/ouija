@@ -1,3 +1,4 @@
+import { logger } from '@utils/logger'
 import { Request, Response } from 'express'
 import { safeErrorMessage, errorStatus } from '@utils/errors'
 import * as userService from '@services/user.service'
@@ -17,7 +18,7 @@ export const getUsers = async (req: Request, res: Response) => {
     res.json(users)
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -29,7 +30,7 @@ export const createUser = async (req: Request, res: Response) => {
     res.status(201).json(user)
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -42,7 +43,7 @@ export const updateUser = async (req: Request, res: Response) => {
     res.status(200).json(user)
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -54,7 +55,7 @@ export const deleteUser = async (req: Request, res: Response) => {
     res.status(204).send()
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }

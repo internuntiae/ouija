@@ -1,6 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws'
 import { Server } from 'http'
 import { prisma, tokenService } from '@/lib'
+import { UserStatus } from '@prisma/client'
 
 const userSockets = new Map<string, Set<WebSocket>>()
 
@@ -89,7 +90,7 @@ export function attachWebSocketServer(httpServer: Server): WebSocketServer {
         prisma.user
           .update({
             where: { id: userId },
-            data: { status: savedStatus as never }
+            data: { status: savedStatus as UserStatus }
           })
           .then(() => {
             userPreviousStatus.delete(userId)
@@ -145,8 +146,9 @@ export function attachWebSocketServer(httpServer: Server): WebSocketServer {
 
           if (msg.type === 'user:status') {
             const { status } = msg.payload as { status: string }
-            const validStatuses = ['ONLINE', 'OFFLINE', 'AWAY', 'BUSY']
-            if (!validStatuses.includes(status)) return
+            // Client-settable statuses — INVISIBLE is server-managed only
+            const clientStatuses: UserStatus[] = [UserStatus.ONLINE, UserStatus.OFFLINE, UserStatus.AWAY, UserStatus.BUSY]
+            if (!clientStatuses.includes(status as UserStatus)) return
             userPreviousStatus.delete(userId)
             broadcastStatusToFriends(userId, status)
           }
@@ -162,23 +164,23 @@ export function attachWebSocketServer(httpServer: Server): WebSocketServer {
           userSockets.delete(userId)
           prisma.user
             .findUnique({ where: { id: userId }, select: { status: true } })
-            .then((user: { status: string } | null) => {
+            .then((user: { status: UserStatus } | null) => {
               if (!user) return
-              const currentStatus = user.status as string
-              if (currentStatus === 'OFFLINE') {
-                broadcastStatusToFriends(userId, 'OFFLINE')
+              const currentStatus = user.status
+              if (currentStatus === UserStatus.OFFLINE) {
+                broadcastStatusToFriends(userId, UserStatus.OFFLINE)
                 return
               }
-              if (currentStatus !== 'INVISIBLE') {
+              if (currentStatus !== UserStatus.INVISIBLE) {
                 userPreviousStatus.set(userId, currentStatus)
               }
               return prisma.user
                 .update({
                   where: { id: userId },
-                  data: { status: 'INVISIBLE' as never }
+                  data: { status: UserStatus.INVISIBLE }
                 })
                 .then(() => {
-                  broadcastStatusToFriends(userId, 'INVISIBLE')
+                  broadcastStatusToFriends(userId, UserStatus.INVISIBLE)
                 })
             })
             .catch(() => { /* ignore */ })
@@ -230,31 +232,28 @@ export function broadcast(event: WsEvent, wss: WebSocketServer): void {
 
 const userPreviousStatus = new Map<string, string>()
 
+/**
+ * Broadcast a status change to all users who share at least one chat with userId.
+ * Uses a single query with a subquery instead of two sequential round-trips.
+ */
 async function broadcastStatusToFriends(
   userId: string,
   status: string
 ): Promise<void> {
   try {
-    const chatUsers = await prisma.chatUser.findMany({
+    const coMembers = await prisma.chatUser.findMany({
       where: {
-        chatId: {
-          in: (
-            await prisma.chatUser.findMany({
-              where: { userId },
-              select: { chatId: true }
-            })
-          ).map((c: { chatId: string }) => c.chatId)
+        userId: { not: userId },
+        chat: {
+          users: { some: { userId } }
         }
       },
-      select: { userId: true }
+      select: { userId: true },
+      distinct: ['userId']
     })
-    const friendIds = [
-      ...new Set(
-        chatUsers
-          .map((cu: { userId: string }) => cu.userId)
-          .filter((id: string) => id !== userId)
-      )
-    ] as string[]
+
+    const friendIds = coMembers.map((cu: { userId: string }) => cu.userId)
+
     sendToUsers(friendIds, {
       type: 'user:status',
       payload: { userId, status }

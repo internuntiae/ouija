@@ -1,3 +1,4 @@
+import { logger } from '@utils/logger'
 import { Request, Response } from 'express'
 import { safeErrorMessage, errorStatus } from '@utils/errors'
 import * as authService from '@services/auth.service'
@@ -39,7 +40,7 @@ export const register = async (req: Request, res: Response) => {
     })
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -57,7 +58,7 @@ export const verifyEmail = async (req: Request, res: Response) => {
     res.status(200).json({ message: 'Email verified successfully.' })
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -94,7 +95,7 @@ export const resetPassword = async (req: Request, res: Response) => {
     res.status(200).json({ message: 'Password reset successfully.' })
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -111,7 +112,7 @@ export const login = async (req: Request, res: Response) => {
     res.status(200).json(result)
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }

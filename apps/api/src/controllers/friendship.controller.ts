@@ -1,3 +1,4 @@
+import { logger } from '@utils/logger'
 import { Request, Response } from 'express'
 import { safeErrorMessage, errorStatus } from '@utils/errors'
 import * as friendshipService from '@services/friendship.service'
@@ -21,7 +22,7 @@ export const getFriendships = async (req: Request, res: Response) => {
     res.status(200).json(friendships)
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -43,7 +44,7 @@ export const sendFriendRequest = async (req: Request, res: Response) => {
     })
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -70,7 +71,7 @@ export const updateFriendshipStatus = async (req: Request, res: Response) => {
     })
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -92,7 +93,7 @@ export const deleteFriendship = async (req: Request, res: Response) => {
     })
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }

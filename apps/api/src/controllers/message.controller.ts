@@ -1,3 +1,4 @@
+import { logger } from '@utils/logger'
 import { Request, Response } from 'express'
 import { safeErrorMessage, errorStatus } from '@utils/errors'
 import * as msgService from '@services/message.service'
@@ -14,7 +15,7 @@ export const getAllMessages = async (req: Request, res: Response) => {
     res.status(200).json(messages)
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -40,7 +41,7 @@ export const createMessage = async (req: Request, res: Response) => {
     })
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -65,7 +66,7 @@ export const updateMessage = async (req: Request, res: Response) => {
     })
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -83,7 +84,7 @@ export const deleteMessage = async (req: Request, res: Response) => {
     })
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }

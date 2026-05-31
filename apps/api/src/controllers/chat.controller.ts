@@ -1,3 +1,4 @@
+import { logger } from '@utils/logger'
 import { Request, Response } from 'express'
 import { safeErrorMessage, errorStatus } from '@utils/errors'
 import * as chatService from '@services/chat.service'
@@ -11,7 +12,7 @@ export const getChatById = async (req: Request, res: Response) => {
     res.status(200).json(chat)
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -22,7 +23,7 @@ export const getChatsByUserId = async (req: Request, res: Response) => {
     res.status(200).json(chats)
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -40,7 +41,7 @@ export const createChat = async (req: Request, res: Response) => {
     })
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -60,7 +61,7 @@ export const updateChat = async (req: Request, res: Response) => {
     })
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -79,7 +80,7 @@ export const deleteChat = async (req: Request, res: Response) => {
     })
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -115,7 +116,7 @@ export const addUserToChat = async (req: Request, res: Response) => {
     }
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -135,7 +136,7 @@ export const removeUserFromChat = async (req: Request, res: Response) => {
     })
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -158,7 +159,7 @@ export const updateChatUserRole = async (req: Request, res: Response) => {
     })
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }

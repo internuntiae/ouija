@@ -14,6 +14,7 @@ import {
 import { useSearchParams } from 'next/navigation'
 import ChatSidebar from './ChatSidebar'
 import ChatWindow from './ChatWindow'
+import { ErrorBoundary } from '../components/ErrorBoundary/ErrorBoundary'
 import {
   Chat,
   Message,
@@ -30,13 +31,13 @@ import { updateSwNameCache } from '@/app/sw-register'
 import { useTranslation } from '@/i18n/translations'
 import { notFound } from 'next/navigation'
 import { apiFetch, getToken, clearSession } from '@utils/auth'
-
+import { storage } from '@utils/storage'
 // ─── Główny komponent ─────────────────────────────────────────────────────────
 
 function ChatsInner() {
   const userId =
     typeof window !== 'undefined'
-      ? (localStorage.getItem('userId') ?? null)
+      ? (storage.getUserId())
       : null
 
   if (!userId) {
@@ -92,12 +93,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
   const [searchUsers, setSearchUsers] = useState<UserSearchResult[]>([])
   const [mutedChatIds, setMutedChatIds] = useState<Set<string>>(() => {
     if (typeof window === 'undefined') return new Set()
-    try {
-      const stored = localStorage.getItem('mutedChats')
-      return stored ? new Set(JSON.parse(stored)) : new Set()
-    } catch {
-      return new Set()
-    }
+    return storage.getMutedChats()
   })
   const mutedChatIdsRef = useRef<Set<string>>(new Set())
   const [friendIds, setFriendIds] = useState<Set<string>>(new Set())
@@ -178,9 +174,9 @@ function ChatsWithUser({ userId }: { userId: string }) {
       'preLogoutStatus'
     ) as UserStatus | null
     if (preLogout) {
-      localStorage.removeItem('preLogoutStatus')
+      storage.removePreLogoutStatus()
       setMyStatus(preLogout)
-      localStorage.setItem('userStatus', preLogout)
+      storage.setUserStatus(preLogout as UserStatus)
       // Push it to the server immediately
       apiFetch(`${API_URL}/api/${userId}`, {
         method: 'PUT',
@@ -191,7 +187,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
     }
 
     // Use cached status first (avoids showing INVISIBLE flash on reconnect)
-    const cached = localStorage.getItem('userStatus') as UserStatus | null
+    const cached = storage.getUserStatus()
     if (cached && cached !== 'INVISIBLE') setMyStatus(cached)
 
     apiFetch(`${API_URL}/api/?id=${userId}`)
@@ -207,7 +203,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
                 : 'OFFLINE'
               : data.status
           setMyStatus(effectiveStatus as UserStatus)
-          localStorage.setItem('userStatus', effectiveStatus)
+          storage.setUserStatus(effectiveStatus)
         }
       })
       .catch(console.error)
@@ -312,7 +308,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
   // ── Sync muted chats to localStorage, SW, and ref ──
   useEffect(() => {
     mutedChatIdsRef.current = mutedChatIds
-    localStorage.setItem('mutedChats', JSON.stringify([...mutedChatIds]))
+    storage.setMutedChats(mutedChatIds)
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
       navigator.serviceWorker.controller.postMessage({
         type: 'MUTED_CHATS',
@@ -338,13 +334,13 @@ function ChatsWithUser({ userId }: { userId: string }) {
     let authenticated = false
 
     const announceStatus = () => {
-      const cached = localStorage.getItem('userStatus') as UserStatus | null
+      const cached = storage.getUserStatus()
       const statusToAnnounce: UserStatus =
         cached && cached !== 'OFFLINE' && cached !== 'INVISIBLE'
           ? cached
           : 'ONLINE'
       setMyStatus(statusToAnnounce)
-      localStorage.setItem('userStatus', statusToAnnounce)
+      storage.setUserStatus(statusToAnnounce as UserStatus)
       ws.send(
         JSON.stringify({
           type: 'user:status',
@@ -367,7 +363,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
       const currentStatus = myStatusRef.current
       // Restore last active status next session (don't overwrite with OFFLINE)
       if (currentStatus !== 'OFFLINE' && currentStatus !== 'INVISIBLE') {
-        localStorage.setItem('userStatus', currentStatus)
+        storage.setUserStatus(currentStatus as UserStatus)
       }
       // Broadcast OFFLINE via WS (best-effort, synchronous send)
       if (ws.readyState === WebSocket.OPEN) {
@@ -733,7 +729,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
           if (self || changedUserId === userId) {
             const restored = status as UserStatus
             setMyStatus(restored)
-            localStorage.setItem('userStatus', restored)
+            storage.setUserStatus(restored as UserStatus)
           }
           setChats((prev) =>
             prev.map((c) => ({
@@ -1013,7 +1009,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
   async function handleStatusChange(status: UserStatus) {
     setMyStatus(status)
     setShowStatusMenu(false)
-    localStorage.setItem('userStatus', status)
+    storage.setUserStatus(status)
     // Immediately update the current user's own entries in all chats so the
     // navbar status dots reflect the change without waiting for a WS round-trip
     setChats((prev) =>
@@ -1381,6 +1377,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
         style={{ display: 'none' }}
       />
 
+      <ErrorBoundary name="Chat Sidebar">
       <ChatSidebar
         userId={userId}
         chats={visibleChats}
@@ -1414,7 +1411,9 @@ function ChatsWithUser({ userId }: { userId: string }) {
         onCreateGroupChat={handleCreateGroupChat}
         isMobileHidden={isMobile && mobileChatOpen}
       />
+      </ErrorBoundary>
 
+      <ErrorBoundary name="Chat Window">
       <ChatWindow
         activeChat={activeChat}
         otherUser={otherUser}
@@ -1449,6 +1448,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
         onTypingChange={handleTypingChange}
         onPasteFile={(file) => setPendingFiles((prev) => [...prev, file])}
       />
+      </ErrorBoundary>
 
       {profilePopupUserId && (
         <ProfilePopup

@@ -24,7 +24,13 @@ export const getChatsByUserId = async (userId: string) => {
   if (!userId) throw new Error('userId is required')
   if (!(await userRepo.getUserById(userId))) throw new Error('User not found')
   const chats = await chatRepo.getChatsByUserId(userId)
-  return chats.map(rehydrateChat)
+  return chats.map((chat) => {
+    const { messages, ...rest } = chat as typeof chat & { messages?: unknown[] }
+    return {
+      ...rehydrateChat(rest as Parameters<typeof rehydrateChat>[0]),
+      lastMessage: Array.isArray(messages) && messages.length > 0 ? messages[0] : null
+    }
+  })
 }
 
 export const createChat = async (

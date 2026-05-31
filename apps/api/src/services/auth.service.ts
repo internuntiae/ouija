@@ -17,9 +17,6 @@ export const register = async (data: {
 }) => {
   data.nickname = data.nickname.toLowerCase()
 
-  if (!data.email || !data.password || !data.nickname)
-    throw new Error('data is incomplete')
-
   if ((await userRepo.getUserByEmail(data.email)) !== null)
     throw new Error('email already exists')
 
@@ -75,8 +72,6 @@ export const forgotPassword = async (email: string) => {
   if (!features.ENABLE_PASSWORD_RESET)
     throw new Error('password reset is not enabled')
 
-  if (!email) throw new Error('email is required')
-
   const user = await userRepo.getUserByEmail(email)
   if (!user) return // silently no-op
 
@@ -91,9 +86,6 @@ export const forgotPassword = async (email: string) => {
 export const resetPassword = async (token: string, newPassword: string) => {
   if (!features.ENABLE_PASSWORD_RESET)
     throw new Error('password reset is not enabled')
-
-  if (!token || !newPassword)
-    throw new Error('token and newPassword are required')
 
   const userId = await tokenService.consumePasswordResetToken(token)
   if (!userId) throw new Error('invalid or expired token')

@@ -1,3 +1,4 @@
+import { logger } from '@utils/logger'
 import { Request, Response } from 'express'
 import { safeErrorMessage, errorStatus } from '@utils/errors'
 import path from 'path'
@@ -25,7 +26,7 @@ export const uploadFiles = async (req: Request, res: Response) => {
     res.status(201).json(results)
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -44,7 +45,7 @@ export const uploadAvatar = async (req: Request, res: Response) => {
     res.status(201).json(result)
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -57,7 +58,7 @@ export const removeAvatar = async (req: Request, res: Response) => {
     res.status(200).json(user)
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -80,7 +81,7 @@ export const serveFile = (req: Request, res: Response) => {
     res.sendFile(filePath)
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -94,7 +95,7 @@ export const getFileInfo = async (req: Request, res: Response) => {
     res.status(200).json(file)
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -114,7 +115,7 @@ export const getUserFiles = async (req: Request, res: Response) => {
     res.status(200).json(files)
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
@@ -134,7 +135,7 @@ export const deleteFile = async (req: Request, res: Response) => {
     res.status(204).send()
   } catch (error) {
     const msg = safeErrorMessage(error)
-    console.error(error)
+    logger.error('request error', { err: error })
     res.status(errorStatus(msg)).json({ error: msg })
   }
 }
