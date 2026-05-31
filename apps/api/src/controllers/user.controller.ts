@@ -1,4 +1,5 @@
 import { Request, Response } from 'express'
+import { safeErrorMessage, errorStatus } from '@utils/errors'
 import * as userService from '@services/user.service'
 
 export const getUsers = async (req: Request, res: Response) => {
@@ -15,7 +16,9 @@ export const getUsers = async (req: Request, res: Response) => {
     const users = await userService.getUsers()
     res.json(users)
   } catch (error) {
-    res.status(500).json({ error: (error as Error).message })
+    const msg = safeErrorMessage(error)
+    console.error(error)
+    res.status(errorStatus(msg)).json({ error: msg })
   }
 }
 
@@ -25,7 +28,9 @@ export const createUser = async (req: Request, res: Response) => {
     const user = await userService.createUser(data)
     res.status(201).json(user)
   } catch (error) {
-    res.status(500).json({ error: (error as Error).message })
+    const msg = safeErrorMessage(error)
+    console.error(error)
+    res.status(errorStatus(msg)).json({ error: msg })
   }
 }
 
@@ -36,7 +41,9 @@ export const updateUser = async (req: Request, res: Response) => {
     const user = await userService.updateUser(id, data)
     res.status(200).json(user)
   } catch (error) {
-    res.status(500).json({ error: (error as Error).message })
+    const msg = safeErrorMessage(error)
+    console.error(error)
+    res.status(errorStatus(msg)).json({ error: msg })
   }
 }
 
@@ -46,6 +53,8 @@ export const deleteUser = async (req: Request, res: Response) => {
     await userService.deleteUser(id)
     res.status(204).send()
   } catch (error) {
-    res.status(500).json({ error: (error as Error).message })
+    const msg = safeErrorMessage(error)
+    console.error(error)
+    res.status(errorStatus(msg)).json({ error: msg })
   }
 }

@@ -4,10 +4,8 @@ import { requireAuth } from '@middleware/auth.middleware'
 
 const userRouter = Router()
 
-// Public: search/lookup used during login flow and group member search
-userRouter.get('/', userController.getUsers)
-
-// Protected: mutations require a valid session
+// All user routes require authentication
+userRouter.get('/', requireAuth, userController.getUsers)
 userRouter.post('/', requireAuth, userController.createUser)
 userRouter.put('/:id', requireAuth, userController.updateUser)
 userRouter.delete('/:id', requireAuth, userController.deleteUser)

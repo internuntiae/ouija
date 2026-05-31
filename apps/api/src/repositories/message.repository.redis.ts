@@ -1,6 +1,8 @@
 import { redis } from '@lib/redis'
 import { Message } from '@prisma/client'
 
+const CACHE_MAX_MESSAGES = 100
+
 const serialize = (m: Message) => JSON.stringify(m)
 const deserialize = (m: string): Message => JSON.parse(m)
 
@@ -11,8 +13,9 @@ export const findMessage = async (chatId: string, messageId: string) => {
   return target
 }
 
-export const getAllMessages = async (chatId: string) => {
-  const messages = await redis.lRange(chatId, 0, -1)
+export const getAllMessages = async (chatId: string, limit?: number) => {
+  const end = limit ? limit - 1 : -1
+  const messages = await redis.lRange(chatId, 0, end)
   return messages.map(deserialize)
 }
 
@@ -20,10 +23,12 @@ export const uploadMessages = async (
   chatId: string,
   messages: Message | Message[]
 ) => {
-  const normalized = (Array.isArray(messages) ? messages : [messages]).map(
-    serialize
-  )
+  const normalized = (Array.isArray(messages) ? messages : [messages]).map(serialize)
   await redis.rPush(chatId, normalized)
+  // Cap the list so it never grows beyond CACHE_MAX_MESSAGES entries
+  await redis.lTrim(chatId, -CACHE_MAX_MESSAGES, -1)
+  // Refresh TTL: evict the cache after 1 hour of inactivity
+  await redis.expire(chatId, 60 * 60)
 }
 
 export const updateMessage = async (

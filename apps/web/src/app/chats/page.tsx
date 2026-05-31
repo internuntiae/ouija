@@ -331,11 +331,13 @@ function ChatsWithUser({ userId }: { userId: string }) {
       window.location.href = '/login'
       return
     }
-    const ws = new WebSocket(`${WS_URL}/ws?token=${encodeURIComponent(token)}`)
+    // Token is sent in the first message after connection — never in the URL
+    const ws = new WebSocket(`${WS_URL}/ws`)
     wsRef.current = ws
 
-    ws.onopen = () => {
-      // On app start: restore the previous non-offline status, or default to ONLINE
+    let authenticated = false
+
+    const announceStatus = () => {
       const cached = localStorage.getItem('userStatus') as UserStatus | null
       const statusToAnnounce: UserStatus =
         cached && cached !== 'OFFLINE' && cached !== 'INVISIBLE'
@@ -354,6 +356,10 @@ function ChatsWithUser({ userId }: { userId: string }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: statusToAnnounce })
       }).catch(console.error)
+    }
+
+    ws.onopen = () => {
+      // Server will prompt with auth:required; handled in onmessage below
     }
 
     // ── Set status to OFFLINE when the user closes/leaves the app ──
@@ -390,6 +396,20 @@ function ChatsWithUser({ userId }: { userId: string }) {
           type: string
           payload: Record<string, unknown>
         }
+
+        // Auth handshake — send token in-band, never in the URL
+        if (msg.type === 'auth:required') {
+          ws.send(JSON.stringify({ type: 'auth', token }))
+          return
+        }
+
+        if (msg.type === 'connected') {
+          authenticated = true
+          announceStatus()
+          return
+        }
+
+        if (!authenticated) return
 
         if (msg.type === 'message:created') {
           const newMsg = msg.payload as unknown as Message

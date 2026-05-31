@@ -1,4 +1,5 @@
 import { Request, Response } from 'express'
+import { safeErrorMessage, errorStatus } from '@utils/errors'
 import path from 'path'
 import fs from 'fs'
 import * as mediaService from '@services/media.service'
@@ -23,7 +24,9 @@ export const uploadFiles = async (req: Request, res: Response) => {
 
     res.status(201).json(results)
   } catch (error) {
-    res.status(500).json({ error: (error as Error).message })
+    const msg = safeErrorMessage(error)
+    console.error(error)
+    res.status(errorStatus(msg)).json({ error: msg })
   }
 }
 
@@ -40,7 +43,9 @@ export const uploadAvatar = async (req: Request, res: Response) => {
     const result = await mediaService.uploadAvatar(userId, file)
     res.status(201).json(result)
   } catch (error) {
-    res.status(500).json({ error: (error as Error).message })
+    const msg = safeErrorMessage(error)
+    console.error(error)
+    res.status(errorStatus(msg)).json({ error: msg })
   }
 }
 
@@ -51,7 +56,9 @@ export const removeAvatar = async (req: Request, res: Response) => {
     const user = await mediaService.removeAvatar(userId)
     res.status(200).json(user)
   } catch (error) {
-    res.status(500).json({ error: (error as Error).message })
+    const msg = safeErrorMessage(error)
+    console.error(error)
+    res.status(errorStatus(msg)).json({ error: msg })
   }
 }
 
@@ -72,7 +79,9 @@ export const serveFile = (req: Request, res: Response) => {
     res.setHeader('Cache-Control', 'public, max-age=604800, immutable')
     res.sendFile(filePath)
   } catch (error) {
-    res.status(500).json({ error: (error as Error).message })
+    const msg = safeErrorMessage(error)
+    console.error(error)
+    res.status(errorStatus(msg)).json({ error: msg })
   }
 }
 
@@ -84,7 +93,9 @@ export const getFileInfo = async (req: Request, res: Response) => {
     const file = await mediaService.getFileById(id)
     res.status(200).json(file)
   } catch (error) {
-    res.status(500).json({ error: (error as Error).message })
+    const msg = safeErrorMessage(error)
+    console.error(error)
+    res.status(errorStatus(msg)).json({ error: msg })
   }
 }
 
@@ -102,7 +113,9 @@ export const getUserFiles = async (req: Request, res: Response) => {
     )
     res.status(200).json(files)
   } catch (error) {
-    res.status(500).json({ error: (error as Error).message })
+    const msg = safeErrorMessage(error)
+    console.error(error)
+    res.status(errorStatus(msg)).json({ error: msg })
   }
 }
 
@@ -120,6 +133,8 @@ export const deleteFile = async (req: Request, res: Response) => {
     await mediaService.deleteMediaFile(id, requesterId)
     res.status(204).send()
   } catch (error) {
-    res.status(500).json({ error: (error as Error).message })
+    const msg = safeErrorMessage(error)
+    console.error(error)
+    res.status(errorStatus(msg)).json({ error: msg })
   }
 }

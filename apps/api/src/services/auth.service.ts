@@ -1,6 +1,6 @@
 import * as userRepo from '@repositories/user.repository'
 import { emailService, tokenService, features } from '@/lib'
-import { sha256 } from '@utils/hash'
+import { hashPassword } from '@utils/hash'
 import { stripPassword } from '@services/session.service'
 
 /**
@@ -26,7 +26,7 @@ export const register = async (data: {
   if ((await userRepo.getUserByNickname(data.nickname)) !== null)
     throw new Error('nickname already exists')
 
-  const hashed = sha256(data.password)
+  const hashed = await hashPassword(data.password)
 
   if (features.REQUIRE_EMAIL_VERIFICATION) {
     // Create unverified account and send verification email
@@ -101,6 +101,6 @@ export const resetPassword = async (token: string, newPassword: string) => {
   const user = await userRepo.getUserById(userId)
   if (!user) throw new Error('user not found')
 
-  const hashed = sha256(newPassword)
+  const hashed = await hashPassword(newPassword)
   return userRepo.updateUser(userId, { password: hashed })
 }
