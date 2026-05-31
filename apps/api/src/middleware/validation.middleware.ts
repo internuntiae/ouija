@@ -44,12 +44,15 @@ export function validateQuery(schema: ZodSchema) {
       })
       return
     }
-    type SafeParsedQuery = Record<string, string | string[] | undefined>
 
-    type ExpressQueryOverride = Request & { query: SafeParsedQuery }
-
-    ;(req as unknown as ExpressQueryOverride).query =
-      result.data as unknown as SafeParsedQuery
+    // `req.query` is a getter-only property on IncomingMessage in newer versions
+    // of the `router` package (Express 5+). Direct assignment throws a TypeError,
+    // so we use Object.defineProperty to shadow it with the coerced value.
+    Object.defineProperty(req, 'query', {
+      value: result.data,
+      writable: true,
+      configurable: true
+    })
 
     next()
   }
