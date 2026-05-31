@@ -1,7 +1,29 @@
+// Mock @prisma/client so importing enums and PrismaClient never touches the
+// generated client (which requires `prisma generate` to have been run).
+jest.mock('@prisma/client', () => {
+  const UserStatus = { ONLINE: 'ONLINE', OFFLINE: 'OFFLINE', AWAY: 'AWAY', BUSY: 'BUSY', INVISIBLE: 'INVISIBLE' }
+  const FriendStatus = { PENDING: 'PENDING', ACCEPTED: 'ACCEPTED', BLOCKED: 'BLOCKED' }
+  const ChatType = { PRIVATE: 'PRIVATE', GROUP: 'GROUP' }
+  const ChatRole = { MEMBER: 'MEMBER', ADMIN: 'ADMIN' }
+  const AttachmentType = { IMAGE: 'IMAGE', VIDEO: 'VIDEO', FILE: 'FILE', AUDIO: 'AUDIO' }
+  const ReactionType = { LIKE: 'LIKE', LOVE: 'LOVE', LAUGH: 'LAUGH', SAD: 'SAD', ANGRY: 'ANGRY', THUMBS_UP: 'THUMBS_UP', THUMBS_DOWN: 'THUMBS_DOWN' }
+  const MediaPurpose = { AVATAR: 'AVATAR', ATTACHMENT: 'ATTACHMENT' }
+
+  const PrismaClient = jest.fn().mockImplementation(() => ({}))
+
+  return { PrismaClient, UserStatus, FriendStatus, ChatType, ChatRole, AttachmentType, ReactionType, MediaPurpose }
+})
+
 // Mock the lib/prisma module so no real DB connection is made
 jest.mock('../src/lib/prisma', () => ({
   prisma: {
     $queryRaw: jest.fn().mockResolvedValue([{ '?column?': 1 }]),
+    $transaction: jest.fn().mockImplementation((fn: (tx: unknown) => unknown) => fn({
+      chat: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue(null) // overridden per-test via mockChatRepo
+      }
+    })),
     user: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
@@ -11,6 +33,7 @@ jest.mock('../src/lib/prisma', () => ({
     },
     friendship: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       findMany: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -89,12 +112,12 @@ export const TEST_USER_ID = 'user_alice_001'
 export function authedRequest(app: Parameters<typeof supertest>[0]) {
   return {
     get: (url: string) =>
-      supertest(app).get(url).set('Authorization', `Bearer ${TEST_TOKEN}`),
+        supertest(app).get(url).set('Authorization', `Bearer ${TEST_TOKEN}`),
     post: (url: string) =>
-      supertest(app).post(url).set('Authorization', `Bearer ${TEST_TOKEN}`),
+        supertest(app).post(url).set('Authorization', `Bearer ${TEST_TOKEN}`),
     put: (url: string) =>
-      supertest(app).put(url).set('Authorization', `Bearer ${TEST_TOKEN}`),
+        supertest(app).put(url).set('Authorization', `Bearer ${TEST_TOKEN}`),
     delete: (url: string) =>
-      supertest(app).delete(url).set('Authorization', `Bearer ${TEST_TOKEN}`)
+        supertest(app).delete(url).set('Authorization', `Bearer ${TEST_TOKEN}`)
   }
 }
