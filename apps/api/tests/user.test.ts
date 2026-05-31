@@ -52,7 +52,7 @@ describe('GET /api/', () => {
 
 describe('POST /api/', () => {
   it('creates a new user and returns 201', async () => {
-    db.user.findUnique.mockResolvedValueOnce(null) // no existing user
+    db.user.findUnique.mockResolvedValueOnce(null)
     db.user.create.mockResolvedValueOnce(mockUser1)
 
     const res = await request(app).post('/api/').set('Authorization', `Bearer ${TEST_TOKEN}`).send({
@@ -65,8 +65,8 @@ describe('POST /api/', () => {
     expect(res.body.id).toBe('user_alice_001')
   })
 
-  it('returns 500 if user already exists', async () => {
-    db.user.findUnique.mockResolvedValueOnce(mockUser1) // already exists
+  it('returns 409 if user already exists', async () => { // Updated from 500
+    db.user.findUnique.mockResolvedValueOnce(mockUser1)
 
     const res = await request(app).post('/api/').set('Authorization', `Bearer ${TEST_TOKEN}`).send({
       email: 'alice@ouija.dev',
@@ -74,17 +74,17 @@ describe('POST /api/', () => {
       nickname: 'alice'
     })
 
-    expect(res.status).toBe(500)
+    expect(res.status).toBe(409)
     expect(res.body.error).toMatch(/already exists/)
   })
 
-  it('returns 500 if required fields are missing', async () => {
+  it('returns 400 if required fields are missing', async () => { // Updated from 500
     const res = await request(app)
-      .post('/api/')
-      .set('Authorization', `Bearer ${TEST_TOKEN}`)
-      .send({ email: 'alice@ouija.dev' }) // missing password and nickname
+        .post('/api/')
+        .set('Authorization', `Bearer ${TEST_TOKEN}`)
+        .send({ email: 'alice@ouija.dev' })
 
-    expect(res.status).toBe(500)
+    expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/incomplete/)
   })
 })
@@ -98,23 +98,23 @@ describe('PUT /api/:id', () => {
     })
 
     const res = await request(app)
-      .put('/api/user_alice_001')
-      .set('Authorization', `Bearer ${TEST_TOKEN}`)
-      .send({ nickname: 'alice_updated' })
+        .put('/api/user_alice_001')
+        .set('Authorization', `Bearer ${TEST_TOKEN}`)
+        .send({ nickname: 'alice_updated' })
 
     expect(res.status).toBe(200)
     expect(res.body.nickname).toBe('alice_updated')
   })
 
-  it('returns 500 if user does not exist', async () => {
+  it('returns 404 if user does not exist', async () => { // Updated from 500
     db.user.findUnique.mockResolvedValueOnce(null)
 
     const res = await request(app)
-      .put('/api/nonexistent_id')
-      .set('Authorization', `Bearer ${TEST_TOKEN}`)
-      .send({ nickname: 'ghost' })
+        .put('/api/nonexistent_id')
+        .set('Authorization', `Bearer ${TEST_TOKEN}`)
+        .send({ nickname: 'ghost' })
 
-    expect(res.status).toBe(500)
+    expect(res.status).toBe(404)
     expect(res.body.error).toMatch(/does not exist/)
   })
 })
@@ -129,12 +129,12 @@ describe('DELETE /api/:id', () => {
     expect(res.status).toBe(204)
   })
 
-  it('returns 500 if user does not exist', async () => {
+  it('returns 404 if user does not exist', async () => { // Updated from 500
     db.user.findUnique.mockResolvedValueOnce(null)
 
     const res = await request(app).delete('/api/nonexistent_id').set('Authorization', `Bearer ${TEST_TOKEN}`)
 
-    expect(res.status).toBe(500)
+    expect(res.status).toBe(404)
     expect(res.body.error).toMatch(/does not exist/)
   })
 })

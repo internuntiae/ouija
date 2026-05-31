@@ -2,17 +2,15 @@ import request from 'supertest'
 import { TEST_TOKEN } from './setup'
 import { app } from '@/app'
 import { prisma } from '@/lib'
-import { mockReaction1, mockReaction2, mockPrivateChat } from './fixtures'
+import { mockUser1, mockReaction1, mockReaction2, mockPrivateChat } from './fixtures'
 import { ReactionType, PrismaClient } from '@prisma/client'
 import { Mocked } from 'jest-mock'
 
 const db = prisma as Mocked<PrismaClient>
 
-// Reaction routes are mounted at /api/chats/:chatId/messages/:messageId/reactions.
-// requireChatMember checks chatUser.findUnique — mock it to return a membership.
-const CHAT_ID = mockPrivateChat.id      // 'chat_private_001'
-const MESSAGE_ID = mockReaction1.messageId  // 'msg_001'
-const SESSION_USER = 'user_alice_001'   // set by Redis mock in setup.ts
+const CHAT_ID = mockPrivateChat.id
+const MESSAGE_ID = mockReaction1.messageId
+const SESSION_USER = 'user_alice_001'
 
 const mockMembership = { chatId: CHAT_ID, userId: SESSION_USER, role: 'MEMBER', joinedAt: new Date() }
 
@@ -22,11 +20,12 @@ function reactionsUrl(messageId = MESSAGE_ID) {
 
 beforeEach(() => {
   jest.clearAllMocks()
-  // Allow requireChatMember to pass by default
+  db.user.findUnique.mockImplementation(async (args: any) => {
+    if (args?.where?.id === 'user_alice_001') return mockUser1 as any
+    return null
+  })
   db.chatUser.findUnique.mockResolvedValue(mockMembership as any)
 })
-
-// ── GET ───────────────────────────────────────────────────────────────────────
 
 describe('GET /api/chats/:chatId/messages/:messageId/reactions', () => {
   it('returns all reactions for a message', async () => {
@@ -43,15 +42,10 @@ describe('GET /api/chats/:chatId/messages/:messageId/reactions', () => {
   })
 })
 
-// ── POST ──────────────────────────────────────────────────────────────────────
-
 describe('POST /api/chats/:chatId/messages/:messageId/reactions', () => {
   it('adds a reaction to a message', async () => {
-    db.reaction.findUnique.mockResolvedValueOnce(null) // no existing reaction
+    db.reaction.findUnique.mockResolvedValueOnce(null)
     db.reaction.create.mockResolvedValueOnce(mockReaction1 as any)
-    // addReaction then calls prisma.user.findUnique for WS payload — return null is fine
-    db.user.findUnique.mockResolvedValueOnce(null)
-    // getChatIdForMessage calls prisma.message.findUnique
     db.message.findUnique.mockResolvedValueOnce(null)
 
     const res = await request(app)
@@ -64,8 +58,6 @@ describe('POST /api/chats/:chatId/messages/:messageId/reactions', () => {
   })
 
   it('returns 400 if reaction already exists', async () => {
-    // 'Reaction already exists — use PUT to change it' is not a CLIENT_SAFE_MESSAGES
-    // entry, so safeErrorMessage returns 'an unexpected error occurred' → 400
     db.reaction.findUnique.mockResolvedValueOnce(mockReaction1 as any)
 
     const res = await request(app)
@@ -78,13 +70,10 @@ describe('POST /api/chats/:chatId/messages/:messageId/reactions', () => {
   })
 })
 
-// ── PUT ───────────────────────────────────────────────────────────────────────
-
 describe('PUT /api/chats/:chatId/messages/:messageId/reactions', () => {
   it('changes a reaction type', async () => {
     db.reaction.findUnique.mockResolvedValueOnce(mockReaction1 as any)
     db.reaction.update.mockResolvedValueOnce({ ...mockReaction1, type: ReactionType.LAUGH } as any)
-    db.user.findUnique.mockResolvedValueOnce(null)
     db.message.findUnique.mockResolvedValueOnce(null)
 
     const res = await request(app)
@@ -97,7 +86,6 @@ describe('PUT /api/chats/:chatId/messages/:messageId/reactions', () => {
   })
 
   it('returns 400 if reaction does not exist', async () => {
-    // 'Reaction not found' is not in CLIENT_SAFE_MESSAGES → 'an unexpected error occurred' → 400
     db.reaction.findUnique.mockResolvedValueOnce(null)
 
     const res = await request(app)
@@ -109,8 +97,6 @@ describe('PUT /api/chats/:chatId/messages/:messageId/reactions', () => {
     expect(res.body.error).toBeDefined()
   })
 })
-
-// ── DELETE ────────────────────────────────────────────────────────────────────
 
 describe('DELETE /api/chats/:chatId/messages/:messageId/reactions', () => {
   it('removes a reaction and returns 204', async () => {

@@ -4,6 +4,7 @@ import { app } from '@/app'
 import { prisma } from '@/lib'
 import { redis } from '@/lib'
 import {
+  mockUser1,
   mockMessage1,
   mockMessage2,
   mockMessageWithAttachment
@@ -17,20 +18,20 @@ const redisMock = redis as Mocked<typeof redis>
 
 const CHAT_ID_PRIVATE = 'chat_private_001'
 const CHAT_ID_GROUP   = 'chat_group_002'
-const SESSION_USER    = 'user_alice_001'  // matches Redis mock in setup.ts
+const SESSION_USER    = 'user_alice_001'
 
-// requireChatMember checks chatUser.findUnique; requireMessageOwner checks message.findFirst.
-// Mock both so middleware passes without a real DB.
 const mockMembership = { chatId: CHAT_ID_PRIVATE, userId: SESSION_USER, role: 'MEMBER', joinedAt: new Date() }
 
 beforeEach(() => {
   jest.clearAllMocks()
+
+  db.user.findUnique.mockImplementation(async (args: any) => {
+    if (args?.where?.id === 'user_alice_001') return mockUser1 as any
+    return null
+  })
   db.chatUser.findUnique.mockResolvedValue(mockMembership as any)
-  // requireMessageOwner uses findFirst — default to mockMessage1 (senderId = SESSION_USER)
   db.message.findFirst.mockResolvedValue(mockMessage1 as any)
 })
-
-// ── GET ───────────────────────────────────────────────────────────────────────
 
 describe('GET /api/chats/:chatId/messages', () => {
   it('returns messages from postgres when lastId=0', async () => {
@@ -45,8 +46,6 @@ describe('GET /api/chats/:chatId/messages', () => {
     expect(res.body[0].content).toBe('All good Alice, you?')
   })
 })
-
-// ── POST ──────────────────────────────────────────────────────────────────────
 
 describe('POST /api/chats/:chatId/messages', () => {
   it('creates a plain text message', async () => {
@@ -77,7 +76,6 @@ describe('POST /api/chats/:chatId/messages', () => {
   })
 
   it('returns 400 if content and attachments are both empty', async () => {
-    // 'Content and attachments cannot both be empty' → CLIENT_SAFE_MESSAGES → 400
     const res = await request(app)
         .post(`/api/chats/${CHAT_ID_PRIVATE}/messages`)
         .set('Authorization', `Bearer ${TEST_TOKEN}`)
@@ -88,14 +86,11 @@ describe('POST /api/chats/:chatId/messages', () => {
   })
 })
 
-// ── PUT ───────────────────────────────────────────────────────────────────────
-
 describe('PUT /api/chats/:chatId/messages/:messageId', () => {
   it('edits message content', async () => {
-    // findFirst is used by both requireMessageOwner and the service — chain the mocks
     db.message.findFirst
-        .mockResolvedValueOnce(mockMessage1 as any)  // requireMessageOwner
-        .mockResolvedValueOnce(mockMessage1 as any)  // service.updateMessage
+        .mockResolvedValueOnce(mockMessage1 as any)
+        .mockResolvedValueOnce(mockMessage1 as any)
     db.message.update.mockResolvedValueOnce({ ...mockMessage1, content: 'Edited content' } as any)
     redisMock.lRange.mockResolvedValueOnce([JSON.stringify(mockMessage1)])
     redisMock.lSet.mockResolvedValueOnce('OK')
@@ -110,7 +105,6 @@ describe('PUT /api/chats/:chatId/messages/:messageId', () => {
   })
 
   it('returns 404 if message does not exist', async () => {
-    // requireMessageOwner runs first and returns 404 when findFirst → null
     db.message.findFirst.mockResolvedValueOnce(null)
 
     const res = await request(app)
@@ -123,13 +117,11 @@ describe('PUT /api/chats/:chatId/messages/:messageId', () => {
   })
 })
 
-// ── DELETE ────────────────────────────────────────────────────────────────────
-
 describe('DELETE /api/chats/:chatId/messages/:messageId', () => {
   it('deletes a message and returns 204', async () => {
     db.message.findFirst
-        .mockResolvedValueOnce(mockMessage1 as any)  // requireMessageOwner
-        .mockResolvedValueOnce(mockMessage1 as any)  // service.deleteMessage
+        .mockResolvedValueOnce(mockMessage1 as any)
+        .mockResolvedValueOnce(mockMessage1 as any)
     db.message.delete.mockResolvedValueOnce(mockMessage1 as any)
     redisMock.lRange.mockResolvedValueOnce([JSON.stringify(mockMessage1)])
     redisMock.lRem.mockResolvedValueOnce(1)
@@ -142,7 +134,6 @@ describe('DELETE /api/chats/:chatId/messages/:messageId', () => {
   })
 
   it('returns 404 if message does not exist', async () => {
-    // requireMessageOwner intercepts first
     db.message.findFirst.mockResolvedValueOnce(null)
 
     const res = await request(app)
