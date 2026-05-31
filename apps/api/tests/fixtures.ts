@@ -12,34 +12,37 @@ import {
 export const mockUser1 = {
   id: 'user_alice_001',
   email: 'alice@ouija.dev',
-  password: 'hashed_pw_alice',
+  password: 'hashed_password',
   nickname: 'alice',
-  status: UserStatus.ONLINE,
-  createdAt: new Date('2025-01-01T10:00:00Z'),
-  updatedAt: new Date('2025-01-01T10:00:00Z'),
-  avatarUrl: null
+  status: 'ONLINE' as UserStatus,
+  avatarUrl: null,
+  emailVerified: true,
+  createdAt: new Date('2024-01-01'),
+  updatedAt: new Date('2024-01-01')
 }
 
 export const mockUser2 = {
   id: 'user_bob_002',
   email: 'bob@ouija.dev',
-  password: 'hashed_pw_bob',
+  password: 'hashed_password',
   nickname: 'bob',
-  status: UserStatus.OFFLINE,
-  createdAt: new Date('2025-01-02T10:00:00Z'),
-  updatedAt: new Date('2025-01-02T10:00:00Z'),
-  avatarUrl: null
+  status: 'OFFLINE' as UserStatus,
+  avatarUrl: null,
+  emailVerified: true,
+  createdAt: new Date('2024-01-01'),
+  updatedAt: new Date('2024-01-01')
 }
 
 export const mockUser3 = {
   id: 'user_carol_003',
   email: 'carol@ouija.dev',
-  password: 'hashed_pw_carol',
+  password: 'hashed_password',
   nickname: 'carol',
-  status: UserStatus.AWAY,
-  createdAt: new Date('2025-01-03T10:00:00Z'),
-  updatedAt: new Date('2025-01-03T10:00:00Z'),
-  avatarUrl: null
+  status: 'AWAY' as UserStatus,
+  avatarUrl: null,
+  emailVerified: true,
+  createdAt: new Date('2024-01-01'),
+  updatedAt: new Date('2024-01-01')
 }
 
 // ─── Friendships ──────────────────────────────────────────────────────────────
@@ -124,7 +127,7 @@ export const mockGroupChat = {
 // ─── Messages ─────────────────────────────────────────────────────────────────
 
 export const mockMessage1 = {
-  id: 1,
+  id: 'msg_001',
   chatId: mockPrivateChat.id,
   senderId: mockUser1.id,
   content: 'Hey Bob, how are you?',
@@ -135,7 +138,7 @@ export const mockMessage1 = {
 }
 
 export const mockMessage2 = {
-  id: 2,
+  id: 'msg_002',
   chatId: mockPrivateChat.id,
   senderId: mockUser2.id,
   content: 'All good Alice, you?',
@@ -146,7 +149,7 @@ export const mockMessage2 = {
 }
 
 export const mockMessageWithAttachment = {
-  id: 3,
+  id: 'msg_003',
   chatId: mockGroupChat.id,
   senderId: mockUser1.id,
   content: 'Check this out',
@@ -155,7 +158,7 @@ export const mockMessageWithAttachment = {
   attachments: [
     {
       id: 'attach_001',
-      messageId: 3,
+      messageId: 'msg_003',
       url: 'https://cdn.ouija.dev/files/report.pdf',
       type: AttachmentType.FILE
     }

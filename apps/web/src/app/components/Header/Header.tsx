@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import styles from './Header.module.scss'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useSettings } from '@/context/SettingsContext'
@@ -10,7 +10,6 @@ import { useTranslation } from '@/i18n/translations'
 
 export default function Header() {
   const pathname = usePathname()
-  const router = useRouter()
   const [loggedIn, setLoggedIn] = useState(false)
   const [nickname, setNickname] = useState<string | null>(null)
   const { settings } = useSettings()
@@ -34,38 +33,6 @@ export default function Header() {
     setNickname(userNickname)
   }, [pathname])
 
-  async function handleLogout() {
-    const userId = localStorage.getItem('userId')
-    if (userId) {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
-      // Save the current status so we can restore it on next login
-      const currentStatus = localStorage.getItem('userStatus')
-      if (
-        currentStatus &&
-        currentStatus !== 'OFFLINE' &&
-        currentStatus !== 'INVISIBLE'
-      ) {
-        localStorage.setItem('preLogoutStatus', currentStatus)
-      }
-      // Set status to OFFLINE before disconnecting so friends see the correct state
-      try {
-        await fetch(`${API_URL}/api/${userId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'OFFLINE' })
-        })
-      } catch {
-        /* best-effort */
-      }
-    }
-    localStorage.removeItem('userId')
-    localStorage.removeItem('userNickname')
-    localStorage.removeItem('userStatus')
-    setLoggedIn(false)
-    setNickname(null)
-    router.push('/')
-  }
-
   return (
     <header className={styles.Header}>
       <Link href="/">
@@ -75,7 +42,7 @@ export default function Header() {
           width={1275}
           height={690}
           className={styles.HeaderLogo}
-          style={{ width: 'auto', height: '8vh' }}
+          style={{ width: 'auto', height: 'clamp(3.2rem, 5vh, 5.6rem)' }}
           priority
         />
       </Link>
@@ -125,9 +92,6 @@ export default function Header() {
           <Link href="/profile" className={styles.HeaderLink}>
             {nickname ?? 'profile'}
           </Link>
-          <button className={styles.HeaderLogout} onClick={handleLogout}>
-            {t('nav.logout')}
-          </button>
         </div>
       )}
     </header>

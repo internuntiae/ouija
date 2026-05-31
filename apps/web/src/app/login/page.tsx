@@ -4,8 +4,8 @@ import styles from './Login.module.scss'
 import Link from 'next/link'
 import { FormEvent, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { sha256 } from '@utils/hash'
 import { useTranslation } from '@/i18n/translations'
+import { saveSession } from '@utils/auth'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -72,29 +72,25 @@ export default function Login() {
 
     setLoading(true)
     try {
-      const res = await fetch(
-        `${API_URL}/api/?nickname=${encodeURIComponent(username)}`
-      )
+      const res = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname: username, password })
+      })
 
       if (!res.ok) {
-        setErrors((prev) => ({ ...prev, submit: t('login.errorInvalid') }))
+        const err = await res.json().catch(() => ({}))
+        if (err.error === 'email not verified') {
+          setErrors((prev) => ({ ...prev, submit: t('login.errorEmailNotVerified' as never) ?? 'Potwierdź adres e-mail przed zalogowaniem.' }))
+        } else {
+          setErrors((prev) => ({ ...prev, submit: t('login.errorInvalid') }))
+        }
         return
       }
-      const user = await res.json()
 
-      if (!user) {
-        setErrors((prev) => ({ ...prev, submit: t('login.errorInvalid') }))
-        return
-      }
-
-      if (user.password == sha256(password)) {
-        localStorage.setItem('userId', user.id)
-        localStorage.setItem('userNickname', user.nickname)
-        router.push('/chats')
-      } else {
-        setErrors((prev) => ({ ...prev, submit: t('login.errorInvalid') }))
-        return
-      }
+      const { token, user } = await res.json()
+      saveSession(token, user.id, user.nickname)
+      router.push('/chats')
     } catch {
       setErrors((prev) => ({ ...prev, submit: t('login.errorServer') }))
     } finally {

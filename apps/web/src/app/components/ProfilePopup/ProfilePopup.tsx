@@ -3,16 +3,18 @@
 import { useState, useEffect, useCallback } from 'react'
 import styles from './ProfilePopup.module.scss'
 import { useTranslation } from '@/i18n/translations'
+import { apiFetch } from '@utils/auth'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
-type UserStatus = 'ONLINE' | 'OFFLINE' | 'AWAY' | 'BUSY'
+type UserStatus = 'ONLINE' | 'OFFLINE' | 'AWAY' | 'BUSY' | 'INVISIBLE'
 
 const STATUS_COLOR: Record<UserStatus, string> = {
   ONLINE: '#2ecc71',
   AWAY: '#f39c12',
   BUSY: '#e74c3c',
-  OFFLINE: '#7f8c8d'
+  OFFLINE: '#7f8c8d',
+  INVISIBLE: '#7f8c8d'
 }
 
 interface ProfileUser {
@@ -36,7 +38,6 @@ interface ProfilePopupProps {
   userId: string // the target user's id
   viewerId: string // the logged-in user's id
   onClose: () => void
-  onMessageUser?: (userId: string) => void
 }
 
 function avatarSrc(url?: string | null) {
@@ -47,7 +48,6 @@ export default function ProfilePopup({
   userId,
   viewerId,
   onClose,
-  onMessageUser
 }: ProfilePopupProps) {
   const [user, setUser] = useState<ProfileUser | null>(null)
   const [mutuals, setMutuals] = useState<MutualFriend[]>([])
@@ -64,11 +64,11 @@ export default function ProfilePopup({
     setLoading(true)
     try {
       const [userRes, myFriendsRes, targetFriendsRes] = await Promise.all([
-        fetch(`${API_URL}/api/?id=${userId}`),
+        apiFetch(`${API_URL}/api/?id=${userId}`),
         viewerId
-          ? fetch(`${API_URL}/api/users/${viewerId}/friends`)
+          ? apiFetch(`${API_URL}/api/users/${viewerId}/friends`)
           : Promise.resolve(null),
-        fetch(`${API_URL}/api/users/${userId}/friends?status=ACCEPTED`)
+        apiFetch(`${API_URL}/api/users/${userId}/friends?status=ACCEPTED`)
       ])
 
       if (userRes.ok) {
@@ -97,7 +97,7 @@ export default function ProfilePopup({
         const [targetFriendsData, myFriendsData2] = await Promise.all([
           targetFriendsRes.json(),
           // We already consumed myFriendsRes above — re-fetch
-          fetch(
+          apiFetch(
             `${API_URL}/api/users/${viewerId}/friends?status=ACCEPTED`
           ).then((r) => (r.ok ? r.json() : []))
         ])
@@ -144,7 +144,7 @@ export default function ProfilePopup({
   async function handleAddFriend() {
     setActionLoading(true)
     try {
-      const res = await fetch(`${API_URL}/api/users/${viewerId}/friends`, {
+      const res = await apiFetch(`${API_URL}/api/users/${viewerId}/friends`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ friendId: userId })
@@ -154,6 +154,49 @@ export default function ProfilePopup({
         return
       }
       setFriendStatus('PENDING_SENT')
+    } catch {
+      alert('Błąd')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  async function handleAcceptFriend() {
+    setActionLoading(true)
+    try {
+      const res = await apiFetch(
+        `${API_URL}/api/users/${viewerId}/friends/${userId}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'ACCEPTED' })
+        }
+      )
+      if (!res.ok) {
+        alert('Błąd')
+        return
+      }
+      setFriendStatus('ACCEPTED')
+      // Automatically create a private chat with the new friend
+      try {
+        const chatsRes = await apiFetch(`${API_URL}/api/users/${viewerId}/chats`)
+        if (chatsRes.ok) {
+          const chats = await chatsRes.json()
+          const existing = chats.find(
+            (c: { type: string; users: { userId: string }[] }) =>
+              c.type === 'PRIVATE' && c.users.some((u: { userId: string }) => u.userId === userId)
+          )
+          if (!existing) {
+            await apiFetch(`${API_URL}/api/chats`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ type: 'PRIVATE', userIds: [viewerId, userId] })
+            })
+          }
+        }
+      } catch {
+        /* best-effort: chat creation failure shouldn't block friend accept */
+      }
     } catch {
       alert('Błąd')
     } finally {
@@ -332,30 +375,6 @@ export default function ProfilePopup({
                 <>
                   <div className={styles.Divider} />
                   <div className={styles.Actions}>
-                    <button
-                      className={`${styles.ActionBtn} ${styles.ActionBtnPrimary}`}
-                      onClick={() => {
-                        onMessageUser?.(userId)
-                        onClose()
-                      }}
-                      disabled={actionLoading}
-                    >
-                      <svg
-                        width="15"
-                        height="15"
-                        viewBox="0 0 20 20"
-                        fill="none"
-                      >
-                        <path
-                          d="M18 2H2a1 1 0 00-1 1v12a1 1 0 001 1h4l3 3 3-3h6a1 1 0 001-1V3a1 1 0 00-1-1z"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                      {t('profilePopup.sendMessage')}
-                    </button>
-
                     {friendStatus === 'NONE' && (
                       <button
                         className={`${styles.ActionBtn} ${styles.ActionBtnSecondary}`}
@@ -398,6 +417,21 @@ export default function ProfilePopup({
                         disabled
                       >
                         {t('profilePopup.pendingSent')}
+                      </button>
+                    )}
+
+                    {friendStatus === 'PENDING_RECEIVED' && (
+                      <button
+                        className={`${styles.ActionBtn} ${styles.ActionBtnSecondary}`}
+                        onClick={handleAcceptFriend}
+                        disabled={actionLoading}
+                      >
+                        <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+                          <circle cx="8" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" />
+                          <path d="M1 17c0-3.3 3.1-6 7-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                          <path d="M13 14l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        {t('profilePopup.acceptFriend')}
                       </button>
                     )}
 

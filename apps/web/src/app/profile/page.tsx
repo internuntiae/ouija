@@ -11,6 +11,7 @@ import {
   type FontSize
 } from '@/context/SettingsContext'
 import { useTranslation } from '@/i18n/translations'
+import { apiFetch, clearSession } from '@utils/auth'
 import ProfilePopup from '@/app/components/ProfilePopup/ProfilePopup'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
@@ -19,7 +20,8 @@ const STATUS_COLOR: Record<string, string> = {
   ONLINE: '#2ecc71',
   AWAY: '#f39c12',
   BUSY: '#e74c3c',
-  OFFLINE: '#7f8c8d'
+  OFFLINE: '#7f8c8d',
+  INVISIBLE: '#7f8c8d'
 }
 
 function avatarSrc(url?: string | null) {
@@ -100,6 +102,14 @@ export default function Profile() {
 
   const [settingsSaved, setSettingsSaved] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
+  const [passwordResetEnabled, setPasswordResetEnabled] = useState(false)
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/auth/config`)
+      .then((r) => r.json())
+      .then((cfg) => setPasswordResetEnabled(cfg.enablePasswordReset ?? false))
+      .catch(() => {})
+  }, [])
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -109,7 +119,7 @@ export default function Profile() {
       const form = new FormData()
       form.append('avatar', file)
       // POST /api/media/avatar/:userId — uploads file AND sets avatarUrl on user in one call
-      const res = await fetch(`${API_URL}/api/media/avatar/${userId}`, {
+      const res = await apiFetch(`${API_URL}/api/media/avatar/${userId}`, {
         method: 'POST',
         body: form
       })
@@ -136,9 +146,9 @@ export default function Profile() {
     async function fetchData() {
       try {
         const [userRes, friendsRes, pendingRes] = await Promise.all([
-          fetch(`${API_URL}/api/?id=${userId}`),
-          fetch(`${API_URL}/api/users/${userId}/friends?status=ACCEPTED`),
-          fetch(`${API_URL}/api/users/${userId}/friends?status=PENDING`)
+          apiFetch(`${API_URL}/api/?id=${userId}`),
+          apiFetch(`${API_URL}/api/users/${userId}/friends?status=ACCEPTED`),
+          apiFetch(`${API_URL}/api/users/${userId}/friends?status=PENDING`)
         ])
         if (!userRes.ok) {
           setError('Błąd pobierania profilu')
@@ -179,14 +189,9 @@ export default function Profile() {
   async function handleRemoveFriend(friendId: string) {
     if (!userId) return
     try {
-      await Promise.all([
-        fetch(`${API_URL}/api/users/${userId}/friends/${friendId}`, {
-          method: 'DELETE'
-        }),
-        fetch(`${API_URL}/api/users/${friendId}/friends/${userId}`, {
-          method: 'DELETE'
-        })
-      ])
+      await apiFetch(`${API_URL}/api/users/${userId}/friends/${friendId}`, {
+        method: 'DELETE'
+      })
       setFriends((prev) =>
         prev.filter((f) => f.friendId !== friendId && f.userId !== friendId)
       )
@@ -198,7 +203,7 @@ export default function Profile() {
   async function handleMessageFriend(friendId: string) {
     if (!userId) return
     try {
-      const chatsRes = await fetch(`${API_URL}/api/users/${userId}/chats`)
+      const chatsRes = await apiFetch(`${API_URL}/api/users/${userId}/chats`)
       if (chatsRes.ok) {
         const chats = await chatsRes.json()
         const existing = chats.find(
@@ -210,7 +215,7 @@ export default function Profile() {
           return
         }
       }
-      const res = await fetch(`${API_URL}/api/chats`, {
+      const res = await apiFetch(`${API_URL}/api/chats`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'PRIVATE', userIds: [userId, friendId] })
@@ -226,15 +231,11 @@ export default function Profile() {
     }
   }
 
-  async function handleMessageFromProfile(friendId: string) {
-    await handleMessageFriend(friendId)
-  }
-
   async function handleAcceptInvite(inviterId: string) {
     if (!userId) return
     try {
-      const res = await fetch(
-        `${API_URL}/api/users/${inviterId}/friends/${userId}`,
+      const res = await apiFetch(
+        `${API_URL}/api/users/${userId}/friends/${inviterId}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -245,7 +246,7 @@ export default function Profile() {
         alert('Błąd akceptacji')
         return
       }
-      const inviterRes = await fetch(`${API_URL}/api/?id=${inviterId}`)
+      const inviterRes = await apiFetch(`${API_URL}/api/?id=${inviterId}`)
       if (!inviterRes.ok) {
         alert('Błąd pobierania danych użytkownika')
         return
@@ -270,6 +271,26 @@ export default function Profile() {
       }
       setFriends((prev) => [...prev, newFriend])
       setPendingInvites((prev) => prev.filter((i) => i.userId !== inviterId))
+      // Automatically create a private chat with the new friend
+      try {
+        const chatsRes = await apiFetch(`${API_URL}/api/users/${userId}/chats`)
+        if (chatsRes.ok) {
+          const chats = await chatsRes.json()
+          const existing = chats.find(
+            (c: { type: string; users: { userId: string }[] }) =>
+              c.type === 'PRIVATE' && c.users.some((u) => u.userId === inviterId)
+          )
+          if (!existing) {
+            await apiFetch(`${API_URL}/api/chats`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ type: 'PRIVATE', userIds: [userId, inviterId] })
+            })
+          }
+        }
+      } catch {
+        /* best-effort */
+      }
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Błąd')
     }
@@ -278,7 +299,7 @@ export default function Profile() {
   async function handleRejectInvite(inviterId: string) {
     if (!userId) return
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `${API_URL}/api/users/${inviterId}/friends/${userId}`,
         { method: 'DELETE' }
       )
@@ -295,7 +316,7 @@ export default function Profile() {
   async function handleCancelInvite(friendId: string) {
     if (!userId) return
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `${API_URL}/api/users/${userId}/friends/${friendId}`,
         { method: 'DELETE' }
       )
@@ -388,15 +409,17 @@ export default function Profile() {
                 {accountAgeMinutes}m
               </p>
             )}
-            <p className={styles.SectionText}>
-              {t('profile.passwordLabel')}{' '}
-              <a
-                style={{ cursor: 'pointer' }}
-                onClick={() => router.push('/forgot-password')}
-              >
-                {t('profile.changePasswordRedirect')}
-              </a>
-            </p>
+            {passwordResetEnabled && (
+              <p className={styles.SectionText}>
+                {t('profile.passwordLabel')}{' '}
+                <a
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => router.push('/forgot-password')}
+                >
+                  {t('profile.changePasswordRedirect')}
+                </a>
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -407,7 +430,6 @@ export default function Profile() {
           userId={profilePopupUserId}
           viewerId={userId}
           onClose={() => setProfilePopupUserId(null)}
-          onMessageUser={handleMessageFromProfile}
         />
       )}
 
@@ -660,6 +682,28 @@ export default function Profile() {
                   onChange={(v) => handleSaveSetting('notificationSound', v)}
                 />
               </SettingRow>
+              {settings.notificationSound && (
+                <SettingRow label="URL własnego dźwięku (mp3/ogg)">
+                  <input
+                    type="url"
+                    placeholder="https://... (zostaw puste = domyślny)"
+                    value={settings.notificationSoundUrl ?? ''}
+                    onChange={(e) =>
+                      handleSaveSetting('notificationSoundUrl', e.target.value)
+                    }
+                    style={{
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '0.5rem',
+                      color: 'var(--text)',
+                      fontSize: '1.2rem',
+                      padding: '0.4rem 0.7rem',
+                      width: '100%',
+                      fontFamily: 'inherit'
+                    }}
+                  />
+                </SettingRow>
+              )}
               <SettingRow label={t('profile.notifDesktop')}>
                 <Toggle
                   checked={settings.notificationDesktop}
@@ -704,7 +748,7 @@ export default function Profile() {
                       }
                       // Set status to OFFLINE before disconnecting
                       try {
-                        await fetch(`${API_URL}/api/${uid}`, {
+                        await apiFetch(`${API_URL}/api/${uid}`, {
                           method: 'PUT',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ status: 'OFFLINE' })
@@ -716,6 +760,7 @@ export default function Profile() {
                     localStorage.removeItem('userId')
                     localStorage.removeItem('userNickname')
                     localStorage.removeItem('userStatus')
+                    clearSession()
                     router.push('/login')
                   }
                 }}

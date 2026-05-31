@@ -3,10 +3,28 @@
 
 .container {
   width: 100%;
-  height: 90vh;
+  height: calc(100vh - 7.2rem);
   display: flex;
   overflow: hidden;
   background-color: var(--bg-base);
+}
+
+// ── >FHD wrapper — centruje układ na ultra-szerokich ekranach ─────────────────
+
+.containerOuter {
+  width: 100%;
+  height: calc(100vh - 7.2rem);
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  background-color: var(--bg-base);
+  overflow: hidden;
+
+  > .container {
+    max-width: 1920px;
+    width: 100%;
+    height: calc(100vh - 7.2rem);
+  }
 }
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
@@ -248,6 +266,10 @@
   transition: background 0.12s;
   &:hover {
     background: var(--bg-surface);
+
+    .MuteBtn {
+      opacity: 1;
+    }
   }
 
   &ProfilePicture {
@@ -358,10 +380,6 @@
   opacity: 0;
   transition: opacity 0.15s;
   line-height: 1;
-
-  .ContactsChatPreview:hover & {
-    opacity: 1;
-  }
 }
 
 .MutedIcon {
@@ -377,12 +395,15 @@
   z-index: 9999;
   background: var(--bg-surface, #1e1e2e);
   color: var(--text, #fff);
-  border: 1px solid var(--text-muted, #555);
+  border: 1px solid var(--text-muted);
   border-radius: 0.8rem;
   padding: 1rem 1.6rem;
   font-size: 1.2rem;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
   animation: slideIn 0.25s ease;
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
 
   @keyframes slideIn {
     from {
@@ -393,6 +414,24 @@
       transform: translateY(0);
       opacity: 1;
     }
+  }
+}
+
+.FriendRequestAcceptBtn {
+  background: var(--accent);
+  color: var(--accent-text);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  font-family: var(--font-sans), sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity var(--transition);
+
+  &:hover {
+    opacity: 0.8;
   }
 }
 
@@ -576,8 +615,8 @@
   cursor: pointer;
   flex-shrink: 0;
   transition:
-    background 0.15s,
-    border-color 0.15s;
+          background 0.15s,
+          border-color 0.15s;
   white-space: nowrap;
   &:hover {
     background: var(--bg-hover);
@@ -640,6 +679,27 @@
   color: var(--text);
 }
 
+.MessageSender {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 0.2rem;
+  opacity: 0.85;
+
+  &:hover {
+    opacity: 1;
+    text-decoration: underline;
+  }
+}
+
+.SearchHighlight {
+  background: rgba(255, 214, 0, 0.45);
+  color: inherit;
+  border-radius: 0.2rem;
+  padding: 0 0.1rem;
+}
+
 .MessageTime {
   display: block;
   font-size: 1rem;
@@ -666,8 +726,8 @@
   justify-content: center;
   opacity: 0;
   transition:
-    opacity 0.15s,
-    background 0.12s;
+          opacity 0.15s,
+          background 0.12s;
   z-index: 2;
   &:hover {
     background: var(--bg-hover);
@@ -703,8 +763,8 @@
   align-items: center;
   justify-content: center;
   transition:
-    transform 0.1s,
-    background 0.12s;
+          transform 0.1s,
+          background 0.12s;
   &:hover {
     transform: scale(1.35);
     background: var(--bg-elevated);
@@ -773,7 +833,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--text);
+  color: var(--text-primary);
   text-decoration: none;
   background: var(--bg-elevated);
   padding: 0.6rem 1.2rem;
@@ -781,7 +841,7 @@
   font-size: 1.3rem;
   transition: background 0.12s;
   &:hover {
-    background: var(--bg-hover);
+    background: var(--bg-hover, #353230);
   }
 }
 
@@ -1240,8 +1300,8 @@
   padding: 0.3rem 0.6rem;
   cursor: pointer;
   transition:
-    background 0.15s,
-    color 0.15s;
+          background 0.15s,
+          color 0.15s;
   flex-shrink: 0;
 
   &:hover {
@@ -1320,6 +1380,7 @@
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  flex-wrap: wrap;
 }
 
 .GroupPanelNameInput {
@@ -1607,4 +1668,614 @@
   font-size: 1.1rem;
   color: var(--text-muted, #888);
   font-style: italic;
+}
+
+// ── In-app powiadomienia (toast) ──────────────────────────────────────────────
+
+.InAppNotifContainer {
+  position: fixed;
+  bottom: 1.2rem;
+  right: 1.2rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  pointer-events: none;
+}
+
+.InAppNotif {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-mid);
+  border-radius: 1rem;
+  padding: 0.9rem 1.2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  min-width: 22rem;
+  max-width: 32rem;
+  pointer-events: auto;
+  cursor: pointer;
+  animation: notifSlideIn 0.2s ease;
+
+  &:hover {
+    background: var(--bg-elevated);
+  }
+}
+
+.InAppNotifAvatar {
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.InAppNotifBody {
+  flex: 1;
+  overflow: hidden;
+}
+
+.InAppNotifTitle {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.InAppNotifMsg {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 0.1rem;
+}
+
+.InAppNotifClose {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0.2rem;
+  flex-shrink: 0;
+  &:hover { color: var(--text); }
+}
+
+@keyframes notifSlideIn {
+  from { opacity: 0; transform: translateY(1rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+// ── Chat message search (in-window) ──────────────────────────────────────────
+
+.ChatSearchBar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 1rem;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.ChatSearchInput {
+  flex: 1;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  color: var(--text);
+  font-size: 1.2rem;
+  font-family: inherit;
+  padding: 0.5rem 0.8rem;
+  &:focus { outline: none; border-color: var(--accent, #7c6af7); }
+  &::placeholder { color: var(--text-muted); }
+}
+
+.ChatSearchNav {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.ChatSearchNavBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 0.3rem;
+  border-radius: 0.4rem;
+  &:hover { background: var(--bg-elevated); color: var(--text); }
+  &:disabled { opacity: 0.3; cursor: default; }
+}
+
+.ChatSearchCloseBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.3rem 0.5rem;
+  &:hover { color: var(--text); }
+}
+
+.MessageHighlight {
+  background: rgba(255, 210, 0, 0.35);
+  border-radius: 0.2rem;
+}
+
+// ── Search icon w HeaderSearchRow ────────────────────────────────────────────
+
+.SearchRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 0.1rem solid var(--border);
+  flex-shrink: 0;
+}
+
+.SearchRowSearch {
+  flex: 1;
+}
+
+.AddFriendIconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: 0.8rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 1.6rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+  &:hover { background: var(--bg-hover, var(--bg-surface)); }
+}
+
+.NewGroupIconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: 0.8rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 1.6rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+  &:hover { background: var(--bg-hover, var(--bg-surface)); }
+}
+// ── Drag & drop overlay ──────────────────────────────────────────────────────
+.ChatDragOver {
+  outline: 2px dashed var(--accent, #7c6fa0);
+  outline-offset: -4px;
+}
+
+.DragOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  pointer-events: none;
+}
+
+.DragOverlayInner {
+  padding: 1.5rem 3rem;
+  border: 2px dashed var(--accent, #7c6fa0);
+  border-radius: 1rem;
+  color: var(--text-primary, #fff);
+  font-size: 1.2rem;
+  font-weight: 600;
+  background: var(--bg-elevated);
+  pointer-events: none;
+}
+
+// ── Image Lightbox ───────────────────────────────────────────────────────────
+.LightboxOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+  animation: fadeIn 0.15s ease;
+}
+
+.LightboxImg {
+  max-width: 92vw;
+  max-height: 90vh;
+  border-radius: 0.6rem;
+  object-fit: contain;
+  box-shadow: 0 8px 48px rgba(0, 0, 0, 0.6);
+  cursor: default;
+  user-select: none;
+  animation: scaleIn 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.LightboxClose {
+  position: fixed;
+  top: 1.4rem;
+  right: 1.8rem;
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  color: #fff;
+  font-size: 1.6rem;
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s;
+  z-index: 1001;
+  &:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+}
+
+// ── File Viewer (PDF / Text editor) ─────────────────────────────────────────
+.FileViewerOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.15s ease;
+  padding: 2rem;
+}
+
+.FileViewerOverlayFullscreen {
+  padding: 0;
+}
+
+.FileViewerPanel {
+  width: min(92vw, 96rem);
+  height: min(88vh, 76rem);
+  background: var(--bg-base);
+  border-radius: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 64px rgba(0, 0, 0, 0.6);
+  animation: scaleIn 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: 1px solid var(--border);
+}
+
+.FileViewerPanelFullscreen {
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+  border: none;
+}
+
+// ── Header ──
+.FileViewerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 1rem 0.7rem 1.4rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  gap: 1rem;
+  background: var(--bg-elevated);
+}
+
+.FileViewerTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.FileViewerTypeTag {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 0.4rem;
+  background: var(--accent, #7c6fa0);
+  color: #f5f5f5;
+  flex-shrink: 0;
+
+  :global([data-theme='light']) & {
+    color: #f5f5f5;
+  }
+
+  :global([data-theme='dark']) & {
+    color: #1a1a1a;
+  }
+}
+
+.FileViewerTitle {
+  font-size: 1.3rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.FileViewerHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.FileViewerToolBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 0.6rem;
+  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background 0.12s, color 0.12s;
+  &:hover {
+    background: rgba(255, 255, 255, 0.14);
+  }
+}
+
+.FileViewerToolBtnActive {
+  background: var(--accent, #7c6fa0) !important;
+  color: #fff !important;
+}
+
+.FileViewerToolBtnSave {
+  background: #2e7d32 !important;
+  &:hover { background: #388e3c !important; }
+}
+
+.FileViewerCloseBtn {
+  &:hover { background: rgba(231, 76, 60, 0.5) !important; }
+}
+
+// ── Body ──
+.FileViewerBody {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-base);
+}
+
+.FileViewerIframe {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #fff;
+}
+
+.FileViewerEditorWrap {
+  flex: 1;
+  display: flex;
+  overflow: auto;
+  min-height: 0;
+}
+
+.FileViewerLineNums {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 1.4rem 0.8rem 1.4rem 1.2rem;
+  background: var(--bg-elevated);
+  border-right: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: 'Fira Mono', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 1.25rem;
+  line-height: 1.75;
+  user-select: none;
+  flex-shrink: 0;
+  min-width: 3.6rem;
+  pointer-events: none;
+
+  span {
+    display: block;
+    line-height: 1.75;
+  }
+}
+
+.FileViewerPre {
+  flex: 1;
+  overflow: visible;
+  margin: 0;
+  padding: 1.4rem 1.6rem;
+  font-family: 'Fira Mono', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 1.25rem;
+  line-height: 1.75;
+  color: var(--text-primary);
+  white-space: pre;
+  tab-size: 2;
+}
+
+.FileViewerTextarea {
+  flex: 1;
+  overflow: visible;
+  margin: 0;
+  padding: 1.4rem 1.6rem;
+  font-family: 'Fira Mono', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 1.25rem;
+  line-height: 1.75;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  white-space: pre;
+  tab-size: 2;
+  caret-color: var(--accent, #7c6fa0);
+}
+
+.FileViewerLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  flex: 1;
+  color: var(--text-muted);
+  font-size: 1.3rem;
+}
+
+.FileViewerSpinner {
+  width: 1.8rem;
+  height: 1.8rem;
+  border: 2px solid var(--border, #333);
+  border-top-color: var(--accent, #7c6fa0);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+// ── Footer ──
+.FileViewerFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 1rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg-elevated);
+  flex-shrink: 0;
+  gap: 1rem;
+}
+
+.FileViewerFooterInfo {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+}
+
+.FileViewerFooterActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+// ── Attachment file tile ──
+.MessageAttachmentFileTile {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.8rem 1.2rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border, #333);
+  border-radius: 0.9rem;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.12s, border-color 0.12s;
+  max-width: 28rem;
+  text-align: left;
+  &:hover {
+    background: var(--bg-hover, #353230);
+    border-color: var(--accent, #7c6fa0);
+  }
+}
+
+.MessageAttachmentFileIcon {
+  font-size: 2.2rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.MessageAttachmentFileName {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
+
+.MessageAttachmentFileHint {
+  font-size: 1.05rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+// ── Attachment file row (link + eye button) ──────────────────────────────────
+.MessageAttachmentFileRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.MessageAttachmentViewBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border, #333);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s, border-color 0.12s;
+  &:hover {
+    background: var(--accent, #7c6fa0);
+    border-color: var(--accent, #7c6fa0);
+    color: #fff;
+  }
+}
+
+.FileViewerSaveError {
+  padding: 0.5rem 1rem;
+  background: rgba(231, 76, 60, 0.15);
+  border-top: 1px solid rgba(231, 76, 60, 0.4);
+  color: #e74c3c;
+  font-size: 1.1rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+// ── Shared keyframes ─────────────────────────────────────────────────────────
+@keyframes fadeIn {
+  from { opacity: 0 }
+  to   { opacity: 1 }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.9); opacity: 0 }
+  to   { transform: scale(1);   opacity: 1 }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg) }
 }

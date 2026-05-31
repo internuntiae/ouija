@@ -43,15 +43,35 @@ function VerifyEmailContent() {
         : 'verifyEmail.titleError'
 
   return (
-    <div className={styles.Form}>
-      <label className={styles.FormLabel}>{t(titleKey)}</label>
+    <div className={styles.Form} style={{ alignItems: 'center', gap: '0.8rem' }}>
+      {status !== 'loading' && (
+        <div style={{ fontSize: '4rem', lineHeight: 1 }}>
+          {status === 'done' ? '✅' : '❌'}
+        </div>
+      )}
+      {status === 'loading' && (
+        <div style={{ fontSize: '4rem', lineHeight: 1 }}>⏳</div>
+      )}
+      <h2
+        style={{
+          fontSize: '2.4rem',
+          fontWeight: 700,
+          color: status === 'error' ? '#f87171' : 'var(--text-primary)',
+          margin: '0.4rem 0 0',
+          letterSpacing: '-0.02em'
+        }}
+      >
+        {t(titleKey)}
+      </h2>
 
       <p
         style={{
-          color: status === 'error' ? '#ff6b6b' : 'var(--text-primary)',
+          color: status === 'error' ? '#f87171' : 'var(--text-secondary)',
           fontSize: '1.5rem',
-          fontWeight: 200,
-          margin: '1rem 0'
+          fontWeight: 400,
+          margin: '0.4rem 0 1.2rem',
+          textAlign: 'center',
+          lineHeight: 1.5
         }}
       >
         {message}

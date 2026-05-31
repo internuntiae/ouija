@@ -159,18 +159,31 @@ export default function Register() {
 
   if (status === 'done') {
     return (
-      <div className={styles.Form}>
-        <label className={styles.FormLabel}>
+      <div className={styles.Form} style={{ alignItems: 'center', gap: '0.8rem' }}>
+        <div style={{ fontSize: '4rem', lineHeight: 1 }}>
+          {requiresVerification ? '📬' : '🎉'}
+        </div>
+        <h2
+          style={{
+            fontSize: '2.4rem',
+            fontWeight: 700,
+            color: 'var(--text-primary)',
+            margin: '0.4rem 0 0',
+            letterSpacing: '-0.02em'
+          }}
+        >
           {requiresVerification
             ? t('register.successVerifyTitle')
             : t('register.successTitle')}
-        </label>
+        </h2>
         <p
           style={{
-            color: 'var(--text-primary)',
+            color: 'var(--text-secondary)',
             fontSize: '1.5rem',
-            fontWeight: 200,
-            margin: '1rem 0'
+            fontWeight: 400,
+            margin: '0.4rem 0 1.2rem',
+            textAlign: 'center',
+            lineHeight: 1.5
           }}
         >
           {requiresVerification
@@ -217,6 +230,7 @@ export default function Register() {
           name="username"
           id="username"
           className={styles.FormInput}
+          maxLength={32}
           onBlur={(e) => handleBlur('username', e.target.value)}
           aria-invalid={touched.username && !!errors.username}
         />

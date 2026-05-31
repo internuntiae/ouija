@@ -1,18 +1,17 @@
 import { Router } from 'express'
 import * as reactionController from '@controllers/reaction.controller'
+import { requireAuth } from '@middleware/auth.middleware'
+import { requireChatMember } from '@middleware/chat.middleware'
 
 const reactionRouter = Router()
 
-// GET    /api/messages/:messageId/reactions              - list all reactions on a message
-reactionRouter.get('/messages/:messageId/reactions', reactionController.getReactions)
-
-// POST   /api/messages/:messageId/reactions              - add a reaction   body: { userId, type }
-reactionRouter.post('/messages/:messageId/reactions', reactionController.addReaction)
-
-// PUT    /api/messages/:messageId/reactions/:userId      - change reaction type   body: { type }
-reactionRouter.put('/messages/:messageId/reactions/:userId', reactionController.updateReaction)
-
-// DELETE /api/messages/:messageId/reactions/:userId      - remove a reaction
-reactionRouter.delete('/messages/:messageId/reactions/:userId', reactionController.deleteReaction)
+// All reaction routes resolve the chatId from the messageId so requireChatMember
+// can verify the caller is actually a member of the chat the message belongs to.
+// Without this gate any authenticated user who guesses a messageId can read or
+// write reactions on messages in chats they were never part of.
+reactionRouter.get('/chats/:chatId/messages/:messageId/reactions', requireAuth, requireChatMember, reactionController.getReactions)
+reactionRouter.post('/chats/:chatId/messages/:messageId/reactions', requireAuth, requireChatMember, reactionController.addReaction)
+reactionRouter.put('/chats/:chatId/messages/:messageId/reactions', requireAuth, requireChatMember, reactionController.updateReaction)
+reactionRouter.delete('/chats/:chatId/messages/:messageId/reactions', requireAuth, requireChatMember, reactionController.deleteReaction)
 
 export { reactionRouter }

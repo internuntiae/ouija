@@ -1,4 +1,5 @@
 import request from 'supertest'
+import { TEST_TOKEN } from './setup'
 import { app } from '@/app'
 import { prisma } from '@/lib'
 import { mockReaction1, mockReaction2 } from './fixtures'
@@ -13,7 +14,7 @@ describe('GET /api/messages/:messageId/reactions', () => {
   it('returns all reactions for a message', async () => {
     db.reaction.findMany.mockResolvedValueOnce([mockReaction1, mockReaction2])
 
-    const res = await request(app).get('/api/messages/1/reactions')
+    const res = await request(app).get('/api/messages/1/reactions').set('Authorization', `Bearer ${TEST_TOKEN}`)
 
     expect(res.status).toBe(200)
     expect(res.body).toHaveLength(2)
@@ -29,6 +30,7 @@ describe('POST /api/messages/:messageId/reactions', () => {
 
     const res = await request(app)
       .post('/api/messages/1/reactions')
+      .set('Authorization', `Bearer ${TEST_TOKEN}`)
       .send({ userId: 'user_bob_002', type: 'LIKE' })
 
     expect(res.status).toBe(201)
@@ -40,6 +42,7 @@ describe('POST /api/messages/:messageId/reactions', () => {
 
     const res = await request(app)
       .post('/api/messages/1/reactions')
+      .set('Authorization', `Bearer ${TEST_TOKEN}`)
       .send({ userId: 'user_bob_002', type: 'LIKE' })
 
     expect(res.status).toBe(500)
@@ -57,6 +60,7 @@ describe('PUT /api/messages/:messageId/reactions/:userId', () => {
 
     const res = await request(app)
       .put('/api/messages/1/reactions/user_bob_002')
+      .set('Authorization', `Bearer ${TEST_TOKEN}`)
       .send({ type: 'LAUGH' })
 
     expect(res.status).toBe(200)
@@ -68,6 +72,7 @@ describe('PUT /api/messages/:messageId/reactions/:userId', () => {
 
     const res = await request(app)
       .put('/api/messages/1/reactions/user_bob_002')
+      .set('Authorization', `Bearer ${TEST_TOKEN}`)
       .send({ type: 'LAUGH' })
 
     expect(res.status).toBe(500)

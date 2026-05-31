@@ -1,18 +1,18 @@
 import { Router } from 'express'
 import * as friendshipController from '@controllers/friendship.controller'
+import { requireAuth } from '@middleware/auth.middleware'
+import { requireSelf } from '@middleware/ownership.middleware'
+import {
+  validateBody,
+  sendFriendRequestSchema,
+  updateFriendshipSchema
+} from '@middleware/validation.middleware'
 
 const friendshipRouter = Router()
 
-// GET /api/users/:userId/friends            - list all friendships (optionally filter by ?status=PENDING|ACCEPTED|BLOCKED)
-friendshipRouter.get('/users/:userId/friends', friendshipController.getFriendships)
-
-// POST /api/users/:userId/friends           - send a friend request  body: { friendId }
-friendshipRouter.post('/users/:userId/friends', friendshipController.sendFriendRequest)
-
-// PUT /api/users/:userId/friends/:friendId  - accept / block a friendship  body: { status }
-friendshipRouter.put('/users/:userId/friends/:friendId', friendshipController.updateFriendshipStatus)
-
-// DELETE /api/users/:userId/friends/:friendId - remove a friendship
-friendshipRouter.delete('/users/:userId/friends/:friendId', friendshipController.deleteFriendship)
+friendshipRouter.get('/users/:userId/friends', requireAuth, requireSelf, friendshipController.getFriendships)
+friendshipRouter.post('/users/:userId/friends', requireAuth, requireSelf, validateBody(sendFriendRequestSchema), friendshipController.sendFriendRequest)
+friendshipRouter.put('/users/:userId/friends/:friendId', requireAuth, requireSelf, validateBody(updateFriendshipSchema), friendshipController.updateFriendshipStatus)
+friendshipRouter.delete('/users/:userId/friends/:friendId', requireAuth, requireSelf, friendshipController.deleteFriendship)
 
 export { friendshipRouter }

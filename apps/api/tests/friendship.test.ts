@@ -1,5 +1,5 @@
-import * as supertest from 'supertest'
-const request = supertest.default ?? supertest
+import request from 'supertest'
+import { TEST_TOKEN } from './setup'
 import { app } from '@/app'
 import { prisma } from '@/lib'
 import {
@@ -23,7 +23,7 @@ describe('GET /api/users/:userId/friends', () => {
       mockFriendshipAccepted
     ])
 
-    const res = await request(app).get('/api/users/user_alice_001/friends')
+    const res = await request(app).get('/api/users/user_alice_001/friends').set('Authorization', `Bearer ${TEST_TOKEN}`)
 
     expect(res.status).toBe(200)
     expect(res.body).toHaveLength(2)
@@ -44,7 +44,7 @@ describe('GET /api/users/:userId/friends', () => {
   it('returns 500 if user does not exist', async () => {
     db.user.findUnique.mockResolvedValueOnce(null)
 
-    const res = await request(app).get('/api/users/nonexistent/friends')
+    const res = await request(app).get('/api/users/nonexistent/friends').set('Authorization', `Bearer ${TEST_TOKEN}`)
 
     expect(res.status).toBe(500)
     expect(res.body.error).toMatch(/not found/i)
@@ -61,6 +61,7 @@ describe('POST /api/users/:userId/friends', () => {
 
     const res = await request(app)
       .post('/api/users/user_alice_001/friends')
+      .set('Authorization', `Bearer ${TEST_TOKEN}`)
       .send({ friendId: 'user_bob_002' })
 
     expect(res.status).toBe(201)
@@ -75,6 +76,7 @@ describe('POST /api/users/:userId/friends', () => {
 
     const res = await request(app)
       .post('/api/users/user_alice_001/friends')
+      .set('Authorization', `Bearer ${TEST_TOKEN}`)
       .send({ friendId: 'user_bob_002' })
 
     expect(res.status).toBe(500)
@@ -84,6 +86,7 @@ describe('POST /api/users/:userId/friends', () => {
   it('returns 500 if user tries to friend themselves', async () => {
     const res = await request(app)
       .post('/api/users/user_alice_001/friends')
+      .set('Authorization', `Bearer ${TEST_TOKEN}`)
       .send({ friendId: 'user_alice_001' })
 
     expect(res.status).toBe(500)
@@ -101,6 +104,7 @@ describe('PUT /api/users/:userId/friends/:friendId', () => {
 
     const res = await request(app)
       .put('/api/users/user_alice_001/friends/user_bob_002')
+      .set('Authorization', `Bearer ${TEST_TOKEN}`)
       .send({ status: 'ACCEPTED' })
 
     expect(res.status).toBe(200)
@@ -116,6 +120,7 @@ describe('PUT /api/users/:userId/friends/:friendId', () => {
 
     const res = await request(app)
       .put('/api/users/user_alice_001/friends/user_carol_003')
+      .set('Authorization', `Bearer ${TEST_TOKEN}`)
       .send({ status: 'BLOCKED' })
 
     expect(res.status).toBe(200)

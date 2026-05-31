@@ -1,5 +1,8 @@
+import { logger } from '@utils/logger'
 import { Request, Response } from 'express'
+import { safeErrorMessage, errorStatus } from '@utils/errors'
 import * as authService from '@services/auth.service'
+import * as sessionService from '@services/session.service'
 import { features } from '@/lib'
 
 /**
@@ -36,9 +39,9 @@ export const register = async (req: Request, res: Response) => {
         : 'Account created successfully.'
     })
   } catch (error) {
-    const msg = (error as Error).message
-    const status = msg === 'user already exists' ? 409 : 400
-    res.status(status).json({ error: msg })
+    const msg = safeErrorMessage(error)
+    logger.error('request error', { err: error })
+    res.status(errorStatus(msg)).json({ error: msg })
   }
 }
 
@@ -54,7 +57,9 @@ export const verifyEmail = async (req: Request, res: Response) => {
     await authService.verifyEmail(token as string)
     res.status(200).json({ message: 'Email verified successfully.' })
   } catch (error) {
-    res.status(400).json({ error: (error as Error).message })
+    const msg = safeErrorMessage(error)
+    logger.error('request error', { err: error })
+    res.status(errorStatus(msg)).json({ error: msg })
   }
 }
 
@@ -89,6 +94,35 @@ export const resetPassword = async (req: Request, res: Response) => {
     await authService.resetPassword(token, newPassword)
     res.status(200).json({ message: 'Password reset successfully.' })
   } catch (error) {
-    res.status(400).json({ error: (error as Error).message })
+    const msg = safeErrorMessage(error)
+    logger.error('request error', { err: error })
+    res.status(errorStatus(msg)).json({ error: msg })
   }
+}
+
+/**
+ * POST /api/auth/login
+ * Body: { nickname, password }
+ * Returns: { token, user }
+ */
+export const login = async (req: Request, res: Response) => {
+  try {
+    const { nickname, password } = req.body
+    const result = await sessionService.login(nickname, password)
+    res.status(200).json(result)
+  } catch (error) {
+    const msg = safeErrorMessage(error)
+    logger.error('request error', { err: error })
+    res.status(errorStatus(msg)).json({ error: msg })
+  }
+}
+
+/**
+ * POST /api/auth/logout
+ * Header: Authorization: Bearer <token>
+ */
+export const logout = async (req: Request, res: Response) => {
+  const token = req.headers.authorization?.slice(7) ?? ''
+  await sessionService.logout(token)
+  res.status(204).send()
 }

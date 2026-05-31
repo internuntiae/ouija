@@ -14,6 +14,7 @@ import {
 import { useSearchParams } from 'next/navigation'
 import ChatSidebar from './ChatSidebar'
 import ChatWindow from './ChatWindow'
+import { ErrorBoundary } from '../components/ErrorBoundary/ErrorBoundary'
 import {
   Chat,
   Message,
@@ -28,16 +29,25 @@ import {
 import { useSettings } from '@/context/SettingsContext'
 import { updateSwNameCache } from '@/app/sw-register'
 import { useTranslation } from '@/i18n/translations'
-
+import { notFound } from 'next/navigation'
+import { apiFetch, getToken, clearSession } from '@utils/auth'
+import { storage } from '@utils/storage'
 // ─── Główny komponent ─────────────────────────────────────────────────────────
 
 function ChatsInner() {
   const userId =
     typeof window !== 'undefined'
-      ? (localStorage.getItem('userId') ?? null)
+      ? (storage.getUserId())
       : null
 
-  if (!userId) return null
+  if (!userId) {
+    // Not logged in — show 404. We only call notFound() on the client where
+    // we can be certain the value is truly absent (not just SSR with no localStorage).
+    if (typeof window !== 'undefined') {
+      notFound()
+    }
+    return null
+  }
   return <ChatsWithUser userId={userId} />
 }
 
@@ -50,6 +60,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
     searchParams.get('chatId')
   )
   const activeChatIdRef = useRef<string | null>(searchParams.get('chatId'))
+  const chatsRef = useRef<Chat[]>([])
   const [messages, setMessages] = useState<Message[]>([])
   const [messageText, setMessageText] = useState('')
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
@@ -82,17 +93,16 @@ function ChatsWithUser({ userId }: { userId: string }) {
   const [searchUsers, setSearchUsers] = useState<UserSearchResult[]>([])
   const [mutedChatIds, setMutedChatIds] = useState<Set<string>>(() => {
     if (typeof window === 'undefined') return new Set()
-    try {
-      const stored = localStorage.getItem('mutedChats')
-      return stored ? new Set(JSON.parse(stored)) : new Set()
-    } catch {
-      return new Set()
-    }
+    return storage.getMutedChats()
   })
-  const [friendRequestNotif, setFriendRequestNotif] = useState<string | null>(
-    null
-  )
+  const mutedChatIdsRef = useRef<Set<string>>(new Set())
   const [friendIds, setFriendIds] = useState<Set<string>>(new Set())
+
+  // ── In-app notifications ──
+  const [inAppNotifs, setInAppNotifs] = useState<
+    { id: string; title: string; body: string; avatarUrl?: string | null; chatId?: string | null }[]
+  >([])
+  const notifIdCounter = useRef(0)
 
   // ── Mobile state ──
   const [isMobile, setIsMobile] = useState(false)
@@ -120,20 +130,43 @@ function ChatsWithUser({ userId }: { userId: string }) {
   const { settings } = useSettings()
   const { t } = useTranslation()
 
-  // ── Załaduj znajomych ──
+  // ── Załaduj znajomych i czaty razem ──
   useEffect(() => {
-    fetch(`${API_URL}/api/users/${userId}/friends?status=ACCEPTED`)
-      .then((r) => r.json())
-      .then((data: { userId: string; friendId: string }[]) => {
-        const ids = new Set(
-          data.map((f) => (f.userId === userId ? f.friendId : f.userId))
+    Promise.all([
+      apiFetch(`${API_URL}/api/users/${userId}/friends?status=ACCEPTED`)
+        .then((r) => r.json())
+        .then((data: { userId: string; friendId: string }[]) =>
+          new Set(data.map((f) => (f.userId === userId ? f.friendId : f.userId)))
+        ),
+      apiFetch(`${API_URL}/api/users/${userId}/chats`)
+        .then((r) => r.json())
+        .then((data: Chat[]) =>
+          Promise.all(
+            data.map(async (chat) => {
+              const res = await apiFetch(
+                `${API_URL}/api/chats/${chat.id}/messages?limit=1`
+              )
+              if (!res.ok) return chat
+              const msgs: Message[] = await res.json()
+              return { ...chat, lastMessage: msgs[0] ?? null }
+            })
+          )
         )
+    ])
+      .then(([ids, enriched]) => {
         setFriendIds(ids)
+        const sorted = enriched.sort((a, b) => {
+          const ta = a.lastMessage?.sentAt ?? a.updatedAt
+          const tb = b.lastMessage?.sentAt ?? b.updatedAt
+          return new Date(tb).getTime() - new Date(ta).getTime()
+        })
+        setChats(sorted)
+        // Only restore a chat from URL param (?chatId=...), never auto-select
+        setActiveChatId((prev) => prev ?? null)
       })
       .catch(console.error)
+      .finally(() => setLoadingChats(false))
   }, [userId])
-
-  // ── Status z bazy ──
   useEffect(() => {
     // If the user just logged back in after a previous session, restore their
     // pre-logout status (e.g. DnD/BUSY) instead of defaulting to ONLINE/OFFLINE
@@ -141,11 +174,11 @@ function ChatsWithUser({ userId }: { userId: string }) {
       'preLogoutStatus'
     ) as UserStatus | null
     if (preLogout) {
-      localStorage.removeItem('preLogoutStatus')
+      storage.removePreLogoutStatus()
       setMyStatus(preLogout)
-      localStorage.setItem('userStatus', preLogout)
+      storage.setUserStatus(preLogout as UserStatus)
       // Push it to the server immediately
-      fetch(`${API_URL}/api/${userId}`, {
+      apiFetch(`${API_URL}/api/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: preLogout })
@@ -154,10 +187,10 @@ function ChatsWithUser({ userId }: { userId: string }) {
     }
 
     // Use cached status first (avoids showing INVISIBLE flash on reconnect)
-    const cached = localStorage.getItem('userStatus') as UserStatus | null
+    const cached = storage.getUserStatus()
     if (cached && cached !== 'INVISIBLE') setMyStatus(cached)
 
-    fetch(`${API_URL}/api/?id=${userId}`)
+    apiFetch(`${API_URL}/api/?id=${userId}`)
       .then((r) => r.json())
       .then((data: { status?: UserStatus }) => {
         if (data?.status) {
@@ -170,7 +203,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
                 : 'OFFLINE'
               : data.status
           setMyStatus(effectiveStatus as UserStatus)
-          localStorage.setItem('userStatus', effectiveStatus)
+          storage.setUserStatus(effectiveStatus)
         }
       })
       .catch(console.error)
@@ -180,37 +213,6 @@ function ChatsWithUser({ userId }: { userId: string }) {
   useEffect(() => {
     myStatusRef.current = myStatus
   }, [myStatus])
-
-  // ── Pobierz czaty ──
-  useEffect(() => {
-    fetch(`${API_URL}/api/users/${userId}/chats`)
-      .then((r) => r.json())
-      .then((data: Chat[]) =>
-        Promise.all(
-          data.map(async (chat) => {
-            const res = await fetch(
-              `${API_URL}/api/chats/${chat.id}/messages?limit=1`
-            )
-            if (!res.ok) return chat
-            const msgs: Message[] = await res.json()
-            return { ...chat, lastMessage: msgs[0] ?? null }
-          })
-        )
-      )
-      .then((enriched) => {
-        const sorted = enriched.sort((a, b) => {
-          const ta = a.lastMessage?.sentAt ?? a.updatedAt
-          const tb = b.lastMessage?.sentAt ?? b.updatedAt
-          return new Date(tb).getTime() - new Date(ta).getTime()
-        })
-        setChats(sorted)
-        setActiveChatId(
-          (prev) => prev ?? (sorted.length > 0 ? sorted[0].id : null)
-        )
-      })
-      .catch(console.error)
-      .finally(() => setLoadingChats(false))
-  }, [userId])
 
   // ── Zamknij dropdown ──
   useEffect(() => {
@@ -237,7 +239,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
     searchDebounceRef.current = setTimeout(async () => {
       setSearchLoading(true)
       try {
-        const res = await fetch(`${API_URL}/api/?q=${encodeURIComponent(q)}`)
+        const res = await apiFetch(`${API_URL}/api/?q=${encodeURIComponent(q)}`)
         if (res.ok)
           setSearchUsers(
             (await res.json()).filter((u: UserSearchResult) => u.id !== userId)
@@ -267,7 +269,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
       prev.map((c) => (c.id === activeChatId ? { ...c, unreadCount: 0 } : c))
     )
 
-    fetch(`${API_URL}/api/chats/${activeChatId}/messages?limit=${PAGE_SIZE}`)
+    apiFetch(`${API_URL}/api/chats/${activeChatId}/messages?limit=${PAGE_SIZE}`)
       .then((r) => r.json())
       .then((data: Message[]) => {
         const sorted = [...data].reverse()
@@ -288,6 +290,11 @@ function ChatsWithUser({ userId }: { userId: string }) {
     setTypingUsers([])
   }, [activeChatId])
 
+  // ── Sync chatsRef so WS handlers can read latest chats ──
+  useEffect(() => {
+    chatsRef.current = chats
+  }, [chats])
+
   // ── Keep SW name cache in sync so background notifications show nicknames ──
   useEffect(() => {
     const users = chats.flatMap((c) =>
@@ -298,9 +305,10 @@ function ChatsWithUser({ userId }: { userId: string }) {
     updateSwNameCache(users)
   }, [chats])
 
-  // ── Sync muted chats to localStorage and SW ──
+  // ── Sync muted chats to localStorage, SW, and ref ──
   useEffect(() => {
-    localStorage.setItem('mutedChats', JSON.stringify([...mutedChatIds]))
+    mutedChatIdsRef.current = mutedChatIds
+    storage.setMutedChats(mutedChatIds)
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
       navigator.serviceWorker.controller.postMessage({
         type: 'MUTED_CHATS',
@@ -313,28 +321,70 @@ function ChatsWithUser({ userId }: { userId: string }) {
   const wsRef = useRef<WebSocket | null>(null)
   useEffect(() => {
     const WS_URL = API_URL.replace(/^http/, 'ws')
-    const ws = new WebSocket(`${WS_URL}/ws?userId=${userId}`)
+    const token = getToken()
+    if (!token) {
+      clearSession()
+      window.location.href = '/login'
+      return
+    }
+    // Token is sent in the first message after connection — never in the URL
+    const ws = new WebSocket(`${WS_URL}/ws`)
     wsRef.current = ws
 
+    let authenticated = false
+
+    const announceStatus = () => {
+      const cached = storage.getUserStatus()
+      const statusToAnnounce: UserStatus =
+        cached && cached !== 'OFFLINE' && cached !== 'INVISIBLE'
+          ? cached
+          : 'ONLINE'
+      setMyStatus(statusToAnnounce)
+      storage.setUserStatus(statusToAnnounce as UserStatus)
+      ws.send(
+        JSON.stringify({
+          type: 'user:status',
+          payload: { status: statusToAnnounce }
+        })
+      )
+      apiFetch(`${API_URL}/api/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: statusToAnnounce })
+      }).catch(console.error)
+    }
+
     ws.onopen = () => {
-      // If the user had a non-default status before logging out, broadcast it
-      // to friends now that the WS connection is live
-      const statusToAnnounce = localStorage.getItem(
-        'userStatus'
-      ) as UserStatus | null
-      if (
-        statusToAnnounce &&
-        statusToAnnounce !== 'OFFLINE' &&
-        statusToAnnounce !== 'INVISIBLE'
-      ) {
+      // Server will prompt with auth:required; handled in onmessage below
+    }
+
+    // ── Set status to OFFLINE when the user closes/leaves the app ──
+    const handleBeforeUnload = () => {
+      const currentStatus = myStatusRef.current
+      // Restore last active status next session (don't overwrite with OFFLINE)
+      if (currentStatus !== 'OFFLINE' && currentStatus !== 'INVISIBLE') {
+        storage.setUserStatus(currentStatus as UserStatus)
+      }
+      // Broadcast OFFLINE via WS (best-effort, synchronous send)
+      if (ws.readyState === WebSocket.OPEN) {
         ws.send(
-          JSON.stringify({
-            type: 'user:status',
-            payload: { status: statusToAnnounce }
-          })
+          JSON.stringify({ type: 'user:status', payload: { status: 'OFFLINE' } })
+        )
+      }
+      // Persist OFFLINE to server via sendBeacon for reliability on page close
+      const token = getToken()
+      if (token) {
+        const blob = new Blob(
+          [JSON.stringify({ status: 'OFFLINE' })],
+          { type: 'application/json' }
+        )
+        navigator.sendBeacon(
+          `${API_URL}/api/users/beacon/status?token=${encodeURIComponent(token)}`,
+          blob
         )
       }
     }
+    window.addEventListener('beforeunload', handleBeforeUnload)
 
     ws.onmessage = (event) => {
       try {
@@ -342,6 +392,20 @@ function ChatsWithUser({ userId }: { userId: string }) {
           type: string
           payload: Record<string, unknown>
         }
+
+        // Auth handshake — send token in-band, never in the URL
+        if (msg.type === 'auth:required') {
+          ws.send(JSON.stringify({ type: 'auth', token }))
+          return
+        }
+
+        if (msg.type === 'connected') {
+          authenticated = true
+          announceStatus()
+          return
+        }
+
+        if (!authenticated) return
 
         if (msg.type === 'message:created') {
           const newMsg = msg.payload as unknown as Message
@@ -360,7 +424,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
           if (newMsg.senderId !== userId) {
             setChats((prev) => {
               const chat = prev.find((c) => c.id === newMsg.chatId)
-              const isMuted = mutedChatIds.has(newMsg.chatId)
+              const isMuted = mutedChatIdsRef.current.has(newMsg.chatId)
               const senderName =
                 chat?.users.find((u) => u.userId === newMsg.senderId)?.user
                   .nickname ?? 'Ktoś'
@@ -380,14 +444,14 @@ function ChatsWithUser({ userId }: { userId: string }) {
             const updated = prev.map((c) =>
               c.id === newMsg.chatId
                 ? {
-                    ...c,
-                    lastMessage: newMsg,
-                    unreadCount:
-                      newMsg.chatId !== activeChatIdRef.current &&
-                      newMsg.senderId !== userId
-                        ? (c.unreadCount ?? 0) + 1
-                        : c.unreadCount
-                  }
+                  ...c,
+                  lastMessage: newMsg,
+                  unreadCount:
+                    newMsg.chatId !== activeChatIdRef.current &&
+                    newMsg.senderId !== userId
+                      ? (c.unreadCount ?? 0) + 1
+                      : c.unreadCount
+                }
                 : c
             )
             const idx = updated.findIndex((c) => c.id === newMsg.chatId)
@@ -485,20 +549,55 @@ function ChatsWithUser({ userId }: { userId: string }) {
         }
 
         if (msg.type === 'chat:updated') {
-          const { chatId, chat } = msg.payload as {
+          const { chatId, chat, event, userId: eventUserId } = msg.payload as {
             chatId: string
             chat?: Chat
+            event?: string
+            userId?: string
           }
-          if (chat) {
+          if (event === 'member_removed' && eventUserId) {
+            if (eventUserId === userId) {
+              setChats((prev) => prev.filter((c) => c.id !== chatId))
+              setActiveChatId((prev) => (prev === chatId ? null : prev))
+            } else {
+              apiFetch(`${API_URL}/api/chats/${chatId}`)
+                .then((r) => (r.ok ? r.json() : null))
+                .then((updated: Chat | null) => {
+                  if (!updated) return
+                  setChats((prev) =>
+                    prev.map((c) =>
+                      c.id === chatId
+                        ? { ...updated, lastMessage: c.lastMessage, unreadCount: c.unreadCount }
+                        : c
+                    )
+                  )
+                })
+                .catch(() => {})
+            }
+          } else if (event === 'member_added') {
+            apiFetch(`${API_URL}/api/chats/${chatId}`)
+              .then((r) => (r.ok ? r.json() : null))
+              .then((updated: Chat | null) => {
+                if (!updated) return
+                setChats((prev) =>
+                  prev.map((c) =>
+                    c.id === chatId
+                      ? { ...updated, lastMessage: c.lastMessage, unreadCount: c.unreadCount }
+                      : c
+                  )
+                )
+              })
+              .catch(() => {})
+          } else if (chat) {
             setChats((prev) =>
               prev.map((c) =>
                 c.id === chatId
                   ? {
-                      ...c,
-                      ...chat,
-                      lastMessage: c.lastMessage,
-                      unreadCount: c.unreadCount
-                    }
+                    ...c,
+                    ...chat,
+                    lastMessage: c.lastMessage,
+                    unreadCount: c.unreadCount
+                  }
                   : c
               )
             )
@@ -513,14 +612,12 @@ function ChatsWithUser({ userId }: { userId: string }) {
 
         if (msg.type === 'friendship:requested') {
           const { friendship } = msg.payload as {
-            friendship: { userId: string; nickname?: string }
+            friendship: { userId: string; user?: { nickname?: string; avatarUrl?: string | null } }
           }
           const senderNick =
-            (friendship as { userId: string; user?: { nickname?: string } })
-              ?.user?.nickname ?? t('chat.someone')
-          setFriendRequestNotif(senderNick)
-          triggerNotification(t('chat.friendRequestTitle'), senderNick)
-          setTimeout(() => setFriendRequestNotif(null), 5000)
+            friendship?.user?.nickname ?? t('chat.someone')
+          const senderAvatar = friendship?.user?.avatarUrl ?? null
+          triggerNotification(senderNick, t('chat.friendRequestSent'), { avatarUrl: senderAvatar })
         }
 
         if (msg.type === 'friendship:deleted') {
@@ -534,17 +631,28 @@ function ChatsWithUser({ userId }: { userId: string }) {
             next.delete(removedId)
             return next
           })
-          // If the removed friend's chat was active, deselect it
-          setActiveChatId((prev) => {
-            if (!prev) return prev
-            // We'll let the visibility filter hide it; clear active if needed
-            return prev
-          })
+          // If the removed friend's private chat is currently active, deselect it
+          const currentChatId = activeChatIdRef.current
+          if (currentChatId) {
+            const activeChat = chatsRef.current.find((c) => c.id === currentChatId)
+            const isPrivateChatWithRemovedFriend =
+              activeChat?.type === 'PRIVATE' &&
+              activeChat.users.some((u) => u.userId === removedId)
+            if (isPrivateChatWithRemovedFriend) {
+              setActiveChatId(null)
+            }
+          }
         }
 
         if (msg.type === 'friendship:updated') {
           const { friendship } = msg.payload as {
-            friendship: { userId: string; friendId: string; status: string }
+            friendship: {
+              userId: string
+              friendId: string
+              status: string
+              user?: { nickname?: string; avatarUrl?: string | null }
+              friend?: { nickname?: string; avatarUrl?: string | null }
+            }
           }
           if (friendship.status === 'ACCEPTED') {
             const newFriendId =
@@ -553,18 +661,12 @@ function ChatsWithUser({ userId }: { userId: string }) {
                 : friendship.userId
             setFriendIds((prev) => new Set(prev).add(newFriendId))
 
-            // Find the friend's nickname from existing chats or fall back
-            setChats((prev) => {
-              const nick =
-                prev
-                  .flatMap((c) => c.users)
-                  .find((u) => u.userId === newFriendId)?.user.nickname ??
-                t('chat.someone')
-              setFriendRequestNotif(`✅ ${nick} ${t('chat.friendAccepted')}`)
-              triggerNotification(t('chat.friendAcceptedTitle'), nick)
-              setTimeout(() => setFriendRequestNotif(null), 5000)
-              return prev
-            })
+            // The acceptor is the other party — read directly from payload
+            const acceptorData =
+              friendship.userId === userId ? friendship.friend : friendship.user
+            const nick = acceptorData?.nickname ?? t('chat.someone')
+            const avatarUrl = acceptorData?.avatarUrl ?? null
+            triggerNotification(nick, t('chat.friendAcceptedTitle'), { avatarUrl })
           }
         }
 
@@ -627,7 +729,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
           if (self || changedUserId === userId) {
             const restored = status as UserStatus
             setMyStatus(restored)
-            localStorage.setItem('userStatus', restored)
+            storage.setUserStatus(restored as UserStatus)
           }
           setChats((prev) =>
             prev.map((c) => ({
@@ -648,6 +750,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
     ws.onerror = (err) => console.error('[WS] błąd:', err)
 
     return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
       ws.close()
       wsRef.current = null
     }
@@ -656,8 +759,11 @@ function ChatsWithUser({ userId }: { userId: string }) {
   // ── Scroll do dołu przy pierwszym ładowaniu ──
   useEffect(() => {
     if (messages.length > 0 && isFirstLoad.current) {
-      bottomRef.current?.scrollIntoView({ behavior: 'auto' })
-      isFirstLoad.current = false
+      // Use setTimeout to ensure the DOM has painted before scrolling
+      setTimeout(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'auto' })
+        isFirstLoad.current = false
+      }, 50)
     }
   }, [messages])
 
@@ -670,7 +776,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
     const prevScrollHeight = container?.scrollHeight ?? 0
 
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `${API_URL}/api/chats/${activeChatId}/messages?limit=${PAGE_SIZE}&lastId=${lastIdRef.current}`
       )
       const older: Message[] = await res.json()
@@ -707,19 +813,41 @@ function ChatsWithUser({ userId }: { userId: string }) {
   }, [loadMoreMessages])
 
   // ── Powiadomienia ──
-  function triggerNotification(title: string, body: string) {
+  function triggerNotification(
+    title: string,
+    body: string,
+    opts?: { avatarUrl?: string | null; chatId?: string | null }
+  ) {
     if (!settings.notificationsEnabled) return
+
+    // In-app toast
+    const notifId = `notif-${++notifIdCounter.current}`
+    setInAppNotifs((prev) => [
+      ...prev,
+      { id: notifId, title, body, avatarUrl: opts?.avatarUrl, chatId: opts?.chatId ?? null }
+    ])
+    setTimeout(() => {
+      setInAppNotifs((prev) => prev.filter((n) => n.id !== notifId))
+    }, 5000)
+
     if (settings.notificationSound) {
       try {
-        const ctx = new AudioContext()
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
-        osc.connect(gain)
-        gain.connect(ctx.destination)
-        osc.frequency.value = 880
-        gain.gain.value = 0.1
-        osc.start()
-        osc.stop(ctx.currentTime + 0.1)
+        const customSound = settings.notificationSoundUrl
+        if (customSound) {
+          const audio = new Audio(customSound)
+          audio.volume = 0.5
+          audio.play().catch(() => {})
+        } else {
+          const ctx = new AudioContext()
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+          osc.connect(gain)
+          gain.connect(ctx.destination)
+          osc.frequency.value = 880
+          gain.gain.value = 0.1
+          osc.start()
+          osc.stop(ctx.currentTime + 0.1)
+        }
       } catch {
         /* ignoruj */
       }
@@ -753,12 +881,12 @@ function ChatsWithUser({ userId }: { userId: string }) {
     }
 
     try {
-      let attachments: { url: string; type: AttachmentType }[] = []
+      let attachments: { url: string; type: AttachmentType; name?: string }[] = []
       if (pendingFiles.length > 0) {
         const form = new FormData()
         form.append('ownerId', userId)
         pendingFiles.forEach((f) => form.append('files', f))
-        const uploadRes = await fetch(`${API_URL}/api/media/upload`, {
+        const uploadRes = await apiFetch(`${API_URL}/api/media/upload`, {
           method: 'POST',
           body: form
         })
@@ -767,10 +895,11 @@ function ChatsWithUser({ userId }: { userId: string }) {
           setSending(false)
           return
         }
-        const mediaFiles: { url: string; mimeType: string }[] =
+        const mediaFiles: { url: string; mimeType: string; filename: string }[] =
           await uploadRes.json()
-        attachments = mediaFiles.map((mf) => ({
+        attachments = mediaFiles.map((mf, i) => ({
           url: mf.url,
+          name: mf.filename ?? pendingFiles[i]?.name ?? undefined,
           type: mf.mimeType.startsWith('image/')
             ? 'IMAGE'
             : mf.mimeType.startsWith('video/')
@@ -780,7 +909,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
                 : 'FILE'
         }))
       }
-      const res = await fetch(`${API_URL}/api/chats/${activeChatId}/messages`, {
+      const res = await apiFetch(`${API_URL}/api/chats/${activeChatId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -817,25 +946,27 @@ function ChatsWithUser({ userId }: { userId: string }) {
     const existing = messages
       .find((m) => m.id === messageId)
       ?.reactions.find((r) => r.userId === userId)
+    const chatId = activeChatId
+    if (!chatId) return
     try {
       if (existing?.type === type) {
-        await fetch(
-          `${API_URL}/api/messages/${messageId}/reactions/${userId}`,
+        await apiFetch(
+          `${API_URL}/api/chats/${chatId}/messages/${messageId}/reactions`,
           { method: 'DELETE' }
         )
         setMessages((prev) =>
           prev.map((m) =>
             m.id === messageId
               ? {
-                  ...m,
-                  reactions: m.reactions.filter((r) => r.userId !== userId)
-                }
+                ...m,
+                reactions: m.reactions.filter((r) => r.userId !== userId)
+              }
               : m
           )
         )
       } else if (existing) {
-        await fetch(
-          `${API_URL}/api/messages/${messageId}/reactions/${userId}`,
+        await apiFetch(
+          `${API_URL}/api/chats/${chatId}/messages/${messageId}/reactions`,
           {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -846,19 +977,19 @@ function ChatsWithUser({ userId }: { userId: string }) {
           prev.map((m) =>
             m.id === messageId
               ? {
-                  ...m,
-                  reactions: m.reactions.map((r) =>
-                    r.userId === userId ? { ...r, type } : r
-                  )
-                }
+                ...m,
+                reactions: m.reactions.map((r) =>
+                  r.userId === userId ? { ...r, type } : r
+                )
+              }
               : m
           )
         )
       } else {
-        await fetch(`${API_URL}/api/messages/${messageId}/reactions`, {
+        await apiFetch(`${API_URL}/api/chats/${chatId}/messages/${messageId}/reactions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, type })
+          body: JSON.stringify({ type })
         })
         setMessages((prev) =>
           prev.map((m) => {
@@ -880,7 +1011,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
   async function handleStatusChange(status: UserStatus) {
     setMyStatus(status)
     setShowStatusMenu(false)
-    localStorage.setItem('userStatus', status)
+    storage.setUserStatus(status)
     // Immediately update the current user's own entries in all chats so the
     // navbar status dots reflect the change without waiting for a WS round-trip
     setChats((prev) =>
@@ -896,7 +1027,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
       JSON.stringify({ type: 'user:status', payload: { status } })
     )
     try {
-      await fetch(`${API_URL}/api/${userId}`, {
+      await apiFetch(`${API_URL}/api/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
@@ -953,47 +1084,10 @@ function ChatsWithUser({ userId }: { userId: string }) {
     }
   }
 
-  // ── Otwórz lub utwórz czat ──
-  async function handleOpenChatWith(targetUserId: string) {
-    const existing = chats.find(
-      (c) =>
-        c.type === 'PRIVATE' && c.users.some((u) => u.userId === targetUserId)
-    )
-    if (existing) {
-      setActiveChatId(existing.id)
-      setSearchQuery('')
-      setSearchOpen(false)
-      return
-    }
-    try {
-      const res = await fetch(`${API_URL}/api/chats`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'PRIVATE',
-          userIds: [userId, targetUserId]
-        })
-      })
-      if (!res.ok) {
-        alert(t('chat.errorCreate'))
-        return
-      }
-      const newChat: Chat = await res.json()
-      setChats((prev) =>
-        prev.some((c) => c.id === newChat.id) ? prev : [newChat, ...prev]
-      )
-      setTimeout(() => setActiveChatId(newChat.id), 0)
-      setSearchQuery('')
-      setSearchOpen(false)
-    } catch (err) {
-      alert(err instanceof Error ? err.message : t('chat.errorCreate'))
-    }
-  }
-
   // ── Wyślij zaproszenie ──
   async function handleSendInvite(targetUserId: string) {
     try {
-      const res = await fetch(`${API_URL}/api/users/${userId}/friends`, {
+      const res = await apiFetch(`${API_URL}/api/users/${userId}/friends`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ friendId: targetUserId })
@@ -1008,6 +1102,8 @@ function ChatsWithUser({ userId }: { userId: string }) {
     }
   }
 
+  // ── Zaakceptuj zaproszenie ──
+
   // ── Wycisz / odcisz czat ──
   function handleToggleMute(chatId: string) {
     setMutedChatIds((prev) => {
@@ -1016,12 +1112,6 @@ function ChatsWithUser({ userId }: { userId: string }) {
       else next.add(chatId)
       return next
     })
-  }
-
-  // ── Otwórz czat z ProfilePopup ──
-  async function handleMessageFromProfile(targetUserId: string) {
-    await handleOpenChatWith(targetUserId)
-    setProfilePopupUserId(null)
   }
 
   // ── Natywny listener dla file input ──
@@ -1066,12 +1156,11 @@ function ChatsWithUser({ userId }: { userId: string }) {
 
   const filteredChats = searchQuery.trim()
     ? visibleChats.filter((c) =>
-        getChatDisplayName(c).toLowerCase().includes(searchQuery.toLowerCase())
-      )
+      getChatDisplayName(c).toLowerCase().includes(searchQuery.toLowerCase())
+    )
     : visibleChats
 
   // For "new people" in search: exclude anyone who is already a friend
-  // (they already have a chat with us — onOpenChatWith handles that path).
   const newPeopleResults = searchQuery.trim()
     ? searchUsers.filter((u) => !friendIds.has(u.id))
     : []
@@ -1091,7 +1180,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
       alert('A group can have at most 10 members.')
       return
     }
-    const res = await fetch(`${API_URL}/api/chats`, {
+    const res = await apiFetch(`${API_URL}/api/chats`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1112,7 +1201,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
 
   // ── Zarządzanie grupą ──
   async function handleRenameGroup(chatId: string, name: string) {
-    const res = await fetch(`${API_URL}/api/chats/${chatId}`, {
+    const res = await apiFetch(`${API_URL}/api/chats/${chatId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name })
@@ -1130,7 +1219,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
   async function handleDeleteGroup(chatId: string) {
     if (!confirm('Na pewno usunąć grupę? Tej operacji nie można cofnąć.'))
       return
-    const res = await fetch(`${API_URL}/api/chats/${chatId}`, {
+    const res = await apiFetch(`${API_URL}/api/chats/${chatId}`, {
       method: 'DELETE'
     })
     if (!res.ok) {
@@ -1141,9 +1230,20 @@ function ChatsWithUser({ userId }: { userId: string }) {
     if (activeChatId === chatId) setActiveChatId(null)
   }
 
+  async function handleRemoveFromGroup(chatId: string, memberId: string) {
+    const res = await apiFetch(
+      `${API_URL}/api/chats/${chatId}/members/${memberId}`,
+      { method: 'DELETE' }
+    )
+    if (!res.ok) {
+      alert('Błąd usuwania użytkownika z grupy')
+    }
+    // UI update comes via WS chat:updated → member_removed
+  }
+
   async function handleTransferOwner(chatId: string, newOwnerId: string) {
     if (!userId) return
-    const res = await fetch(
+    const res = await apiFetch(
       `${API_URL}/api/chats/${chatId}/members/${newOwnerId}`,
       {
         method: 'PUT',
@@ -1156,7 +1256,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
       return
     }
     // Downgrade current user to MEMBER
-    await fetch(`${API_URL}/api/chats/${chatId}/members/${userId}`, {
+    await apiFetch(`${API_URL}/api/chats/${chatId}/members/${userId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ role: 'MEMBER' })
@@ -1186,7 +1286,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
       alert('This group has reached the maximum of 10 members.')
       return
     }
-    const res = await fetch(`${API_URL}/api/chats/${chatId}/members`, {
+    const res = await apiFetch(`${API_URL}/api/chats/${chatId}/members`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: memberId, role: 'MEMBER' })
@@ -1222,7 +1322,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
       alert('A group chat can have at most 10 members.')
       return
     }
-    const res = await fetch(`${API_URL}/api/chats`, {
+    const res = await apiFetch(`${API_URL}/api/chats`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, type: 'GROUP', userIds: allMemberIds })
@@ -1237,14 +1337,37 @@ function ChatsWithUser({ userId }: { userId: string }) {
   }
 
   return (
-    <div className={styles.container}>
-      {/* Powiadomienie o zaproszeniu do znajomych */}
-      {friendRequestNotif && (
-        <div className={styles.FriendRequestToast}>
-          👥 {friendRequestNotif} {t('chat.friendRequestSent')}
-        </div>
-      )}
-
+    <div className={styles.containerOuter}>
+      {/* ── In-app powiadomienia ── */}
+      <div className={styles.InAppNotifContainer}>
+        {inAppNotifs.map((n) => (
+          <div
+            key={n.id}
+            className={styles.InAppNotif}
+            onClick={() => {
+              if (n.chatId) setActiveChatId(n.chatId)
+              setInAppNotifs((prev) => prev.filter((x) => x.id !== n.id))
+            }}
+          >
+            <img
+              src={n.avatarUrl ?? '/ouija_white_logo_square.png'}
+              className={styles.InAppNotifAvatar}
+              alt=""
+            />
+            <div className={styles.InAppNotifBody}>
+              <div className={styles.InAppNotifTitle}>{n.title}</div>
+              <div className={styles.InAppNotifMsg}>{n.body}</div>
+            </div>
+            <button
+              className={styles.InAppNotifClose}
+              onClick={(e) => {
+                e.stopPropagation()
+                setInAppNotifs((prev) => prev.filter((x) => x.id !== n.id))
+              }}
+            >✕</button>
+          </div>
+        ))}
+      </div>
       {/* Input poza warunkowym renderem */}
       <input
         type="file"
@@ -1252,13 +1375,14 @@ function ChatsWithUser({ userId }: { userId: string }) {
         ref={fileInputRef}
         onChange={handleFileChange}
         multiple
-        accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,audio/mpeg,audio/ogg,application/pdf"
+        accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,audio/mpeg,audio/ogg,application/pdf,text/plain,text/csv,text/markdown,application/json,application/zip,.txt,.csv,.md,.log,.json,.zip"
         style={{ display: 'none' }}
       />
 
+      <ErrorBoundary name="Chat Sidebar">
       <ChatSidebar
         userId={userId}
-        chats={chats}
+        chats={visibleChats}
         activeChatId={activeChatId}
         myStatus={myStatus}
         showStatusMenu={showStatusMenu}
@@ -1286,11 +1410,12 @@ function ChatsWithUser({ userId }: { userId: string }) {
         onOpenProfile={setProfilePopupUserId}
         onOpenGroupInfo={setGroupInfoPopupChatId}
         onSendInvite={handleSendInvite}
-        onOpenChatWith={handleOpenChatWith}
         onCreateGroupChat={handleCreateGroupChat}
         isMobileHidden={isMobile && mobileChatOpen}
       />
+      </ErrorBoundary>
 
+      <ErrorBoundary name="Chat Window">
       <ChatWindow
         activeChat={activeChat}
         otherUser={otherUser}
@@ -1316,20 +1441,22 @@ function ChatsWithUser({ userId }: { userId: string }) {
         onRenameGroup={handleRenameGroup}
         onDeleteGroup={handleDeleteGroup}
         onTransferOwner={handleTransferOwner}
+        onRemoveMember={handleRemoveFromGroup}
         onAddMember={handleAddMember}
         onUpgradeToGroup={handleUpgradeToGroup}
         friendIds={friendIds}
         allChats={chats}
         typingUsers={typingUsers}
         onTypingChange={handleTypingChange}
+        onPasteFile={(file) => setPendingFiles((prev) => [...prev, file])}
       />
+      </ErrorBoundary>
 
       {profilePopupUserId && (
         <ProfilePopup
           userId={profilePopupUserId}
           viewerId={userId}
           onClose={() => setProfilePopupUserId(null)}
-          onMessageUser={handleMessageFromProfile}
         />
       )}
 
@@ -1349,11 +1476,12 @@ function ChatsWithUser({ userId }: { userId: string }) {
                 setActiveChatId(chatId)
                 setGroupInfoPopupChatId(null)
               }}
+              onRemoveMember={handleRemoveFromGroup}
             />
           ) : null
         })()}
     </div>
-  )
+)
 }
 
 export default function Chats() {

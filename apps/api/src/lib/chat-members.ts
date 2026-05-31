@@ -9,5 +9,5 @@ export async function getChatMemberIds(chatId: string): Promise<string[]> {
     where: { chatId },
     select: { userId: true }
   })
-  return members.map((m) => m.userId)
+  return members.map((m: { userId: string }) => m.userId)
 }

@@ -1,10 +1,11 @@
 'use client'
 
-import { FormEvent, RefObject, useRef, useState } from 'react'
+import { FormEvent, RefObject, useEffect, useRef, useState } from 'react'
 import styles from './Chats.module.scss'
 import MessageBubble from './MessageBubble'
-import { Chat, Message, ReactionType, STATUS_COLOR, avatarSrc } from './types'
+import { Chat, Message, ReactionType, STATUS_COLOR, avatarSrc, API_URL } from './types'
 import { useTranslation } from '@/i18n/translations'
+import { apiFetch } from '@utils/auth'
 
 interface Props {
   activeChat: Chat | null
@@ -36,6 +37,7 @@ interface Props {
   onRenameGroup: (chatId: string, name: string) => Promise<void>
   onDeleteGroup: (chatId: string) => Promise<void>
   onTransferOwner: (chatId: string, newOwnerId: string) => Promise<void>
+  onRemoveMember: (chatId: string, memberId: string) => Promise<void>
   onAddMember: (chatId: string, userId: string) => Promise<void>
   onUpgradeToGroup: (
     chatId: string,
@@ -51,6 +53,7 @@ interface Props {
     avatarUrl?: string | null
   }[]
   onTypingChange?: (isTyping: boolean) => void
+  onPasteFile?: (file: File) => void
 }
 
 export default function ChatWindow({
@@ -77,16 +80,54 @@ export default function ChatWindow({
   onRenameGroup,
   onDeleteGroup,
   onTransferOwner,
+  onRemoveMember,
   onAddMember,
   onUpgradeToGroup,
   typingUsers = [],
-  onTypingChange
+  onTypingChange,
+  onPasteFile
 }: Props) {
   const { t } = useTranslation()
   const [groupPanelOpen, setGroupPanelOpen] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
   const [addMemberSearch, setAddMemberSearch] = useState('')
+
+  // ── Chat message search ──
+  const [chatSearchOpen, setChatSearchOpen] = useState(false)
+  const [chatSearchQuery, setChatSearchQuery] = useState('')
+  const [chatSearchIndex, setChatSearchIndex] = useState(0)
+  const chatSearchInputRef = useRef<HTMLInputElement>(null)
+
+  const chatSearchMatches = chatSearchQuery.trim()
+    ? messages
+        .map((m, i) => ({ i, m }))
+        .filter(({ m }) =>
+          m.content?.toLowerCase().includes(chatSearchQuery.toLowerCase())
+        )
+        .map(({ i }) => i)
+    : []
+
+  function openChatSearch() {
+    setChatSearchOpen(true)
+    setChatSearchQuery('')
+    setChatSearchIndex(0)
+    setTimeout(() => chatSearchInputRef.current?.focus(), 50)
+  }
+
+  function closeChatSearch() {
+    setChatSearchOpen(false)
+    setChatSearchQuery('')
+  }
+
+  function chatSearchPrev() {
+    setChatSearchIndex((i) => Math.max(0, i - 1))
+  }
+
+  function chatSearchNext() {
+    setChatSearchIndex((i) => Math.min(chatSearchMatches.length - 1, i + 1))
+  }
   const [addMemberResults, setAddMemberResults] = useState<
     { id: string; nickname: string; avatarUrl?: string | null }[]
   >([])
@@ -104,8 +145,71 @@ export default function ChatWindow({
   const addMemberTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const upgradeSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
   const GROUP_MAX_MEMBERS = 10
+
+  // ── Ctrl+V paste images from clipboard ──
+  useEffect(() => {
+    function handlePaste(e: ClipboardEvent) {
+      if (!activeChat) return
+      const items = e.clipboardData?.items
+      if (!items) return
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile()
+          if (file && onPasteFile) onPasteFile(file)
+        }
+      }
+    }
+    document.addEventListener('paste', handlePaste)
+    return () => document.removeEventListener('paste', handlePaste)
+  }, [activeChat, onPasteFile])
+
+  // ── Drag & drop files onto the chat window ──
+  useEffect(() => {
+    function handleDragOver(e: DragEvent) {
+      if (!activeChat) return
+      const hasFiles = Array.from(e.dataTransfer?.items ?? []).some(
+        (i) => i.kind === 'file'
+      )
+      if (!hasFiles) return
+      e.preventDefault()
+      setIsDragging(true)
+    }
+    function handleDragLeave(e: DragEvent) {
+      // Only clear when leaving the window entirely
+      if (e.relatedTarget == null) setIsDragging(false)
+    }
+    function handleDrop(e: DragEvent) {
+      e.preventDefault()
+      setIsDragging(false)
+      if (!activeChat || !onPasteFile) return
+      const files = Array.from(e.dataTransfer?.files ?? [])
+      files.forEach((file) => onPasteFile(file))
+    }
+    window.addEventListener('dragover', handleDragOver)
+    window.addEventListener('dragleave', handleDragLeave)
+    window.addEventListener('drop', handleDrop)
+    return () => {
+      window.removeEventListener('dragover', handleDragOver)
+      window.removeEventListener('dragleave', handleDragLeave)
+      window.removeEventListener('drop', handleDrop)
+    }
+  }, [activeChat, onPasteFile])
+
+  // ── Ctrl+F — szukaj w czacie ──
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f' && activeChat) {
+        e.preventDefault()
+        openChatSearch()
+      }
+      if (e.key === 'Escape' && chatSearchOpen) {
+        closeChatSearch()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [activeChat, chatSearchOpen])
 
   const isGroupAdmin =
     activeChat?.type === 'GROUP' &&
@@ -126,7 +230,7 @@ export default function ChatWindow({
     addMemberTimer.current = setTimeout(async () => {
       setAddMemberLoading(true)
       try {
-        const res = await fetch(
+        const res = await apiFetch(
           `${API_URL}/api/users/${userId}/friends?status=ACCEPTED`
         )
         if (res.ok) {
@@ -166,7 +270,7 @@ export default function ChatWindow({
     upgradeSearchTimer.current = setTimeout(async () => {
       setUpgradeSearchLoading(true)
       try {
-        const res = await fetch(
+        const res = await apiFetch(
           `${API_URL}/api/users/${userId}/friends?status=ACCEPTED`
         )
         if (res.ok) {
@@ -245,8 +349,15 @@ export default function ChatWindow({
 
   return (
     <div
-      className={`${styles.Chat}${isMobileChatVisible ? ` ${styles.ChatVisible}` : ''}`}
+      className={`${styles.Chat}${isMobileChatVisible ? ` ${styles.ChatVisible}` : ''}${isDragging ? ` ${styles.ChatDragOver}` : ''}`}
     >
+      {isDragging && (
+        <div className={styles.DragOverlay}>
+          <div className={styles.DragOverlayInner}>
+            📎 Upuść plik tutaj
+          </div>
+        </div>
+      )}
       {/* ── Nagłówek ── */}
       <div className={styles.ChatContactInfo}>
         {onBack && (
@@ -344,6 +455,14 @@ export default function ChatWindow({
             </>
           )}
         </div>
+        {/* ── Szukaj w czacie ── */}
+        <button
+          className={`${styles.GroupSettingsBtn} ${chatSearchOpen ? styles.GroupSettingsBtnActive : ''}`}
+          onClick={() => chatSearchOpen ? closeChatSearch() : openChatSearch()}
+          title="Szukaj w wiadomościach (Ctrl+F)"
+        >
+          🔍
+        </button>
         {activeChat?.type === 'GROUP' && (
           <button
             className={`${styles.GroupSettingsBtn} ${groupPanelOpen ? styles.GroupSettingsBtnActive : ''}`}
@@ -503,7 +622,9 @@ export default function ChatWindow({
                 <input
                   className={styles.GroupPanelNameInput}
                   value={nameInput}
-                  onChange={(e) => setNameInput(e.target.value)}
+                  onChange={(e) => setNameInput(e.target.value.slice(0, 50))}
+                  maxLength={50}
+                  placeholder="Nazwa grupy (maks. 50 znaków)"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       onRenameGroup(activeChat.id, nameInput)
@@ -670,6 +791,18 @@ export default function ChatWindow({
                     👑
                   </button>
                 )}
+                {isGroupAdmin && u.userId !== userId && (
+                  <button
+                    className={styles.GroupPanelBtnDanger}
+                    title={`Usuń ${u.user.nickname} z grupy`}
+                    onClick={() => {
+                      if (confirm(`Usunąć ${u.user.nickname} z grupy?`))
+                        onRemoveMember(activeChat.id, u.userId)
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -688,6 +821,49 @@ export default function ChatWindow({
         </div>
       )}
 
+      {/* ── Szukaj w czacie ── */}
+      {chatSearchOpen && (
+        <div className={styles.ChatSearchBar}>
+          <input
+            ref={chatSearchInputRef}
+            className={styles.ChatSearchInput}
+            placeholder="Szukaj w wiadomościach…"
+            value={chatSearchQuery}
+            onChange={(e) => {
+              setChatSearchQuery(e.target.value)
+              setChatSearchIndex(0)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                if (e.shiftKey) chatSearchPrev()
+                else chatSearchNext()
+              }
+              if (e.key === 'Escape') closeChatSearch()
+            }}
+          />
+          <div className={styles.ChatSearchNav}>
+            {chatSearchMatches.length > 0
+              ? `${chatSearchIndex + 1} / ${chatSearchMatches.length}`
+              : chatSearchQuery.trim()
+                ? '0 wyników'
+                : ''}
+            <button
+              className={styles.ChatSearchNavBtn}
+              onClick={chatSearchPrev}
+              disabled={chatSearchIndex <= 0}
+              title="Poprzedni"
+            >▲</button>
+            <button
+              className={styles.ChatSearchNavBtn}
+              onClick={chatSearchNext}
+              disabled={chatSearchIndex >= chatSearchMatches.length - 1}
+              title="Następny"
+            >▼</button>
+          </div>
+          <button className={styles.ChatSearchCloseBtn} onClick={closeChatSearch}>✕</button>
+        </div>
+      )}
+
       {/* ── Wiadomości ── */}
       <div className={styles.ChatMessageContainer} ref={messageContainerRef}>
         <div ref={topSentinelRef} className={styles.TopSentinel} />
@@ -697,16 +873,33 @@ export default function ChatWindow({
         {loadingMessages && (
           <p className={styles.LoadingText}>{t('chat.loadingMessages')}</p>
         )}
-        {messages.map((msg) => (
-          <MessageBubble
-            key={msg.id}
-            msg={msg}
-            isOwn={msg.senderId === userId}
-            userId={userId}
-            onReact={onReact}
-            chatUsers={activeChat?.users ?? []}
-          />
-        ))}
+        {messages.map((msg, msgIndex) => {
+          const isSearchMatch =
+            chatSearchOpen &&
+            chatSearchQuery.trim() &&
+            !!msg.content?.toLowerCase().includes(chatSearchQuery.toLowerCase())
+          const isActiveMatch =
+            isSearchMatch && chatSearchMatches[chatSearchIndex] === msgIndex
+          return (
+            <div
+              key={msg.id}
+              id={`msg-${msg.id}`}
+              style={isActiveMatch ? { scrollMarginTop: '4rem' } : undefined}
+              ref={isActiveMatch ? (el) => el?.scrollIntoView({ behavior: 'smooth', block: 'center' }) : undefined}
+            >
+              <MessageBubble
+                msg={msg}
+                isOwn={msg.senderId === userId}
+                userId={userId}
+                onReact={onReact}
+                onOpenProfile={onOpenProfile}
+                chatId={activeChat?.id}
+                chatUsers={activeChat?.users ?? []}
+                searchHighlight={isSearchMatch ? chatSearchQuery : undefined}
+              />
+            </div>
+          )
+        })}
         <div ref={bottomRef} />
       </div>
 

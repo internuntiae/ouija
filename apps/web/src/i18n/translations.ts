@@ -172,6 +172,7 @@ export const translations = {
     'chat.friendRequestSent': 'wysłał(a) Ci zaproszenie do znajomych',
     'chat.friendAcceptedTitle': 'Zaproszenie zaakceptowane',
     'chat.friendAccepted': 'zaakceptował(a) Twoje zaproszenie',
+    'chat.accept': 'akceptuj',
     'chat.reactionTitle': 'Nowa reakcja',
     'chat.reactionBody': 'ktoś zareagował na Twoją wiadomość',
 
@@ -180,6 +181,7 @@ export const translations = {
     'status.AWAY': 'Zaraz wracam',
     'status.BUSY': 'Nie przeszkadzać',
     'status.OFFLINE': 'Offline',
+    'status.INVISIBLE': 'Niewidoczny',
 
     // ── Profil ───────────────────────────────────────────────────────────────
     'profile.settings': 'Ustawienia strony',
@@ -240,6 +242,7 @@ export const translations = {
     'profilePopup.sendMessage': 'Wyślij wiadomość',
     'profilePopup.addFriend': 'Dodaj do znajomych',
     'profilePopup.pendingSent': '⏳ Zaproszenie wysłane',
+    'profilePopup.acceptFriend': 'Akceptuj zaproszenie',
     'profilePopup.alreadyFriend': '✓ Znajomy',
     'profilePopup.loadError': 'Nie można załadować profilu',
 
@@ -415,6 +418,7 @@ export const translations = {
     'chat.friendRequestSent': 'sent you a friend request',
     'chat.friendAcceptedTitle': 'Friend request accepted',
     'chat.friendAccepted': 'accepted your friend request',
+    'chat.accept': 'accept',
     'chat.reactionTitle': 'New reaction',
     'chat.reactionBody': 'someone reacted to your message',
 
@@ -423,6 +427,7 @@ export const translations = {
     'status.AWAY': 'Away',
     'status.BUSY': 'Do not disturb',
     'status.OFFLINE': 'Offline',
+    'status.INVISIBLE': 'Invisible',
 
     // ── Profile ──────────────────────────────────────────────────────────────
     'profile.settings': 'App settings',
@@ -483,6 +488,7 @@ export const translations = {
     'profilePopup.sendMessage': 'Send message',
     'profilePopup.addFriend': 'Add friend',
     'profilePopup.pendingSent': '⏳ Request sent',
+    'profilePopup.acceptFriend': 'Accept request',
     'profilePopup.alreadyFriend': '✓ Friends',
     'profilePopup.loadError': 'Could not load profile',
 
