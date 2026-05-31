@@ -19,10 +19,14 @@ export const getUsers = async (req: Request, res: Response) => {
       return res.json(user)
     }
 
-    // Single-user lookups return only the public profile shape (no email).
+    // Single-user lookups return only the public profile shape (no email),
+    // except when the requester is viewing their own profile.
     if (id) {
       const user = await userService.getUserById(id as string)
       if (!user) return res.status(404).json({ error: 'not found' })
+      if (id === requesterId) {
+        return res.json(user)
+      }
       const { email: _email, ...publicProfile } = user as typeof user & { email?: string }
       void _email
       return res.json(publicProfile)

@@ -379,7 +379,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
           { type: 'application/json' }
         )
         navigator.sendBeacon(
-          `${API_URL}/api/${userId}?_method=PUT&token=${encodeURIComponent(token)}`,
+          `${API_URL}/api/users/beacon/status?token=${encodeURIComponent(token)}`,
           blob
         )
       }
@@ -946,10 +946,12 @@ function ChatsWithUser({ userId }: { userId: string }) {
     const existing = messages
       .find((m) => m.id === messageId)
       ?.reactions.find((r) => r.userId === userId)
+    const chatId = activeChatId
+    if (!chatId) return
     try {
       if (existing?.type === type) {
         await apiFetch(
-          `${API_URL}/api/messages/${messageId}/reactions/${userId}`,
+          `${API_URL}/api/chats/${chatId}/messages/${messageId}/reactions`,
           { method: 'DELETE' }
         )
         setMessages((prev) =>
@@ -964,7 +966,7 @@ function ChatsWithUser({ userId }: { userId: string }) {
         )
       } else if (existing) {
         await apiFetch(
-          `${API_URL}/api/messages/${messageId}/reactions/${userId}`,
+          `${API_URL}/api/chats/${chatId}/messages/${messageId}/reactions`,
           {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -984,10 +986,10 @@ function ChatsWithUser({ userId }: { userId: string }) {
           )
         )
       } else {
-        await apiFetch(`${API_URL}/api/messages/${messageId}/reactions`, {
+        await apiFetch(`${API_URL}/api/chats/${chatId}/messages/${messageId}/reactions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, type })
+          body: JSON.stringify({ type })
         })
         setMessages((prev) =>
           prev.map((m) => {

@@ -26,6 +26,15 @@ export const csrfGuard = (
     return
   }
 
+  // sendBeacon cannot attach custom headers or an Origin on page unload.
+  // The beacon endpoint authenticates via a query-string token instead and is
+  // limited to a single status-update operation, so CSRF protection here is
+  // provided by the token itself rather than by origin checking.
+  if (req.path === '/users/beacon/status') {
+    next()
+    return
+  }
+
   const allowedOrigins = (process.env.APP_URL ?? 'http://localhost:3000')
     .split(',')
     .map((o) => o.trim())
